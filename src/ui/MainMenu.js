@@ -153,7 +153,6 @@ export class MenuUI {
       if (['profile', 'shop', 'battlepass', 'party'].includes(panel)) button.dataset.gated = '1';
       more?.appendChild(button);
     }
-    const earningsLink=document.createElement('a');earningsLink.className='profile-menu-item';earningsLink.href='/earnings';earningsLink.textContent='K EARNINGS';more?.appendChild(earningsLink);
     this._mobileHome = home;
   }
 
