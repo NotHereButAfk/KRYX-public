@@ -1,0 +1,41 @@
+#panel-battlepass{width:min(1180px,94vw)!important;max-width:1180px!important;padding:38px!important;text-shadow:none!important}
+#panel-battlepass .bp-header-row{display:flex;align-items:center;justify-content:space-between;gap:28px;padding-bottom:28px;border-bottom:1px solid #ffffff25;margin-bottom:0}
+#panel-battlepass .bp-title{font-size:clamp(28px,4vw,48px);letter-spacing:3px;margin:14px 0 4px;font-weight:700}
+.bp-intro{color:#ccd7df;margin:0 0 24px}
+#panel-battlepass .bp-tier-label{font-size:24px;color:#fff;margin-bottom:12px}
+#panel-battlepass .bp-xp-bar-wrap{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+#panel-battlepass .bp-xp-bar-bg{width:250px;height:7px;background:#0007;border-radius:8px;overflow:hidden}
+#panel-battlepass .bp-xp-bar-fill{height:100%;background:#42e1d4}
+#panel-battlepass .bp-xp-text{color:#bdece7;font-size:13px}
+#panel-battlepass .bp-premium-box{background:linear-gradient(135deg,#332945e8,#151b25ed);border:1px solid #b298d760;padding:24px;min-width:260px;border-radius:12px;text-align:left}
+#panel-battlepass .bp-prem-label{color:#dac0ff;font-size:17px;letter-spacing:2px}
+#panel-battlepass .bp-prem-desc{color:#ccd0dd;font-size:14px;margin:10px 0 20px}
+#panel-battlepass button{cursor:pointer;border-radius:5px;font:inherit;letter-spacing:.7px;min-height:40px}
+#panel-battlepass button:disabled{opacity:.45;cursor:default}
+#panel-battlepass button:focus-visible{outline:2px solid white;outline-offset:3px}
+#panel-battlepass .bp-unlock-btn{font-size:12px;background:#ad83eb;color:#110d19;padding:12px;border:0;width:100%;font-weight:700}
+.bp-toolbar{display:flex;justify-content:space-between;align-items:center;gap:18px;padding:24px 0}
+.bp-toolbar strong{color:#fff;font-size:17px}.bp-toolbar p{margin:7px 0 0;color:#c3cbd2;font-size:14px}
+#bp-claim-all{background:#37d7c7;border:0;color:#091d21;padding:10px 24px;font-weight:700!important}
+.bp-navigation{display:flex;align-items:center;gap:12px;margin:0 0 18px}
+.bp-navigation button{border:1px solid #ffffff30;background:#151e29aa;color:#eaf6ff;padding:5px 14px}
+#bp-page-label{font-size:13px;letter-spacing:2px;color:#dae4ee;min-width:150px;text-align:center}
+#bp-current{margin-left:auto;font-size:12px!important}
+#panel-battlepass .bp-track{display:grid;grid-template-columns:repeat(5,minmax(130px,1fr));gap:14px;padding:0 0 12px;overflow-x:auto}
+#panel-battlepass .bp-tier-col{width:auto;gap:10px;align-items:stretch}
+#panel-battlepass .bp-tier-num{font-size:14px;color:#a6b4c1;padding:7px;text-align:center}
+#panel-battlepass .bp-tier-col.current .bp-tier-num{color:#55efdb;background:#26d6bd1c;border-radius:5px}
+#panel-battlepass .bp-reward-card{width:100%;height:174px;box-sizing:border-box;border:1px solid #ffffff25!important;background:#131c27e8!important;border-radius:9px;opacity:1;justify-content:flex-start;padding:14px 10px 38px;gap:8px}
+#panel-battlepass .bp-reward-card.prem-track{background:linear-gradient(150deg,#342741ee,#171b28ef)!important;border-color:#a38ac14d!important}
+#panel-battlepass .bp-reward-card.unlocked:not(.claimed){border-color:#4ed9cd90!important}
+#panel-battlepass .bp-reward-card.claimed{background:#17232cba!important}
+.bp-lane{font-size:10px;letter-spacing:1.8px;color:#9fafbd;align-self:flex-start}.prem-track .bp-lane{color:#d4b4fa}
+#panel-battlepass .bp-reward-coin{display:flex;flex-direction:column;align-items:center;gap:5px;line-height:1;color:#f7dda0}
+.bp-credit-icon{font-size:30px;color:#eccf83}.bp-reward-coin strong{font-size:25px}.bp-reward-coin span:last-child{font-size:9px;letter-spacing:1px;color:#bfc9d2}
+#panel-battlepass .bp-claim-btn{position:absolute;bottom:0;left:0;width:100%;border:0;border-radius:0;background:#36d7c7;color:#102026;height:32px;min-height:32px;font-size:11px;font-weight:700}
+#panel-battlepass .bp-claimed-badge,.bp-locked-state{position:absolute;bottom:0;left:0;right:0;top:auto;text-align:center;padding:10px 4px;font-size:10px;letter-spacing:1px;color:#b5c3cf;background:#0002}
+#panel-battlepass .bp-claimed-badge{color:#6ce4c5}
+#panel-battlepass .bp-reward-label{font-size:15px;margin-top:18px}
+#panel-battlepass .bp-reward-rarity{font-size:10px}
+.bp-footnote{color:#bdc8d2;font-size:13px;line-height:1.7;margin:20px 0 0;max-width:780px}
+@media(max-width:700px){#panel-battlepass{padding:24px 16px!important}.bp-header-row{flex-direction:column;align-items:stretch!important}#panel-battlepass .bp-premium-box{min-width:0}.bp-toolbar{align-items:flex-start}.bp-toolbar strong{font-size:14px}.bp-toolbar p{font-size:12px}#bp-claim-all{padding:10px;white-space:nowrap}.bp-navigation{gap:6px}#bp-page-label{min-width:110px;font-size:11px}#bp-current{font-size:10px!important;padding:5px 8px}.bp-track{scroll-snap-type:x mandatory}.bp-tier-col{scroll-snap-align:start}}

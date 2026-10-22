@@ -1,0 +1,130 @@
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>Authoritative Net Lab</title>
+<style>
+  body { margin: 0; background: #0e1116; color: #cfe6f2; font: 12px/1.5 monospace; }
+  #hud { position: fixed; top: 8px; left: 8px; background: #000a; padding: 8px 12px;
+         border-left: 3px solid #35e0ff; white-space: pre; z-index: 2; }
+</style></head>
+<body>
+<div id="hud">connecting…</div>
+<script type="module">
+import * as THREE from 'three';
+import { AuthClient } from '/src/net/AuthClient.js';
+import { DT } from '/src/sim/MoveSim.js';
+
+const params = new URLSearchParams(location.search);
+const WS = params.get('ws') || 'ws://127.0.0.1:8788';
+const NAME = params.get('name') || 'Player';
+const AUTO = params.get('auto');   // 'circle' | 'forward' — bot drive for capture
+
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setSize(innerWidth, innerHeight);
+document.body.appendChild(renderer.domElement);
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x141a22);
+scene.add(new THREE.HemisphereLight(0xffffff, 0x223, 1.2));
+const sun = new THREE.DirectionalLight(0xffffff, 1.1); sun.position.set(30, 60, 20); scene.add(sun);
+const camera = new THREE.PerspectiveCamera(70, innerWidth / innerHeight, 0.05, 500);
+
+const client = new AuthClient(WS, { name: NAME });
+let arenaBuilt = false;
+const remoteMeshes = new Map();
+const selfMesh = new THREE.Mesh(new THREE.CapsuleGeometry(0.45, 0.8, 4, 10),
+  new THREE.MeshStandardMaterial({ color: 0xffb03a, emissive: 0x442200 }));
+selfMesh.position.y = 0.85; scene.add(selfMesh);
+
+function buildArena(a) {
+  const floor = new THREE.Mesh(new THREE.BoxGeometry(a.half * 2, 0.1, a.half * 2),
+    new THREE.MeshStandardMaterial({ color: 0x2b3442 }));
+  floor.position.y = -0.05; scene.add(floor);
+  scene.add(new THREE.GridHelper(a.half * 2, a.half, 0x35e0ff, 0x24303e));
+  for (const b of a.boxes) {
+    const s = [b.max[0] - b.min[0], b.max[1] - b.min[1], b.max[2] - b.min[2]];
+    const m = new THREE.Mesh(new THREE.BoxGeometry(...s),
+      new THREE.MeshStandardMaterial({ color: 0x50607a }));
+    m.position.set(b.min[0] + s[0] / 2, b.min[1] + s[1] / 2, b.min[2] + s[2] / 2);
+    scene.add(m);
+  }
+  for (const p of a.platforms) {
+    const sx = p.maxX - p.minX, sz = p.maxZ - p.minZ;
+    const m = new THREE.Mesh(new THREE.BoxGeometry(sx, 0.12, sz),
+      new THREE.MeshStandardMaterial({ color: 0x3a6a52 }));
+    m.position.set(p.minX + sx / 2, (p.y0 + p.y1) / 2 - 0.06, p.minZ + sz / 2);
+    if (p.y0 !== p.y1) {
+      const slope = (p.y1 - p.y0) / (p.axis === 'x' ? sx : sz);
+      if (p.axis === 'z') m.rotation.x = -Math.atan(slope);
+      m.scale.z = p.axis === 'z' ? Math.hypot(1, slope) : 1;
+    }
+    scene.add(m);
+  }
+  arenaBuilt = true;
+}
+client.onWelcome = (a) => buildArena(a);
+client.connect();
+
+let yaw = 0, t0 = performance.now(), acc = 0;
+const keys = new Set();
+addEventListener('keydown', (e) => keys.add(e.code));
+addEventListener('keyup', (e) => keys.delete(e.code));
+
+function frame(now) {
+  requestAnimationFrame(frame);
+  const dt = Math.min(0.1, (now - t0) / 1000); t0 = now;
+
+  // fixed-tick input send
+  acc += dt;
+  while (acc >= DT && client.sim) {
+    acc -= DT;
+    let mx = 0, mz = 0;
+    if (AUTO === 'forward') { mz = 1; yaw = Math.PI; }
+    else if (AUTO === 'circle') { mz = 1; yaw += DT * 1.1; }
+    else {
+      mz = (keys.has('KeyW') ? 1 : 0) - (keys.has('KeyS') ? 1 : 0);
+      mx = (keys.has('KeyD') ? 1 : 0) - (keys.has('KeyA') ? 1 : 0);
+    }
+    client.sendInput({ mx, mz, yaw, sprint: keys.has('ShiftLeft') });
+  }
+
+  // render self (predicted) + remotes (interpolated)
+  const lp = client.localPos();
+  if (lp) selfMesh.position.set(lp.x, lp.y + 0.85, lp.z);
+  const seen = new Set();
+  for (const r of client.remoteStates()) {
+    seen.add(r.id);
+    let m = remoteMeshes.get(r.id);
+    if (!m) {
+      m = new THREE.Mesh(new THREE.CapsuleGeometry(0.45, 0.8, 4, 10),
+        new THREE.MeshStandardMaterial({ color: 0x35e0ff, emissive: 0x00303a }));
+      scene.add(m); remoteMeshes.set(r.id, m);
+    }
+    m.position.set(r.x, r.y + 0.85, r.z);
+    m.visible = r.alive;
+  }
+  for (const [id, m] of remoteMeshes) if (!seen.has(id)) { scene.remove(m); remoteMeshes.delete(id); }
+
+  // chase cam on self
+  if (lp) {
+    camera.position.set(lp.x + 14, lp.y + 12, lp.z + 16);
+    camera.lookAt(lp.x, lp.y + 1, lp.z);
+  }
+
+  const hud = document.getElementById('hud');
+  hud.textContent =
+    `you       ${client.you ?? '—'}  (${NAME})\n` +
+    `connected ${client.connected}\n` +
+    `pos       ${lp ? `${lp.x.toFixed(1)} ${lp.y.toFixed(1)} ${lp.z.toFixed(1)}` : '—'}\n` +
+    `hp/shield ${client.self.health}/${client.self.shield}  mag ${client.self.mag}\n` +
+    `k/d/score ${client.self.kills}/${client.self.deaths}/${client.self.score}\n` +
+    `remotes   ${remoteMeshes.size}  pending ${client.pending.length}`;
+  window.__net = { you: client.you, remotes: remoteMeshes.size, connected: client.connected, pos: lp };
+  renderer.render(scene, camera);
+}
+requestAnimationFrame(frame);
+addEventListener('resize', () => {
+  renderer.setSize(innerWidth, innerHeight);
+  camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix();
+});
+</script>
+</body>
+</html>

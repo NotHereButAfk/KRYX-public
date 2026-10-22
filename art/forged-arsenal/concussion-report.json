@@ -1,0 +1,38 @@
+{
+  "id": "concussion",
+  "title": "Grenade Launcher",
+  "triangles": 6636,
+  "meshes": 11,
+  "dimensionsMetres": [
+    0.2246718406677246,
+    0.37160778045654297,
+    0.8409802913665771
+  ],
+  "pose": {
+    "muzzle": [
+      0,
+      0.09,
+      -0.495
+    ],
+    "trigger": [
+      0.012,
+      -0.043,
+      0.083
+    ],
+    "support": [
+      -0.03,
+      0.005,
+      -0.303
+    ],
+    "reload": [
+      -0.111,
+      0.025,
+      -0.067
+    ],
+    "carry": "launcher",
+    "supportVisible": true
+  },
+  "bytes": 483796,
+  "installed": true,
+  "sourceFile": "art/forged-arsenal/concussion.blend"
+}

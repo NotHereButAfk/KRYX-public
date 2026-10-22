@@ -1,0 +1,60 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Production Soldier weapon carry gallery</title>
+  <style>
+    * { box-sizing: border-box; }
+    html, body { margin: 0; background: #171b22; color: #dfe8f3; font: 14px system-ui, sans-serif; }
+    h1 { margin: 20px 24px 4px; font-size: 22px; }
+    p { margin: 0 24px 18px; color: #94a3b8; }
+    #grid { display: grid; grid-template-columns: repeat(3, 384px); gap: 14px; padding: 0 24px 24px; }
+    .card { border: 1px solid #364152; border-radius: 8px; overflow: hidden; background: #20242c; }
+    .label { height: 34px; padding: 8px 11px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; }
+    .view { width: 384px; height: 179px; overflow: hidden; }
+    iframe { display: block; width: 1200px; height: 560px; border: 0; transform: scale(.32); transform-origin: 0 0; }
+    .view img { display: block; width: 384px; height: 179px; object-fit: cover; }
+  </style>
+</head>
+<body>
+  <h1>Loaded Soldier — all 17 firearm holds</h1>
+  <p>Production 18% idle blend, three-quarter view. Each panel runs the real HumanSoldier + HumanRifleCarry path.</p>
+  <main id="grid"></main>
+  <script>
+    const weapons = [
+      'sidearm', 'magnum', 'uzi', 'needler', 'plasmarifle',
+      'levershotgun', 'energyshotgun', 'm4', 'm16', 'rifle',
+      'lmg', 'boltsniper', 'battlerifle', 'dmr',
+      'rpg', 'fuelrod', 'concussion',
+    ];
+    const grid = document.querySelector('#grid');
+    const views = [];
+    for (const weapon of weapons) {
+      const card = document.createElement('section');
+      card.className = 'card';
+      card.innerHTML = `<div class="label">${weapon}</div><div class="view"></div>`;
+      grid.append(card);
+      views.push(card.querySelector('.view'));
+    }
+
+    // Capture one live renderer at a time, then replace it with a bitmap. This
+    // avoids Chromium's WebGL-context limit silently blanking the 17th weapon.
+    (async () => {
+      for (let i = 0; i < weapons.length; i++) {
+        const iframe = document.createElement('iframe');
+        iframe.title = `${weapons[i]} soldier hold`;
+        iframe.src = `/human-pose-lab.html?aim=0.18&angle=45&weapon=${weapons[i]}`;
+        views[i].append(iframe);
+        await new Promise((resolve) => iframe.addEventListener('load', resolve, { once: true }));
+        await new Promise((resolve) => setTimeout(resolve, 250));
+        const source = iframe.contentDocument.querySelector('canvas').toDataURL('image/png');
+        const image = new Image();
+        image.alt = `${weapons[i]} production soldier hold`;
+        image.src = source;
+        views[i].replaceChildren(image);
+      }
+      document.body.dataset.ready = 'true';
+    })();
+  </script>
+</body>
+</html>

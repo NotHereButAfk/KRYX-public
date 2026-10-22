@@ -1,0 +1,12 @@
+import assert from 'node:assert/strict';
+import {IMPORTED_ARENAS} from '../server/rookarena.mjs';import {createState,step,makeInput} from '../src/sim/MoveSim.js';import fs from 'node:fs';
+const arena=IMPORTED_ARENAS.find(a=>a.id==='gypsum');const n=JSON.parse(fs.readFileSync('server/navigation/gypsum.json'));let cases=0,bad=0,examples=[];
+for(let i=0;i<n.points.length&&cases<100;i++)for(const j of n.edges[i]){let a=n.points[i],b=n.points[j],rise=b[1]-a[1],len=Math.hypot(b[0]-a[0],b[2]-a[2]);if(Math.abs(rise)<.25||Math.abs(rise)>len*.7||len>6)continue;cases++;let s=createState(...a),air=0;for(let t=0;t<Math.ceil(len/9/.05);t++){let old=s;s=arena.resolveState(old,step(old,makeInput({mz:1,yaw:Math.atan2(-(b[0]-a[0]),-(b[2]-a[2]))}),arena));if(!s.onGround)air++;}if(air){bad++;if(examples.length<3)examples.push({a,b,air});}}assert(cases>=100);assert.equal(bad,0,'walkable Gypsum slopes lost grounded support');console.log('PASS 101 imported uphill/downhill navigation segments stay grounded');
+
+import * as T from 'three';import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';import {MeshoptDecoder} from 'three/addons/libs/meshopt_decoder.module.js';import {installEvCharacter} from '../src/player/EvCharacter.js';import {installAuthoredSkin} from '../src/player/AuthoredSkins.js';import {Avatar} from '../src/player/Avatar.js';import {BOT_SKIN} from '../src/player/skins.js';
+globalThis.ProgressEvent??=class{};
+async function load(path){let b=fs.readFileSync('public'+path);return new GLTFLoader().setMeshoptDecoder(MeshoptDecoder).parseAsync(b.buffer.slice(b.byteOffset,b.byteOffset+b.byteLength),'');}
+installEvCharacter(await load('/ev-default.glb'));installAuthoredSkin(BOT_SKIN.id,await load(BOT_SKIN.model));
+for(const firing of [false,true]){let a=new Avatar(new T.Scene(),{skin:BOT_SKIN}),p=new T.Vector3(),q=[],names=new Set();await a.group.userData.skinReady;for(let i=0;i<240;i++){p.x+=.1;a.update(1/60,{position:p,yaw:0,isBot:true,grounded:true,firing});q.push(a.group.userData.bones.Bip001_L_Calf.quaternion.clone());names.add(a.group.userData.activeAnimation);}assert(Math.max(...q.map(x=>x.angleTo(q[60])))>.7,'fast strafing needs visible calf motion without requiring overextended knees');assert([...names].some(n=>n.includes(firing?'Run and Shoot':'Run - Armed')),'fast strafe must select running even without sprint intent');a.dispose();}
+
+console.log('PASS Bot Reforged fast strafe animates both with and without firing');

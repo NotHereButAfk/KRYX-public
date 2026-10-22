@@ -1,0 +1,57 @@
+[
+  {
+    "id": "m4",
+    "name": "Auto Rifle",
+    "url": "https://ev.io/sites/default/files/weapon_models/_Auto_Rifle_Original_1.evobj"
+  },
+  {
+    "id": "magnum",
+    "name": "Hand Cannon",
+    "url": "https://ev.io/sites/default/files/weapon_models/_Hand_cannon_ORIGINAL_0.evobj"
+  },
+  {
+    "id": "battlerifle",
+    "name": "Burst Rifle",
+    "url": "https://ev.io/sites/default/files/weapon_models/BRDef.evobj"
+  },
+  {
+    "id": "energyshotgun",
+    "name": "Sweeper",
+    "url": "https://ev.io/sites/default/files/weapon_models/sweeper.evobj"
+  },
+  {
+    "id": "plasmarifle",
+    "name": "Laser Rifle",
+    "url": "https://ev.io/sites/default/files/weapon_models/_Laser_Rifle_Original.evobj"
+  },
+  {
+    "id": "rpg",
+    "name": "Rocket Launcher",
+    "url": "https://ev.io/sites/default/files/weapon_models/_Rocket_Launcher_Original.evobj"
+  },
+  {
+    "id": "concussion",
+    "name": "Grenade Launcher",
+    "url": "https://ev.io/sites/default/files/weapon_models/GrenadeLauncher.evobj"
+  },
+  {
+    "id": "uzi",
+    "name": "SMG",
+    "url": "https://ev.io/sites/default/files/weapon_models/_Smg.evobj"
+  },
+  {
+    "id": "levershotgun",
+    "name": "Shotgun",
+    "url": "https://ev.io/sites/default/files/weapon_models/Shotgun_new_default.evobj"
+  },
+  {
+    "id": "boltsniper",
+    "name": "Sniper Rifle",
+    "url": "https://ev.io/sites/default/files/weapon_models/_Sniper_Rifle_ORIGINAL_0.evobj"
+  },
+  {
+    "id": "sword",
+    "name": "Sword",
+    "url": "https://ev.io/sites/default/files/weapon_models/_sword_katana_0.evobj"
+  }
+]

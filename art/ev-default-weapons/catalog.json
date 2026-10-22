@@ -1,0 +1,321 @@
+[
+  {
+    "id": "m4",
+    "name": "Auto Rifle",
+    "url": "https://ev.io/sites/default/files/weapon_models/_Auto_Rifle_Original_1.evobj",
+    "pose": {
+      "trigger": [
+        0.012,
+        -0.043,
+        0.06
+      ],
+      "support": [
+        -0.032,
+        0,
+        -0.29
+      ],
+      "reload": [
+        -0.04,
+        -0.2,
+        -0.11
+      ],
+      "carry": "rifle",
+      "supportVisible": true,
+      "muzzle": [
+        0,
+        0.06400000303983688,
+        -0.9886000156402588
+      ]
+    }
+  },
+  {
+    "id": "magnum",
+    "name": "Hand Cannon",
+    "url": "https://ev.io/sites/default/files/weapon_models/_Hand_cannon_ORIGINAL_0.evobj",
+    "pose": {
+      "trigger": [
+        0.01,
+        -0.071,
+        0.114
+      ],
+      "support": [
+        -0.028,
+        -0.072,
+        0.125
+      ],
+      "reload": [
+        -0.03,
+        -0.17,
+        0.1
+      ],
+      "carry": "pistol",
+      "supportVisible": false,
+      "muzzle": [
+        0,
+        0.06468000262975693,
+        -0.3401600122451782
+      ]
+    }
+  },
+  {
+    "id": "battlerifle",
+    "name": "Burst Rifle",
+    "url": "https://ev.io/sites/default/files/weapon_models/BRDef.evobj",
+    "pose": {
+      "trigger": [
+        0.012,
+        -0.043,
+        0.06
+      ],
+      "support": [
+        -0.033,
+        0,
+        -0.266
+      ],
+      "reload": [
+        -0.04,
+        -0.19,
+        -0.15
+      ],
+      "carry": "rifle",
+      "supportVisible": true,
+      "muzzle": [
+        0,
+        0.061319999396800995,
+        -0.6060600280761719
+      ]
+    }
+  },
+  {
+    "id": "energyshotgun",
+    "name": "Sweeper",
+    "url": "https://ev.io/sites/default/files/weapon_models/sweeper.evobj",
+    "pose": {
+      "trigger": [
+        0.012,
+        -0.043,
+        0.06
+      ],
+      "support": [
+        -0.04,
+        0,
+        -0.281
+      ],
+      "reload": [
+        -0.05,
+        -0.16,
+        -0.15
+      ],
+      "carry": "rifle",
+      "supportVisible": true,
+      "muzzle": [
+        0,
+        0.06300000101327896,
+        -0.7275999784469604
+      ]
+    }
+  },
+  {
+    "id": "plasmarifle",
+    "name": "Laser Rifle",
+    "url": "https://ev.io/sites/default/files/weapon_models/_Laser_Rifle_Original.evobj",
+    "pose": {
+      "trigger": [
+        0.012,
+        -0.043,
+        0.06
+      ],
+      "support": [
+        -0.04,
+        -0.003,
+        -0.28
+      ],
+      "reload": [
+        -0.04,
+        -0.18,
+        -0.113
+      ],
+      "carry": "rifle",
+      "supportVisible": true,
+      "muzzle": [
+        0,
+        0.07056000083684921,
+        -0.8302599787712097
+      ]
+    }
+  },
+  {
+    "id": "rpg",
+    "name": "Rocket Launcher",
+    "url": "https://ev.io/sites/default/files/weapon_models/_Rocket_Launcher_Original.evobj",
+    "pose": {
+      "trigger": [
+        0.012,
+        -0.043,
+        0.06
+      ],
+      "support": [
+        -0.022,
+        -0.017,
+        -0.28
+      ],
+      "reload": [
+        -0.07,
+        0.035,
+        0.23
+      ],
+      "carry": "launcher",
+      "supportVisible": true,
+      "muzzle": [
+        0,
+        0.1080000028014183,
+        -0.6261199712753296
+      ]
+    }
+  },
+  {
+    "id": "concussion",
+    "name": "Grenade Launcher",
+    "url": "https://ev.io/sites/default/files/weapon_models/GrenadeLauncher.evobj",
+    "pose": {
+      "trigger": [
+        0.012,
+        -0.043,
+        0.083
+      ],
+      "support": [
+        -0.03,
+        0.005,
+        -0.303
+      ],
+      "reload": [
+        -0.111,
+        0.025,
+        -0.067
+      ],
+      "carry": "launcher",
+      "supportVisible": true,
+      "muzzle": [
+        0,
+        0.09000000357627869,
+        -0.4950000047683716
+      ]
+    }
+  },
+  {
+    "id": "uzi",
+    "name": "SMG",
+    "url": "https://ev.io/sites/default/files/weapon_models/_Smg.evobj",
+    "pose": {
+      "trigger": [
+        0.012,
+        -0.043,
+        0.06
+      ],
+      "support": [
+        -0.027,
+        0.001,
+        -0.187
+      ],
+      "reload": [
+        -0.04,
+        -0.17,
+        -0.082
+      ],
+      "carry": "compact",
+      "supportVisible": true,
+      "muzzle": [
+        0,
+        0.05999999865889549,
+        -0.3533399999141693
+      ]
+    }
+  },
+  {
+    "id": "levershotgun",
+    "name": "Shotgun",
+    "url": "https://ev.io/sites/default/files/weapon_models/Shotgun_new_default.evobj",
+    "pose": {
+      "trigger": [
+        0.012,
+        -0.043,
+        0.06
+      ],
+      "support": [
+        -0.035,
+        0.012,
+        -0.3
+      ],
+      "reload": [
+        -0.04,
+        -0.1,
+        -0.12
+      ],
+      "carry": "shotgun",
+      "supportVisible": true,
+      "muzzle": [
+        0,
+        0.08500000089406967,
+        -0.729960024356842
+      ]
+    }
+  },
+  {
+    "id": "boltsniper",
+    "name": "Sniper Rifle",
+    "url": "https://ev.io/sites/default/files/weapon_models/_Sniper_Rifle_ORIGINAL_0.evobj",
+    "pose": {
+      "trigger": [
+        0.012,
+        -0.043,
+        0.06
+      ],
+      "support": [
+        -0.035,
+        0.005,
+        -0.29
+      ],
+      "reload": [
+        -0.04,
+        -0.13,
+        -0.12
+      ],
+      "carry": "rifle",
+      "supportVisible": true,
+      "muzzle": [
+        0,
+        0.07699999958276749,
+        -0.9950000047683716
+      ]
+    }
+  },
+  {
+    "id": "sword",
+    "name": "Sword",
+    "url": "https://ev.io/sites/default/files/weapon_models/_sword_katana_0.evobj",
+    "pose": {
+      "trigger": [
+        0,
+        -0.02,
+        0.16
+      ],
+      "support": [
+        0,
+        -0.02,
+        0.23
+      ],
+      "reload": [
+        0,
+        -0.02,
+        0.16
+      ],
+      "carry": "melee",
+      "supportVisible": false,
+      "muzzle": [
+        0,
+        -0.019999999552965164,
+        -0.824999988079071
+      ]
+    }
+  }
+]

@@ -1,0 +1,814 @@
+{
+  "remake_170": {
+    "map": false,
+    "emissiveMap": false
+  },
+  "remake_187": {
+    "map": false,
+    "emissiveMap": false
+  },
+  "remake_194": {
+    "map": false,
+    "emissiveMap": false
+  },
+  "remake_209": {
+    "map": false,
+    "emissiveMap": false
+  },
+  "remake_217": {
+    "map": false,
+    "emissiveMap": false
+  },
+  "remake_228": {
+    "map": false,
+    "emissiveMap": false
+  },
+  "remake_299": {
+    "map": false,
+    "emissiveMap": false
+  },
+  "remake_300": {
+    "map": false,
+    "emissiveMap": false
+  },
+  "remake_301": {
+    "map": false,
+    "emissiveMap": false
+  },
+  "remake_305": {
+    "map": false,
+    "emissiveMap": false
+  },
+  "remake_306": {
+    "map": false,
+    "emissiveMap": false
+  },
+  "remake_307": {
+    "map": false,
+    "emissiveMap": false
+  },
+  "remake_359": {
+    "map": true,
+    "emissiveMap": true
+  },
+  "remake_360": {
+    "map": true,
+    "emissiveMap": true
+  },
+  "remake_361": {
+    "map": true,
+    "emissiveMap": true
+  },
+  "remake_362": {
+    "map": true,
+    "emissiveMap": true
+  },
+  "remake_364": {
+    "map": false,
+    "emissiveMap": false
+  },
+  "remake_370": {
+    "map": false,
+    "emissiveMap": false
+  },
+  "remake_373": {
+    "map": false,
+    "emissiveMap": false
+  },
+  "remake_374": {
+    "map": false,
+    "emissiveMap": false
+  },
+  "remake_375": {
+    "map": false,
+    "emissiveMap": false
+  },
+  "remake_382": {
+    "map": false,
+    "emissiveMap": false
+  },
+  "remake_383": {
+    "map": false,
+    "emissiveMap": false
+  },
+  "remake_388": {
+    "map": true,
+    "emissiveMap": true
+  },
+  "remake_389": {
+    "map": true,
+    "emissiveMap": true
+  },
+  "remake_390": {
+    "map": true,
+    "emissiveMap": true
+  },
+  "remake_391": {
+    "map": true,
+    "emissiveMap": true
+  },
+  "remake_392": {
+    "map": true,
+    "emissiveMap": true
+  },
+  "remake_409": {
+    "map": true,
+    "emissiveMap": true
+  },
+  "remake_410": {
+    "map": true,
+    "emissiveMap": true
+  },
+  "remake_411": {
+    "map": true,
+    "emissiveMap": true
+  },
+  "remake_412": {
+    "map": true,
+    "emissiveMap": true
+  },
+  "remake_425": {
+    "map": true,
+    "emissiveMap": true
+  },
+  "remake_474": {
+    "map": false,
+    "emissiveMap": false
+  },
+  "remake_475": {
+    "map": false,
+    "emissiveMap": false
+  },
+  "remake_476": {
+    "map": false,
+    "emissiveMap": false
+  },
+  "remake_537": {
+    "map": false,
+    "emissiveMap": false
+  },
+  "remake_551": {
+    "map": false,
+    "emissiveMap": false
+  },
+  "remake_552": {
+    "map": false,
+    "emissiveMap": false
+  },
+  "remake_555": {
+    "map": false,
+    "emissiveMap": false
+  },
+  "remake_559": {
+    "map": false,
+    "emissiveMap": false
+  },
+  "remake_561": {
+    "map": false,
+    "emissiveMap": false
+  },
+  "remake_625": {
+    "map": true,
+    "emissiveMap": true
+  },
+  "remake_736": {
+    "map": false,
+    "emissiveMap": false
+  },
+  "remake_738": {
+    "map": false,
+    "emissiveMap": false
+  },
+  "remake_798": {
+    "map": false,
+    "emissiveMap": false
+  },
+  "remake_800": {
+    "map": true,
+    "emissiveMap": true
+  },
+  "remake_801": {
+    "map": true,
+    "emissiveMap": true
+  },
+  "remake_804": {
+    "map": true,
+    "emissiveMap": true
+  },
+  "remake_806": {
+    "map": true,
+    "emissiveMap": true
+  },
+  "remake_807": {
+    "map": true,
+    "emissiveMap": true
+  },
+  "remake_808": {
+    "map": true,
+    "emissiveMap": true
+  },
+  "remake_809": {
+    "map": true,
+    "emissiveMap": true
+  },
+  "remake_810": {
+    "map": true,
+    "emissiveMap": true
+  },
+  "remake_811": {
+    "map": true,
+    "emissiveMap": true
+  },
+  "remake_812": {
+    "map": false,
+    "emissiveMap": false
+  },
+  "remake_813": {
+    "map": false,
+    "emissiveMap": false
+  },
+  "remake_814": {
+    "map": false,
+    "emissiveMap": false
+  },
+  "remake_815": {
+    "map": true,
+    "emissiveMap": true
+  },
+  "remake_816": {
+    "map": false,
+    "emissiveMap": false
+  },
+  "remake_817": {
+    "map": false,
+    "emissiveMap": false
+  },
+  "remake_225": {
+    "map": false,
+    "emissiveMap": false
+  },
+  "remake_243": {
+    "map": true,
+    "emissiveMap": false
+  },
+  "remake_244": {
+    "map": true,
+    "emissiveMap": false
+  },
+  "remake_245": {
+    "map": true,
+    "emissiveMap": false
+  },
+  "remake_350": {
+    "map": true,
+    "emissiveMap": false
+  },
+  "remake_352": {
+    "map": false,
+    "emissiveMap": false
+  },
+  "remake_384": {
+    "map": false,
+    "emissiveMap": false
+  },
+  "remake_397": {
+    "map": true,
+    "emissiveMap": true
+  },
+  "remake_398": {
+    "map": true,
+    "emissiveMap": true
+  },
+  "remake_399": {
+    "map": true,
+    "emissiveMap": true
+  },
+  "remake_400": {
+    "map": true,
+    "emissiveMap": true
+  },
+  "remake_405": {
+    "map": true,
+    "emissiveMap": true
+  },
+  "remake_406": {
+    "map": true,
+    "emissiveMap": true
+  },
+  "remake_407": {
+    "map": true,
+    "emissiveMap": true
+  },
+  "remake_408": {
+    "map": true,
+    "emissiveMap": true
+  },
+  "remake_417": {
+    "map": true,
+    "emissiveMap": true
+  },
+  "remake_418": {
+    "map": true,
+    "emissiveMap": true
+  },
+  "remake_419": {
+    "map": true,
+    "emissiveMap": true
+  },
+  "remake_420": {
+    "map": true,
+    "emissiveMap": true
+  },
+  "remake_427": {
+    "map": true,
+    "emissiveMap": true
+  },
+  "remake_462": {
+    "map": false,
+    "emissiveMap": false
+  },
+  "remake_463": {
+    "map": false,
+    "emissiveMap": false
+  },
+  "remake_464": {
+    "map": false,
+    "emissiveMap": false
+  },
+  "remake_468": {
+    "map": false,
+    "emissiveMap": false
+  },
+  "remake_469": {
+    "map": false,
+    "emissiveMap": false
+  },
+  "remake_470": {
+    "map": false,
+    "emissiveMap": false
+  },
+  "remake_477": {
+    "map": false,
+    "emissiveMap": false
+  },
+  "remake_478": {
+    "map": false,
+    "emissiveMap": false
+  },
+  "remake_531": {
+    "map": false,
+    "emissiveMap": false
+  },
+  "remake_532": {
+    "map": false,
+    "emissiveMap": false
+  },
+  "remake_536": {
+    "map": false,
+    "emissiveMap": false
+  },
+  "remake_549": {
+    "map": false,
+    "emissiveMap": false
+  },
+  "remake_556": {
+    "map": false,
+    "emissiveMap": false
+  },
+  "remake_560": {
+    "map": false,
+    "emissiveMap": false
+  },
+  "remake_565": {
+    "map": false,
+    "emissiveMap": false
+  },
+  "remake_799": {
+    "map": true,
+    "emissiveMap": true
+  },
+  "remake_803": {
+    "map": true,
+    "emissiveMap": true
+  },
+  "remake_819": {
+    "map": false,
+    "emissiveMap": false
+  },
+  "remake_168": {
+    "map": false,
+    "emissiveMap": false
+  },
+  "remake_169": {
+    "map": false,
+    "emissiveMap": false
+  },
+  "remake_188": {
+    "map": false,
+    "emissiveMap": false
+  },
+  "remake_193": {
+    "map": false,
+    "emissiveMap": false
+  },
+  "remake_210": {
+    "map": false,
+    "emissiveMap": false
+  },
+  "remake_215": {
+    "map": false,
+    "emissiveMap": false
+  },
+  "remake_239": {
+    "map": true,
+    "emissiveMap": false
+  },
+  "remake_240": {
+    "map": true,
+    "emissiveMap": false
+  },
+  "remake_241": {
+    "map": true,
+    "emissiveMap": false
+  },
+  "remake_313": {
+    "map": false,
+    "emissiveMap": false
+  },
+  "remake_314": {
+    "map": false,
+    "emissiveMap": false
+  },
+  "remake_315": {
+    "map": false,
+    "emissiveMap": false
+  },
+  "remake_321": {
+    "map": false,
+    "emissiveMap": false
+  },
+  "remake_322": {
+    "map": false,
+    "emissiveMap": false
+  },
+  "remake_385": {
+    "map": true,
+    "emissiveMap": true
+  },
+  "remake_386": {
+    "map": true,
+    "emissiveMap": true
+  },
+  "remake_387": {
+    "map": true,
+    "emissiveMap": true
+  },
+  "remake_393": {
+    "map": true,
+    "emissiveMap": true
+  },
+  "remake_394": {
+    "map": true,
+    "emissiveMap": true
+  },
+  "remake_395": {
+    "map": true,
+    "emissiveMap": true
+  },
+  "remake_396": {
+    "map": true,
+    "emissiveMap": true
+  },
+  "remake_413": {
+    "map": true,
+    "emissiveMap": true
+  },
+  "remake_414": {
+    "map": true,
+    "emissiveMap": true
+  },
+  "remake_415": {
+    "map": true,
+    "emissiveMap": true
+  },
+  "remake_416": {
+    "map": true,
+    "emissiveMap": true
+  },
+  "remake_426": {
+    "map": true,
+    "emissiveMap": true
+  },
+  "remake_465": {
+    "map": false,
+    "emissiveMap": false
+  },
+  "remake_466": {
+    "map": false,
+    "emissiveMap": false
+  },
+  "remake_467": {
+    "map": false,
+    "emissiveMap": false
+  },
+  "remake_480": {
+    "map": false,
+    "emissiveMap": false
+  },
+  "remake_481": {
+    "map": false,
+    "emissiveMap": false
+  },
+  "remake_482": {
+    "map": false,
+    "emissiveMap": false
+  },
+  "remake_529": {
+    "map": false,
+    "emissiveMap": false
+  },
+  "remake_530": {
+    "map": false,
+    "emissiveMap": false
+  },
+  "remake_533": {
+    "map": false,
+    "emissiveMap": false
+  },
+  "remake_557": {
+    "map": false,
+    "emissiveMap": false
+  },
+  "remake_558": {
+    "map": false,
+    "emissiveMap": false
+  },
+  "remake_568": {
+    "map": false,
+    "emissiveMap": false
+  },
+  "remake_616": {
+    "map": false,
+    "emissiveMap": false
+  },
+  "remake_805": {
+    "map": true,
+    "emissiveMap": true
+  },
+  "remake_186": {
+    "map": false,
+    "emissiveMap": false
+  },
+  "remake_192": {
+    "map": false,
+    "emissiveMap": false
+  },
+  "remake_208": {
+    "map": false,
+    "emissiveMap": false
+  },
+  "remake_216": {
+    "map": false,
+    "emissiveMap": false
+  },
+  "remake_226": {
+    "map": false,
+    "emissiveMap": false
+  },
+  "remake_227": {
+    "map": false,
+    "emissiveMap": false
+  },
+  "remake_235": {
+    "map": true,
+    "emissiveMap": false
+  },
+  "remake_236": {
+    "map": true,
+    "emissiveMap": false
+  },
+  "remake_237": {
+    "map": true,
+    "emissiveMap": false
+  },
+  "remake_249": {
+    "map": true,
+    "emissiveMap": false
+  },
+  "remake_250": {
+    "map": true,
+    "emissiveMap": false
+  },
+  "remake_251": {
+    "map": true,
+    "emissiveMap": false
+  },
+  "remake_266": {
+    "map": false,
+    "emissiveMap": false
+  },
+  "remake_267": {
+    "map": false,
+    "emissiveMap": false
+  },
+  "remake_268": {
+    "map": false,
+    "emissiveMap": false
+  },
+  "remake_278": {
+    "map": false,
+    "emissiveMap": false
+  },
+  "remake_279": {
+    "map": false,
+    "emissiveMap": false
+  },
+  "remake_280": {
+    "map": false,
+    "emissiveMap": false
+  },
+  "remake_290": {
+    "map": false,
+    "emissiveMap": false
+  },
+  "remake_291": {
+    "map": false,
+    "emissiveMap": false
+  },
+  "remake_292": {
+    "map": false,
+    "emissiveMap": false
+  },
+  "remake_329": {
+    "map": false,
+    "emissiveMap": false
+  },
+  "remake_330": {
+    "map": false,
+    "emissiveMap": false
+  },
+  "remake_331": {
+    "map": false,
+    "emissiveMap": false
+  },
+  "remake_333": {
+    "map": false,
+    "emissiveMap": false
+  },
+  "remake_334": {
+    "map": false,
+    "emissiveMap": false
+  },
+  "remake_335": {
+    "map": false,
+    "emissiveMap": false
+  },
+  "remake_351": {
+    "map": false,
+    "emissiveMap": false
+  },
+  "remake_363": {
+    "map": true,
+    "emissiveMap": false
+  },
+  "remake_365": {
+    "map": false,
+    "emissiveMap": false
+  },
+  "remake_368": {
+    "map": true,
+    "emissiveMap": false
+  },
+  "remake_369": {
+    "map": false,
+    "emissiveMap": false
+  },
+  "remake_401": {
+    "map": true,
+    "emissiveMap": true
+  },
+  "remake_402": {
+    "map": true,
+    "emissiveMap": true
+  },
+  "remake_403": {
+    "map": true,
+    "emissiveMap": true
+  },
+  "remake_404": {
+    "map": true,
+    "emissiveMap": true
+  },
+  "remake_421": {
+    "map": true,
+    "emissiveMap": true
+  },
+  "remake_422": {
+    "map": true,
+    "emissiveMap": true
+  },
+  "remake_423": {
+    "map": true,
+    "emissiveMap": true
+  },
+  "remake_424": {
+    "map": true,
+    "emissiveMap": true
+  },
+  "remake_428": {
+    "map": true,
+    "emissiveMap": true
+  },
+  "remake_442": {
+    "map": true,
+    "emissiveMap": true
+  },
+  "remake_443": {
+    "map": true,
+    "emissiveMap": true
+  },
+  "remake_444": {
+    "map": true,
+    "emissiveMap": true
+  },
+  "remake_445": {
+    "map": true,
+    "emissiveMap": true
+  },
+  "remake_446": {
+    "map": true,
+    "emissiveMap": true
+  },
+  "remake_496": {
+    "map": true,
+    "emissiveMap": true
+  },
+  "remake_502": {
+    "map": true,
+    "emissiveMap": true
+  },
+  "remake_503": {
+    "map": true,
+    "emissiveMap": true
+  },
+  "remake_504": {
+    "map": true,
+    "emissiveMap": true
+  },
+  "remake_505": {
+    "map": true,
+    "emissiveMap": true
+  },
+  "remake_534": {
+    "map": false,
+    "emissiveMap": false
+  },
+  "remake_535": {
+    "map": false,
+    "emissiveMap": false
+  },
+  "remake_550": {
+    "map": false,
+    "emissiveMap": false
+  },
+  "remake_553": {
+    "map": false,
+    "emissiveMap": false
+  },
+  "remake_554": {
+    "map": false,
+    "emissiveMap": false
+  },
+  "remake_562": {
+    "map": false,
+    "emissiveMap": false
+  },
+  "remake_563": {
+    "map": false,
+    "emissiveMap": false
+  },
+  "remake_566": {
+    "map": false,
+    "emissiveMap": false
+  },
+  "remake_569": {
+    "map": false,
+    "emissiveMap": false
+  },
+  "remake_570": {
+    "map": false,
+    "emissiveMap": false
+  },
+  "remake_624": {
+    "map": true,
+    "emissiveMap": true
+  },
+  "remake_671": {
+    "map": true,
+    "emissiveMap": true
+  },
+  "remake_672": {
+    "map": true,
+    "emissiveMap": true
+  }
+}

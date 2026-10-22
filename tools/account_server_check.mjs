@@ -1,0 +1,51 @@
+import assert from 'node:assert/strict';
+import {PGlite} from '@electric-sql/pglite';
+import {createServer} from 'node:http';
+import {createAccountService} from '../server/accountservice.mjs';
+import {createAchievementService} from '../server/achievementservice.mjs';
+const db=await PGlite.create();
+const query=async(sql,params)=>params?db.query(sql,params):(await db.exec(sql)).at(-1);
+const pool={query,connect:async()=>({query,release(){}})};
+const mail=[],revoked=[];
+const accounts=createAccountService(null,{pool,reset:{secret:'test-secret-'.repeat(4),send:async(email,code)=>mail.push({email,code})}});
+accounts.onLogout=id=>revoked.push(id);
+await accounts.ready;
+const achievements=createAchievementService(accounts);await achievements.ready;
+const server=createServer((req,res)=>accounts(req,res,new URL(req.url,'http://localhost').pathname));
+await new Promise(r=>server.listen(0,'127.0.0.1',r));const base=`http://127.0.0.1:${server.address().port}`;
+let ip=0;
+async function request(path,data,cookie='',origin=base){
+ const r=await fetch(`${base}/api/account/${path}`,{method:data?'POST':'GET',headers:{'Content-Type':'application/json',origin,cookie,'X-Forwarded-For':`127.0.1.${++ip}`},...(data?{body:JSON.stringify(data)}:{})});
+ return {status:r.status,data:await r.json(),cookie:r.headers.get('set-cookie')?.split(';')[0]};
+}
+try{
+ assert.equal((await request('register',{username:'A',email:'bad',password:'short'})).status,400);
+ const reg=await request('register',{username:'Tester',email:'Tester@example.com',password:'original-password'});
+ assert.equal(reg.status,201);assert(reg.cookie);assert.equal(reg.data.user.email,'tester@example.com');assert(!JSON.stringify(reg.data).includes('password_hash'));
+ assert.equal((await request('me',null,reg.cookie)).status,200);
+ assert.equal((await request('register',{username:'Other',email:'tester@example.com',password:'original-password'})).status,409);
+ assert.equal((await request('login',{identifier:'tester',password:'wrong'})).status,401);
+ const login=await request('login',{identifier:'TESTER@EXAMPLE.COM',password:'original-password'});assert.equal(login.status,200);
+ assert.equal((await request('login',{identifier:'tester',password:'original-password'},'','https://evil.test')).status,403);
+ achievements.record(reg.data.user.id,{kills:3,deaths:2,score:40,games:1});await achievements.flush();
+ const profile=(await request('me',null,login.cookie)).data.user;
+ assert.equal(profile.kills,3);assert.equal(profile.deaths,2);assert.equal(profile.games,1);assert.equal((await achievements.profile(profile.id)).stats.kills,3);
+ const known=await request('reset/request',{email:'tester@example.com'}),unknown=await request('reset/request',{email:'unknown@example.com'});
+ assert.deepEqual(known.data,unknown.data);assert.equal(mail.length,1);assert.match(mail[0].code,/^\d{4}$/);assert(!JSON.stringify(known.data).includes(mail[0].code));
+ await request('reset/request',{email:'tester@example.com'});assert.equal(mail.length,1);
+ const wrong=mail[0].code==='0000'?'0001':'0000';
+ for(let i=0;i<5;i++)assert.equal((await request('reset/confirm',{email:'tester@example.com',code:wrong,password:'new-password'})).status,400);
+ assert.equal((await request('reset/confirm',{email:'tester@example.com',code:mail[0].code,password:'new-password'})).status,400);
+ await query("UPDATE password_resets SET requested_at=NOW()-INTERVAL '11 minutes',expires_at=NOW()-INTERVAL '1 minute'");
+ await request('reset/request',{email:'tester@example.com'});assert.equal(mail.length,2);
+ await query("UPDATE password_resets SET expires_at=NOW()-INTERVAL '1 minute'");
+ assert.equal((await request('reset/confirm',{email:'tester@example.com',code:mail[1].code,password:'new-password'})).status,400);
+ await query("UPDATE password_resets SET expires_at=NOW()+INTERVAL '1 minute'");
+ assert.equal((await request('reset/confirm',{email:'tester@example.com',code:mail[1].code,password:'new-password'})).status,200);
+ assert.equal(revoked.length,2);assert.equal((await request('me',null,login.cookie)).status,401);
+ assert.equal((await request('reset/confirm',{email:'tester@example.com',code:mail[1].code,password:'another-password'})).status,400);
+ assert.equal((await request('login',{identifier:'tester',password:'original-password'})).status,401);
+ const fresh=await request('login',{identifier:'tester',password:'new-password'});assert.equal(fresh.status,200);
+ assert.equal((await request('logout',{},fresh.cookie)).status,200);assert.equal((await request('me',null,fresh.cookie)).status,401);
+ console.log('PASS real account register/login/session/logout, authoritative career stats, reset email, cooldown, five-guess limit, expiry, replay, password change and session revocation');
+}finally{server.closeAllConnections();await new Promise(r=>server.close(r));await db.close();}

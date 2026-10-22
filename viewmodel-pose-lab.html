@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>First-person weapon pose lab</title>
+  <style>html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#777}canvas{display:block;width:100%;height:100%}</style>
+</head>
+<body>
+<script type="module">
+import * as THREE from 'three';
+import { WeaponSystem } from '/src/weapons/WeaponSystem.js';
+
+const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setSize(innerWidth, innerHeight);
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+document.body.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x777777);
+scene.add(new THREE.HemisphereLight(0xffffff, 0x30343b, 3));
+const key = new THREE.DirectionalLight(0xffffff, 2.8);
+key.position.set(-2, 3, 2);
+scene.add(key);
+const camera = new THREE.PerspectiveCamera(78, innerWidth / innerHeight, 0.02, 300);
+scene.add(camera);
+
+const noop = () => {};
+const audio = new Proxy({}, { get: () => noop });
+const system = new WeaponSystem(camera, scene, audio);
+system.setLoadout('m4', 'sword');
+const input = {
+  mouseDown: false, rightMouseDown: false, mouseDX: 0, mouseDY: 0,
+  wheelDelta: 0, consumeJustPressed: () => false,
+};
+const player = {
+  isSprinting: false, onGround: true, baseFov: 78,
+  velocity: { x: 0, y: 0, z: 0 }, _camDist: 0,
+};
+const manager = { getRaycastTargets: () => [] };
+for (let i = 0; i < 120; i++) system.update(1 / 60, input, {}, manager, player);
+window.__weaponSystem = system;
+window.__ready = true;
+
+function resize() {
+  camera.aspect = innerWidth / innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+}
+addEventListener('resize', resize);
+function frame() {
+  requestAnimationFrame(frame);
+  renderer.render(scene, camera);
+}
+frame();
+</script>
+</body>
+</html>

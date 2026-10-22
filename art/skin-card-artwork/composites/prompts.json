@@ -1,0 +1,65 @@
+{
+  "method": "Built-in image_gen edits. Original EV.io card as edit target; current Kryx model render as replacement reference. These composites retain source artwork backgrounds, and are not independently original artwork.",
+  "items": [
+    {
+      "id": "remake_206",
+      "prompt": "Edit Image 1, the square red lightning character card. Image 2 is the replacement in-game character model. Replace ONLY the armored character in Image 1 with the character design from Image 2. Faithfully use Image 2's pale gray and coral-red armor color blocks, faceted enclosed helmet with no glowing face slits, armor shapes, antenna, limbs and torso design. Repose that replacement character to match Image 1: upper body facing camera, both arms raised outward with open palms. Keep Image 1's exact composition, dark red smoky background, white glowing energy spheres in palms, red/white branching lightning, lighting direction, crop and dramatic mood. The replacement must visibly look like Image 2, not the original glossy character in Image 1. Match its faceted low-poly game-art finish while integrating red lighting from the scene. No text, no logo, no border. Square output.",
+      "sourceArtwork": "https://ev.io/sites/default/files/wallet_image/Timer_wallet_art.png",
+      "output": "/assets/composite-skin-cards/remake_206.webp"
+    },
+    {
+      "id": "remake_768",
+      "prompt": "Edit Image 1 (the teal character card) by replacing ONLY its character with the exact in-game character model design in Image 2. Preserve Image 1's teal circular energy vortex, tiny blue particles, black corners, original composition, crop and light direction. Pose Image 2's character in the same forward-leaning three-quarter upper-body pose as Image 1. Faithfully preserve Image 2's pale gray, muted teal and charcoal faceted armor, enclosed helmet silhouette, chest and shoulder geometry; keep its actual muted material colors with subtle teal light from the scene, do not replace it with the glossy bright-white emissive armor of Image 1. High fidelity to the replacement model. Crisp low-poly collectible card rendering. No text, no logos, no borders. Square.",
+      "sourceArtwork": "https://ev.io/sites/default/files/wallet_image/Wallet%20Art.png",
+      "output": "/assets/composite-skin-cards/remake_768.webp"
+    },
+    {
+      "id": "remake_84",
+      "prompt": "Edit Image 1, the matching skin card, using Image 2 as the replacement character identity. Replace ONLY the character with Image 2's in-game model design: preserve its actual helmet, armor shapes, proportions, faceted surfaces and exact pale/muted color blocking. Pose the replacement like Image 1. Preserve Image 1's background, effects, framing, lighting direction and any held weapon. Do not keep the original character's materials or substitute a human. Integrate the new model into the existing light without changing its identity. Square collectible card, no added text, logos, or border.",
+      "sourceArtwork": "https://ev.io/sites/default/files/wallet_image/defaultplayer.png",
+      "output": "/assets/composite-skin-cards/remake_84.webp"
+    },
+    {
+      "id": "remake_110",
+      "prompt": "Edit Image 1, the matching skin card, using Image 2 as the replacement character identity. Replace ONLY the character with Image 2's in-game model design: preserve its actual helmet, armor shapes, proportions, faceted surfaces and exact pale/muted color blocking. Pose the replacement like Image 1. Preserve Image 1's background, effects, framing, lighting direction and any held weapon. Do not keep the original character's materials or substitute a human. Integrate the new model into the existing light without changing its identity. Square collectible card, no added text, logos, or border.",
+      "sourceArtwork": "https://ev.io/sites/default/files/wallet_image/AnthemTiny.png",
+      "output": "/assets/composite-skin-cards/remake_110.webp"
+    },
+    {
+      "id": "remake_153",
+      "prompt": "Edit Image 1, the matching skin card, using Image 2 as the replacement character identity. Replace ONLY the character with Image 2's in-game model design: preserve its actual helmet, armor shapes, proportions, faceted surfaces and exact pale/muted color blocking. Pose the replacement like Image 1. Preserve Image 1's background, effects, framing, lighting direction and any held weapon. Do not keep the original character's materials or substitute a human. Integrate the new model into the existing light without changing its identity. Square collectible card, no added text, logos, or border.",
+      "sourceArtwork": "https://ev.io/sites/default/files/wallet_image/HydraTiny.png",
+      "output": "/assets/composite-skin-cards/remake_153.webp"
+    },
+    {
+      "id": "remake_154",
+      "prompt": "Edit Image 1, the matching skin card, using Image 2 as the replacement character identity. Replace ONLY the character with Image 2's in-game model design: preserve its actual helmet, armor shapes, proportions, faceted surfaces and exact pale/muted color blocking. Pose the replacement like Image 1. Preserve Image 1's background, effects, framing, lighting direction and any held weapon. Do not keep the original character's materials or substitute a human. Integrate the new model into the existing light without changing its identity. Square collectible card, no added text, logos, or border.",
+      "sourceArtwork": "https://ev.io/sites/default/files/wallet_image/GhostTiny.png",
+      "output": "/assets/composite-skin-cards/remake_154.webp"
+    },
+    {
+      "id": "remake_373",
+      "prompt": "Edit Image 1 (the weapon skin card). Replace ONLY its weapon with the exact weapon design from Image 2, preserving Image 2's proportions, silhouette, materials, surface details, barrel/blade straightness and color blocking. Reorient the replacement to match Image 1's angle and scale; keep the entire weapon visible. Retain Image 1's original background, fog, lighting, colors, framing and effects. Integrate the replacement with the scene lighting but preserve its actual material colors, rather than retaining the old weapon's materials. No hands, people, new objects, text, logos or border. Square game collectible card.",
+      "sourceArtwork": "https://ev.io/sites/default/files/wallet_image_weapons/GhostHC.png",
+      "output": "/assets/composite-skin-cards/remake_373.webp"
+    },
+    {
+      "id": "remake_374",
+      "prompt": "Edit Image 1 (the weapon skin card). Replace ONLY its weapon with the exact weapon design from Image 2, preserving Image 2's proportions, silhouette, materials, surface details, barrel/blade straightness and color blocking. Reorient the replacement to match Image 1's angle and scale; keep the entire weapon visible. Retain Image 1's original background, fog, lighting, colors, framing and effects. Integrate the replacement with the scene lighting but preserve its actual material colors, rather than retaining the old weapon's materials. No hands, people, new objects, text, logos or border. Square game collectible card.",
+      "sourceArtwork": "https://ev.io/sites/default/files/wallet_image_weapons/GhostLR.png",
+      "output": "/assets/composite-skin-cards/remake_374.webp"
+    },
+    {
+      "id": "remake_375",
+      "prompt": "Edit Image 1 (the weapon skin card). Replace ONLY its weapon with the exact weapon design from Image 2, preserving Image 2's proportions, silhouette, materials, surface details, barrel/blade straightness and color blocking. Reorient the replacement to match Image 1's angle and scale; keep the entire weapon visible. Retain Image 1's original background, fog, lighting, colors, framing and effects. Integrate the replacement with the scene lighting but preserve its actual material colors, rather than retaining the old weapon's materials. No hands, people, new objects, text, logos or border. Square game collectible card.",
+      "sourceArtwork": "https://ev.io/sites/default/files/wallet_image_weapons/GhostAR.png",
+      "output": "/assets/composite-skin-cards/remake_375.webp"
+    },
+    {
+      "id": "remake_425",
+      "prompt": "Edit Image 1 (the weapon skin card). Replace ONLY its weapon with the exact weapon design from Image 2, preserving Image 2's proportions, silhouette, materials, surface details, barrel/blade straightness and color blocking. Reorient the replacement to match Image 1's angle and scale; keep the entire weapon visible. Retain Image 1's original background, fog, lighting, colors, framing and effects. Integrate the replacement with the scene lighting but preserve its actual material colors, rather than retaining the old weapon's materials. No hands, people, new objects, text, logos or border. Square game collectible card.",
+      "sourceArtwork": "https://ev.io/sites/default/files/wallet_image_weapons/ChrysalisSW.png",
+      "output": "/assets/composite-skin-cards/remake_425.webp"
+    }
+  ]
+}

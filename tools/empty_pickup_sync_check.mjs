@@ -1,0 +1,31 @@
+import assert from 'node:assert/strict';
+import { AuthNetBridge } from '../src/net/AuthNetBridge.js';
+import { WeaponSystem } from '../src/weapons/WeaponSystem.js';
+import { WEAPONS } from '../src/weapons/weaponDefs.js';
+const w=Object.create(WeaponSystem.prototype);
+Object.assign(w,{allWeapons:WEAPONS,loadout:['m4','rpg','sword'].map(id=>WEAPONS.find(w=>w.id===id)),currentIndex:1,state:new Map([['rpg',{magAmmo:0,reserveAmmo:0}]]),_rebuildKeyMap(){},_setActiveModel(){},audio:{playWeaponSwitch(){}}});
+w.switchTo(2);assert.equal(w.currentDef.id,'sword');
+let pickups=0;
+const self={matchWeapons:['rpg'],weaponAmmo:{rpg:{mag:0,reserve:0}}};
+const bridge={game:{weaponSystem:w,hud:{addKillFeed(){pickups++},buildWeaponSlots(){}}},client:{self},player:{}};
+for(let i=0;i<30;i++)AuthNetBridge.prototype._syncAuthoritativeLoadout.call(bridge);
+assert.equal(w.currentDef.id,'sword');assert.equal(pickups,0);assert(!w.loadout.some(x=>x.id==='rpg'));
+self.matchWeapons=[];AuthNetBridge.prototype._syncAuthoritativeLoadout.call(bridge);assert.equal(w.pendingEmptyDiscards.size,0);
+console.log('stale authoritative snapshots cannot restore an empty gun or interrupt switching');
+
+w.getHudInfo = () => ({slots: []});
+self.matchWeapons = ['rpg']; self.weaponAmmo.rpg = {mag: 5, reserve: 0};
+AuthNetBridge.prototype._syncAuthoritativeLoadout.call(bridge);
+assert.equal(w.currentDef.id, 'rpg'); assert.equal(pickups, 1);
+assert.equal(w.state.get('rpg').magAmmo, 5);
+// A server removal must preserve other carried guns and the selected sword.
+w.state.get('rpg').magAmmo = 1; w.switchTo(w.loadout.findIndex(x => x.id === 'sword'));
+self.matchWeapons = [];
+AuthNetBridge.prototype._syncAuthoritativeLoadout.call(bridge);
+assert.equal(w.currentDef.id, 'sword'); assert.equal(pickups, 1);
+console.log('fresh pickup works after acknowledgement; server removal preserves selection');
+w.pendingEmptyDiscards.add('rpg');
+bridge.client.you = 7;
+bridge.client.drainEvents = () => [{e:'pickup',id:7,lootType:'weapon',gunId:'rpg'}];
+AuthNetBridge.prototype._drainEvents.call(bridge);
+assert(!w.pendingEmptyDiscards.has('rpg'), 'real pickup must release discard prediction even if snapshots skip removal');

@@ -1,0 +1,17 @@
+QUATERNIUS THIRD-PARTY ASSETS
+
+Universal Animation Library (Standard)
+Source: https://quaternius.itch.io/universal-animation-library
+Creator: Quaternius (@Quaternius)
+License: CC0 1.0 Universal (public domain dedication)
+https://creativecommons.org/publicdomain/zero/1.0/
+
+Sci-Fi Modular Gun Pack
+Source: https://quaternius.com/packs/scifimodularguns.html
+Creator: Quaternius (@Quaternius)
+License: CC0 1.0 Universal (public domain dedication)
+https://creativecommons.org/publicdomain/zero/1.0/
+
+The game uses the Standard GLB animation library and the complete embedded
+glTF gun models. Runtime code retargets locomotion to the KYX operative rig and
+maps the gun models to the existing weapon definitions.

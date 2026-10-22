@@ -1,0 +1,157 @@
+@font-face {
+  font-family: Match;
+  src: url("/fonts/Rajdhani-Medium.ttf");
+}
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+  background: #0b1018;
+  color: #edf4f7;
+  font:
+    18px Match,
+    system-ui,
+    sans-serif;
+}
+main {
+  max-width: 1100px;
+  margin: auto;
+  padding: 30px 24px;
+}
+nav {
+  display: flex;
+  justify-content: space-between;
+}
+a {
+  color: #8fe0ce;
+}
+h1 {
+  font-size: 44px;
+  letter-spacing: 3px;
+}
+h2 {
+  font-size: 25px;
+}
+p,
+small {
+  color: #b5c3cc;
+}
+.metrics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 18px;
+}
+article,
+fieldset,
+details {
+  background: #17212d;
+  border: 1px solid #354354;
+  padding: 20px;
+  margin: 14px 0;
+  border-radius: 5px;
+}
+article {
+  flex: 1;
+  min-width: 200px;
+}
+label {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 20px;
+  padding: 9px 0;
+}
+input,
+select,
+textarea {
+  max-width: 65%;
+  padding: 8px;
+  background: #0a111c;
+  color: white;
+  border: 1px solid #526572;
+  border-radius: 3px;
+  font: 16px system-ui;
+}
+textarea {
+  width: 500px;
+  min-height: 90px;
+}
+input[type="checkbox"] {
+  width: 22px;
+  height: 22px;
+}
+button {
+  padding: 10px 20px;
+  border: 0;
+  border-radius: 3px;
+  background: #08a986;
+  color: white;
+  font:
+    18px Match,
+    system-ui;
+  cursor: pointer;
+  margin: 8px 8px 8px 0;
+}
+button:disabled {
+  opacity: 0.45;
+  cursor: wait;
+}
+button.secondary {
+  background: #405065;
+}
+.table-scroll {
+  overflow-x: auto;
+}
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+th,
+td {
+  padding: 10px;
+  border-bottom: 1px solid #364252;
+  text-align: left;
+}
+#status {
+  position: sticky;
+  top: 0;
+  background: #0b1018;
+  padding: 10px;
+  z-index: 2;
+}
+summary {
+  cursor: pointer;
+  font-size: 23px;
+}
+fieldset {
+  min-width: 0;
+}
+legend {
+  font-size: 23px;
+  color: #8fe0ce;
+}
+.array-entry {
+  border-left: 3px solid #52766b;
+  padding-left: 14px;
+}
+.danger {
+  background: #9b3b42;
+}
+@media (max-width: 600px) {
+  main {
+    padding: 18px 12px;
+  }
+  label {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  input,
+  select,
+  textarea {
+    max-width: 100%;
+  }
+  h1 {
+    font-size: 32px;
+  }
+}

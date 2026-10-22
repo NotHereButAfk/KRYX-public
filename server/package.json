@@ -1,0 +1,22 @@
+{
+  "name": "kyx-server",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Authoritative multiplayer server and static host for kryx.live.",
+  "scripts": {
+    "start": "node authserver.mjs",
+    "relay": "node index.js",
+    "auth": "node authserver.mjs",
+    "test:auth": "node pickup_inventory_test.mjs && node authnet_test.mjs && node gameplay_regression_test.mjs && node weapon_roles_test.mjs",
+    "test:payments": "node paymentservice_test.mjs && node skin_currency_disabled_test.mjs && node withdrawals_test.mjs && node solana-payouts_test.mjs",
+    "test:tournaments": "node tournamentservice_test.mjs && node tournament-gui_test.mjs && node tournament-prizes_test.mjs",
+    "test:static": "node static_test.mjs"
+  },
+  "dependencies": {
+    "nodemailer": "^10.0.15",
+    "pg": "^8.16.3",
+    "three": "^0.184.0",
+    "ws": "^8.18.0"
+  }
+}

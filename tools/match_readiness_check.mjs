@@ -1,0 +1,10 @@
+import assert from 'node:assert/strict';
+import { awaitMatchReady } from '../src/net/MatchReadiness.js';
+const delay = ms => new Promise(r => setTimeout(r, ms));
+let complete = false;
+const slowMap = { handshakePromise: Promise.resolve(), readyPromise: delay(80).then(() => { complete = true; return 'ready'; }) };
+assert.equal(await awaitMatchReady(slowMap, 15), 'ready');
+assert(complete, 'must not spawn before asset loading completes');
+await assert.rejects(awaitMatchReady({handshakePromise:new Promise(()=>{}),readyPromise:new Promise(()=>{})}, 15), /did not answer/);
+await assert.rejects(awaitMatchReady({handshakePromise:Promise.resolve(),readyPromise:Promise.reject(new Error('map failed'))},15), /map failed/);
+console.log('match readiness passed: slow maps survive network deadline, missing servers and asset failures reject');

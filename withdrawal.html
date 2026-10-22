@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>KYX.IO — Withdrawals</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Michroma&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet" />
+</head>
+<body>
+  <div class="auth-page">
+    <header class="login-topbar">
+      <a class="login-brand" href="/">KYX<span>.IO</span></a>
+      <nav class="login-nav"><a class="login-nav-link" href="/">Play</a><a class="login-nav-link" href="/?panel=tournaments">Tournaments</a></nav>
+    </header>
+    <main class="legal-main withdrawal-main">
+      <div class="tournament-kicker">ACCOUNT REDEMPTION</div>
+      <h1 class="login-title">WITHDRAW USDC</h1>
+      <div class="withdrawal-rate"><strong>2,000</strong> KYX COINS <span>=</span> <strong>1</strong> USDC</div>
+      <div class="legal-copy">
+        <h2>Minimum withdrawal: 5 USDC</h2>
+        <p>A withdrawal requires at least 10,000 verified KYX coins. USDC withdrawals will use the Solana network after the redemption program is activated.</p>
+        <div class="withdrawal-notice" role="status">
+          <strong>WITHDRAWALS ARE NOT ACTIVE</strong>
+          <p>KYX coin balances must first move to a secure server ledger. Browser balances are not eligible for redemption and no withdrawal request can currently be submitted.</p>
+        </div>
+        <label class="login-label" for="withdraw-wallet">Solana wallet address</label>
+        <input id="withdraw-wallet" class="login-input" type="text" autocomplete="off" placeholder="Wallet address" disabled />
+        <label class="login-label" for="withdraw-amount">Amount (USDC)</label>
+        <input id="withdraw-amount" class="login-input" type="number" min="5" step="1" value="5" disabled />
+        <button class="login-submit" type="button" disabled>REDEMPTION NOT AVAILABLE</button>
+        <p class="withdrawal-footnote">No wallet signing key is stored by this website, and no automatic payout can occur from this page.</p>
+      </div>
+    </main>
+  </div>
+  <script type="module" src="/src/withdrawalPage.js"></script>
+</body>
+</html>

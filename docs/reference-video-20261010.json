@@ -1,0 +1,85 @@
+{
+  "source": "Screen Recording 2026-10-10 113140.mp4",
+  "durationSeconds": 62.166633,
+  "sourceResolution": [
+    1918,
+    1278
+  ],
+  "review": "Timestamped frames throughout the entire recording at two-second intervals; closer inspection of loading, ADS, sprint, reload and death frames.",
+  "observed": [
+    {
+      "seconds": "2-12",
+      "feature": "Small outline-to-fill logo, then map card with left information panel, changing backdrop framing, bottom tip, bottom-right spinner and centered bottom ad."
+    },
+    {
+      "seconds": "14-62",
+      "feature": "Short bottom banner persists across menu, active gameplay and death. HUD remains above the banner."
+    },
+    {
+      "seconds": "14,26-30",
+      "feature": "Blurred live menu backdrop, click-to-play and spectate links."
+    },
+    {
+      "seconds": "16-22",
+      "feature": "Centered ADS, muzzle flashes, traces and falling ammo count."
+    },
+    {
+      "seconds": "22,58",
+      "feature": "Two bright curved directional damage marks."
+    },
+    {
+      "seconds": "24,60-62",
+      "feature": "Weapon disappears on death; view settles while the room continues moving."
+    },
+    {
+      "seconds": "36",
+      "feature": "Circular reload progress near crosshair."
+    },
+    {
+      "seconds": "38-42",
+      "feature": "Weapon carried across body during running; returns forward when firing."
+    },
+    {
+      "seconds": "14-62",
+      "feature": "Compact text chat at lower left; weapon/ability icons, ammo, clock, health and stamina."
+    },
+    {
+      "seconds": "54-62",
+      "feature": "Weapon switch, hit score, jumping character with tucked legs and bright boot effects."
+    },
+    {
+      "seconds": "37.0–38.9",
+      "feature": "Full-resolution frames at 0.1s intervals show faint soft radial speed streaks along the perimeter during sprinting, with the aiming centre and HUD sharp."
+    },
+    {
+      "seconds": "14–62",
+      "feature": "Fullscreen control at lower left outside the centered banner."
+    }
+  ],
+  "implementedGaps": [
+    "Persistent centred desktop banner at recorded proportions (47.5vw, 728–970px) / 320x50 mobile banner",
+    "Loading artwork extends behind the bottom ad; gameplay renderer and HUD use the area above it",
+    "Centered reload progress ring driven by actual reload state",
+    "Double curved directional hit feedback",
+    "Room-scoped text chat with server identity, limits and typing input isolation",
+    "Peripheral sprint streaks with speed gating, smooth fade, clear centre and Reduced Motion support",
+    "Browser fullscreen toggle with enter/exit state and mobile placement above the ad"
+  ],
+  "alreadyPresent": [
+    "Outline/fill branded loader",
+    "Moving map artwork and loading tip/spinner",
+    "Blurred menus and individual spectating",
+    "Sprint carry/ADS/recoil",
+    "Kill feed, weapon slots, abilities and health/stamina",
+    "Boot jump effects and death reactions",
+    "Join/leave notices"
+  ],
+  "limits": [
+    "No end-of-match scoreboard shown",
+    "No exact movement or weapon constants recoverable from this clip",
+    "No new models, map geometry, sound assets or branding copied",
+    "Previously removed private games/social controls remain removed",
+    "Loading follows actual readiness at the owner’s latest request; no artificial duration"
+  ],
+  "settingsAudit": "All 13 settings exercised in a real browser: immediate runtime application, persistence, import/export/defaults, malformed values, crosshair shape, mobile save/close. Recording frames reviewed again for loading, ADS, running, reload, damage and death; exact animation timing is not inferred from still frames."
+}

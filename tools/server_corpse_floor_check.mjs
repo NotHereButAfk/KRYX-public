@@ -1,0 +1,17 @@
+import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+const source=readFileSync('src/net/AuthNetBridge.js','utf8');
+const body=source.split('  _remoteDeathFloor(avatar, state) {')[1].split('\n  _drainEvents()')[0];
+const floor=new Function('avatar','state',body.slice(0,body.lastIndexOf('}')));
+let calls=0;
+const context={game:{world:{groundHeightAt(){calls++;return -2;}}}};
+const avatar={},state={x:1,y:5,z:2,deathReaction:{floorY:-3}};
+for(let i=0;i<1000;i++)assert.equal(floor.call(context,avatar,state),-3);
+assert.equal(calls,0);
+state.deathReaction=null;
+for(let i=0;i<1000;i++)assert.equal(floor.call(context,avatar,state),-2);
+assert.equal(calls,1);
+state.x++;
+floor.call(context,avatar,state);
+assert.equal(calls,2);
+console.log('Server corpse-floor passed: 1000 frames require zero client traces; legacy fallback traces once per position.');

@@ -1,0 +1,189 @@
+{
+  "arena": "Inkfall Foundry (graybox)",
+  "generated": "2026-08-04T11:30:32.878Z",
+  "cohorts": {
+    "2": {
+      "players": 2,
+      "ticks": 1800,
+      "seconds": 90,
+      "kills": 2,
+      "deaths": 2,
+      "respawns": 2,
+      "kdPerMin": 1.3,
+      "calloutVisits": {
+        "Crucible": 13,
+        "North Ramp": 8,
+        "South Ramp": 4,
+        "Slag Duct": 7,
+        "Gantry": 7,
+        "West Wall": 3,
+        "East Wall": 4
+      },
+      "unreachedCallouts": [],
+      "topRoutes": {
+        "Gantry→Crucible": {
+          "samples": 5,
+          "avgTicks": 69,
+          "avgSec": 3.45
+        },
+        "East Wall→Slag Duct": {
+          "samples": 3,
+          "avgTicks": 28,
+          "avgSec": 1.42
+        },
+        "Crucible→North Ramp": {
+          "samples": 3,
+          "avgTicks": 115,
+          "avgSec": 5.75
+        },
+        "Crucible→Gantry": {
+          "samples": 3,
+          "avgTicks": 83,
+          "avgSec": 4.15
+        },
+        "South Ramp→Gantry": {
+          "samples": 2,
+          "avgTicks": 60,
+          "avgSec": 3
+        },
+        "South Ramp→Crucible": {
+          "samples": 2,
+          "avgTicks": 65,
+          "avgSec": 3.25
+        },
+        "Crucible→Slag Duct": {
+          "samples": 2,
+          "avgTicks": 48,
+          "avgSec": 2.38
+        },
+        "Slag Duct→Crucible": {
+          "samples": 2,
+          "avgTicks": 161,
+          "avgSec": 8.05
+        }
+      }
+    },
+    "4": {
+      "players": 4,
+      "ticks": 1800,
+      "seconds": 90,
+      "kills": 3,
+      "deaths": 3,
+      "respawns": 3,
+      "kdPerMin": 2,
+      "calloutVisits": {
+        "Crucible": 22,
+        "North Ramp": 11,
+        "South Ramp": 13,
+        "Slag Duct": 9,
+        "Gantry": 16,
+        "West Wall": 8,
+        "East Wall": 6
+      },
+      "unreachedCallouts": [],
+      "topRoutes": {
+        "Crucible→South Ramp": {
+          "samples": 7,
+          "avgTicks": 66,
+          "avgSec": 3.31
+        },
+        "South Ramp→Gantry": {
+          "samples": 6,
+          "avgTicks": 55,
+          "avgSec": 2.77
+        },
+        "Crucible→Slag Duct": {
+          "samples": 6,
+          "avgTicks": 65,
+          "avgSec": 3.23
+        },
+        "Gantry→Crucible": {
+          "samples": 5,
+          "avgTicks": 85,
+          "avgSec": 4.26
+        },
+        "North Ramp→Crucible": {
+          "samples": 4,
+          "avgTicks": 104,
+          "avgSec": 5.17
+        },
+        "South Ramp→Crucible": {
+          "samples": 4,
+          "avgTicks": 92,
+          "avgSec": 4.58
+        },
+        "Gantry→West Wall": {
+          "samples": 4,
+          "avgTicks": 35,
+          "avgSec": 1.75
+        },
+        "West Wall→Gantry": {
+          "samples": 4,
+          "avgTicks": 65,
+          "avgSec": 3.24
+        }
+      }
+    },
+    "8": {
+      "players": 8,
+      "ticks": 1800,
+      "seconds": 90,
+      "kills": 11,
+      "deaths": 11,
+      "respawns": 11,
+      "kdPerMin": 7.3,
+      "calloutVisits": {
+        "Crucible": 40,
+        "North Ramp": 30,
+        "South Ramp": 24,
+        "Slag Duct": 21,
+        "Gantry": 29,
+        "West Wall": 14,
+        "East Wall": 14
+      },
+      "unreachedCallouts": [],
+      "topRoutes": {
+        "South Ramp→Crucible": {
+          "samples": 10,
+          "avgTicks": 89,
+          "avgSec": 4.43
+        },
+        "Crucible→Gantry": {
+          "samples": 10,
+          "avgTicks": 71,
+          "avgSec": 3.55
+        },
+        "Crucible→North Ramp": {
+          "samples": 10,
+          "avgTicks": 75,
+          "avgSec": 3.75
+        },
+        "North Ramp→Crucible": {
+          "samples": 9,
+          "avgTicks": 113,
+          "avgSec": 5.64
+        },
+        "Crucible→Slag Duct": {
+          "samples": 9,
+          "avgTicks": 72,
+          "avgSec": 3.59
+        },
+        "Gantry→South Ramp": {
+          "samples": 9,
+          "avgTicks": 56,
+          "avgSec": 2.82
+        },
+        "South Ramp→Gantry": {
+          "samples": 8,
+          "avgTicks": 58,
+          "avgSec": 2.89
+        },
+        "Gantry→Crucible": {
+          "samples": 8,
+          "avgTicks": 56,
+          "avgSec": 2.81
+        }
+      }
+    }
+  }
+}

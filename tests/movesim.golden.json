@@ -1,0 +1,143 @@
+{
+  "flatfloor": {
+    "final": "d3b02ed2",
+    "hashes": [
+      "d3b02ed2",
+      "d3b02ed2",
+      "d3b02ed2",
+      "d3b02ed2",
+      "d3b02ed2",
+      "d3b02ed2",
+      "d3b02ed2",
+      "d3b02ed2",
+      "d3b02ed2",
+      "d3b02ed2"
+    ]
+  },
+  "wall": {
+    "final": "76225440",
+    "hashes": [
+      "3f92fa20",
+      "76225440",
+      "76225440",
+      "76225440",
+      "76225440",
+      "76225440"
+    ]
+  },
+  "corner": {
+    "final": "ef9c36e3",
+    "hashes": [
+      "30f89fdf",
+      "ef9c36e3",
+      "ef9c36e3",
+      "ef9c36e3",
+      "ef9c36e3",
+      "ef9c36e3",
+      "ef9c36e3"
+    ]
+  },
+  "ramp": {
+    "final": "bcb74380",
+    "hashes": [
+      "09525854",
+      "bcb74380",
+      "bcb74380"
+    ]
+  },
+  "step": {
+    "final": "ba53a1e0",
+    "hashes": [
+      "34d17c68",
+      "58ee0678",
+      "ba53a1e0",
+      "ba53a1e0",
+      "ba53a1e0",
+      "ba53a1e0",
+      "ba53a1e0",
+      "ba53a1e0",
+      "ba53a1e0",
+      "ba53a1e0"
+    ]
+  },
+  "ceiling": {
+    "final": "d3b02ed2",
+    "hashes": [
+      "d3b02ed2",
+      "d3b02ed2",
+      "d3b02ed2",
+      "d3b02ed2",
+      "d3b02ed2",
+      "d3b02ed2"
+    ]
+  },
+  "crouchtunnel": {
+    "final": "2b12c2c8",
+    "hashes": [
+      "3f92fa20",
+      "e2720b34",
+      "e2720b34",
+      "6a92931e",
+      "b4a6ad02",
+      "570846c2",
+      "9fb49afa",
+      "b9b5f13a",
+      "958cd94c",
+      "59f68410",
+      "d589f7e0",
+      "45e8158c",
+      "2b12c2c8",
+      "2b12c2c8"
+    ]
+  },
+  "slide": {
+    "final": "de3e970a",
+    "hashes": [
+      "f3f8d491",
+      "1d555fe5",
+      "c9ce48a4",
+      "1bb640a0",
+      "de3e970a"
+    ]
+  },
+  "mobility": {
+    "final": "95f8712c",
+    "hashes": [
+      "e3c0f2cc",
+      "2a1e7ac5",
+      "62785dc2",
+      "4ce5bc52",
+      "39ce1700",
+      "ee32f281",
+      "95f8712c"
+    ]
+  },
+  "teleport": {
+    "final": "0022d76c",
+    "hashes": [
+      "5e2f32e3",
+      "c8663783",
+      "1e18ed05",
+      "36a9edd6",
+      "e4a875f7",
+      "bf280513",
+      "cf29ee49",
+      "0022d76c"
+    ]
+  },
+  "recovery": {
+    "final": "5c8a9e06",
+    "hashes": [
+      "43c4b822",
+      "8f520dd5",
+      "6917af3c",
+      "d4018b18",
+      "5c8a9e06",
+      "5c8a9e06",
+      "5c8a9e06",
+      "5c8a9e06",
+      "5c8a9e06",
+      "5c8a9e06"
+    ]
+  }
+}

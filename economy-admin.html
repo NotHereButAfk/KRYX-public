@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>K Economy Admin · KYX.IO</title>
+    <link rel="stylesheet" href="/src/ui/economy-page.css" />
+  </head>
+  <body>
+    <main>
+      <nav><a href="/">← Game</a><a href="/earnings">K earnings</a></nav>
+      <h1>K Economy Admin</h1>
+      <p id="status" role="status">Checking administrator access…</p>
+      <section id="admin" hidden>
+        <p>
+          Changes apply to new matches. Active matches retain their validated
+          configuration. Decimal amounts support four places. Optional caps can
+          be disabled.
+        </p>
+        <form id="config-form">
+          <div id="config-fields"></div>
+          <button type="submit">Save economy configuration</button
+          ><button type="button" id="reload" class="secondary">
+            Reload saved settings
+          </button>
+        </form>
+        <h2>Balance adjustment / refund</h2>
+        <form id="adjust-form">
+          <label>User ID<input name="userId" pattern="[0-9]+" required /></label
+          ><label
+            >Type<select name="type">
+              <option>ADMIN_ADJUSTMENT</option>
+              <option>REFUND</option>
+            </select></label
+          ><label
+            >K amount<input
+              name="amount"
+              required
+              pattern="-?[0-9]+(\.[0-9]{1,4})?" /></label
+          ><label
+            >Reason<input name="description" required maxlength="500" /></label
+          ><label
+            >Original purchase transaction ID (refund)<input
+              name="originalId" /></label
+          ><button>Record adjustment</button>
+        </form>
+        <h2>Account transaction review</h2>
+        <form id="ledger-form">
+          <label>User ID<input name="userId" pattern="[0-9]+" required /></label
+          ><button>View transactions</button>
+        </form>
+        <div id="admin-ledger" class="table-scroll"></div>
+        <h2>Suspicious earning activity</h2>
+        <p>Flags require review; a flag does not automatically ban a player.</p>
+        <button id="refresh-flags">Refresh review queue</button>
+        <div id="flags"></div>
+      </section>
+    </main>
+    <script type="module" src="/src/ui/economy-admin.js"></script>
+  </body>
+</html>

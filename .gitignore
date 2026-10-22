@@ -1,0 +1,41 @@
+node_modules
+dist
+.DS_Store
+.claude/
+.env
+.env.local
+.env.*.local
+__pycache__/
+
+# scratch artifact source (published, not part of the build)
+.jump-anim.html
+
+server/.solana.json
+server/.solana.json.next
+server/.paypal.env
+
+# Private server payout signing configuration
+server/.payout-wallet.json
+server/.payout-wallet.json.next
+server/.email.json
+server/.email.json.next
+
+# Discord bot secrets stay on the server
+server/.discord.json
+server/.discord.json.next
+
+# Durable tournament scoring failure marker; operator review required.
+server/.tournament-scoring-review.json
+
+# Never publish runtime data or private configuration
+.env.*
+!.env.example
+*.pem
+*.key
+*.sqlite*
+*.db
+server/.accounts*
+server/.discord*
+server/.solana*
+server/.payout*
+server/.email*

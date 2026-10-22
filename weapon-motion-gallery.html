@@ -1,0 +1,60 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Weapon movement states</title>
+  <style>
+    * { box-sizing: border-box; }
+    html, body { margin: 0; min-height: 100%; background: #11161d; color: #e6edf5; font: 15px system-ui, sans-serif; }
+    header { padding: 24px 28px 16px; }
+    h1 { margin: 0 0 6px; font-size: 24px; }
+    p { margin: 0; color: #96a6b8; }
+    #grid { display: grid; grid-template-columns: repeat(2, 576px); gap: 18px; padding: 0 28px 28px; }
+    .card { overflow: hidden; border: 1px solid #344154; border-radius: 10px; background: #20242c; }
+    .label { padding: 10px 14px; font-weight: 800; letter-spacing: .07em; text-transform: uppercase; }
+    .detail { color: #9babc0; font-weight: 500; letter-spacing: 0; text-transform: none; float: right; }
+    .view { width: 576px; height: 244px; overflow: hidden; }
+    iframe { display: block; width: 1200px; height: 560px; border: 0; transform: scale(.48); transform-origin: 0 0; }
+    img { display: block; width: 576px; height: 244px; object-fit: cover; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Active player — four connected weapon states</h1>
+    <p>The production ninja body, M4 geometry, locomotion cycle, weapon pose, and two-hand IK are rendered together.</p>
+  </header>
+  <main id="grid"></main>
+  <script>
+    const states = [
+      ['Walking', 'low-ready, relaxed stride', 'aim=0&walk=1.15&run=0'],
+      ['Running', 'compact sprint carry', 'aim=0&walk=2.20&run=1'],
+      ['Moving + shooting', 'braced upper body, reduced weapon sway', 'aim=1&walk=.90&run=.3&firing=1'],
+      ['Moving + scoped', 'tight shoulder alignment, nearly no gait sway', 'aim=1&walk=1.70&run=.2&scoped=1'],
+    ];
+    const grid = document.querySelector('#grid');
+    const views = [];
+    for (const [label, detail] of states) {
+      const card = document.createElement('section');
+      card.className = 'card';
+      card.innerHTML = `<div class="label">${label}<span class="detail">${detail}</span></div><div class="view"></div>`;
+      grid.append(card);
+      views.push(card.querySelector('.view'));
+    }
+    (async () => {
+      for (let i = 0; i < states.length; i++) {
+        const iframe = document.createElement('iframe');
+        iframe.title = states[i][0];
+        iframe.src = `/pose-lab.html?model=vanguard&weapon=m4&ang=2.262&${states[i][2]}`;
+        views[i].append(iframe);
+        await new Promise((resolve) => iframe.addEventListener('load', resolve, { once: true }));
+        await new Promise((resolve) => setTimeout(resolve, 250));
+        const image = new Image();
+        image.alt = states[i][0];
+        image.src = iframe.contentDocument.querySelector('canvas').toDataURL('image/png');
+        views[i].replaceChildren(image);
+      }
+      document.body.dataset.ready = 'true';
+    })();
+  </script>
+</body>
+</html>

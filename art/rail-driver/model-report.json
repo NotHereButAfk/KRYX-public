@@ -1,0 +1,37 @@
+{
+  "id": "boltsniper",
+  "title": "Rail Driver",
+  "triangles": 5328,
+  "meshes": 12,
+  "dimensionsMetres": [
+    0.17399999499320984,
+    0.407607764005661,
+    1.3619801998138428
+  ],
+  "pose": {
+    "muzzle": [
+      0,
+      0.077,
+      -0.995
+    ],
+    "trigger": [
+      0.012,
+      -0.043,
+      0.06
+    ],
+    "support": [
+      -0.035,
+      0.005,
+      -0.29
+    ],
+    "reload": [
+      -0.04,
+      -0.13,
+      -0.12
+    ],
+    "carry": "rifle",
+    "supportVisible": true
+  },
+  "bytes": 401832,
+  "installed": false
+}

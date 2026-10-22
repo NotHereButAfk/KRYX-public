@@ -1,0 +1,17 @@
+import assert from 'node:assert/strict';
+const values = new Map([['sio_session','one']]);
+globalThis.sessionStorage = { getItem:k=>values.get(k)||null };
+globalThis.window = { addEventListener:()=>{} };
+globalThis.document = {getElementById:()=>null};
+const pending=[];
+globalThis.fetch=()=>new Promise(resolve=>pending.push(resolve));
+const {EAccount}=await import('../src/core/EAccount.js');
+const reply=balance=>({ok:true,json:async()=>({balance})});
+const old=EAccount.refresh(), fresh=EAccount.refresh();
+pending[1](reply('200'));await fresh;
+pending[0](reply('100'));await old;
+assert.equal(EAccount.balance,'200','stale balance overwrote the latest request');
+const other=EAccount.refresh();values.set('sio_session','two');
+pending[2](reply('999'));await other;
+assert.equal(EAccount.balance,'200','previous account response was applied');
+console.log('Account display checks passed: latest response wins; previous-session replies ignored.');

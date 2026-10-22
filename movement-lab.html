@@ -1,0 +1,201 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Movement Lab — deterministic MoveSim</title>
+<style>
+  body { margin: 0; background: #10141a; color: #cfe6f2; font: 13px/1.5 monospace; }
+  #hud { position: fixed; top: 10px; left: 10px; background: #0009; padding: 10px 14px;
+         border-left: 3px solid #35e0ff; white-space: pre; z-index: 2; }
+  #fx  { position: fixed; top: 10px; right: 10px; background: #0009; padding: 10px 14px;
+         border-left: 3px solid #ffb03a; z-index: 2; max-width: 330px; }
+  #fx button { display: block; width: 100%; margin: 3px 0; background: #17202a; color: #cfe6f2;
+               border: 1px solid #2c3a48; padding: 5px 8px; font: 12px monospace; cursor: pointer; text-align: left; }
+  #fx button:hover { border-color: #35e0ff; }
+  .ok { color: #6aff8a; } .bad { color: #ff6a7a; }
+</style>
+</head>
+<body>
+<div id="hud">movement lab</div>
+<div id="fx"><b>FIXTURE TAPES</b> (deterministic playback)<div id="fxbtns"></div>
+<div style="margin-top:8px">Click canvas: pointer lock — WASD/Shift/Space/Ctrl/Q live drive (20 Hz sim)</div>
+<div id="fxout"></div></div>
+<script type="module">
+import * as THREE from 'three';
+import { createState, step, makeInput, hashState, DT } from '/src/sim/MoveSim.js';
+import { FIXTURES, expandTape } from '/src/sim/fixtures.js';
+
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setSize(innerWidth, innerHeight);
+document.body.appendChild(renderer.domElement);
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x171d26);
+scene.add(new THREE.HemisphereLight(0xffffff, 0x223, 1.1));
+const sun = new THREE.DirectionalLight(0xffffff, 1.2); sun.position.set(30, 60, 20); scene.add(sun);
+const camera = new THREE.PerspectiveCamera(75, innerWidth / innerHeight, 0.05, 500);
+
+// graybox world builder (renders any fixture world, or the live-drive arena)
+let worldGroup = null;
+function buildWorldMeshes(w) {
+  if (worldGroup) scene.remove(worldGroup);
+  worldGroup = new THREE.Group();
+  const floorMat = new THREE.MeshStandardMaterial({ color: 0x2b3442 });
+  const boxMat = new THREE.MeshStandardMaterial({ color: 0x50607a });
+  const platMat = new THREE.MeshStandardMaterial({ color: 0x3a6a52 });
+  if (!w.noBaseFloor) {
+    const g = new THREE.Mesh(new THREE.BoxGeometry(w.half * 2, 0.1, w.half * 2), floorMat);
+    g.position.y = -0.05; worldGroup.add(g);
+  }
+  const grid = new THREE.GridHelper(w.half * 2, w.half, 0x35e0ff, 0x24303e);
+  grid.position.y = 0.01; worldGroup.add(grid);
+  for (const b of w.boxes) {
+    const size = [b.max[0] - b.min[0], b.max[1] - b.min[1], b.max[2] - b.min[2]];
+    const m = new THREE.Mesh(new THREE.BoxGeometry(...size), boxMat);
+    m.position.set(b.min[0] + size[0] / 2, b.min[1] + size[1] / 2, b.min[2] + size[2] / 2);
+    worldGroup.add(m);
+  }
+  for (const p of w.platforms) {
+    const sx = p.maxX - p.minX, sz = p.maxZ - p.minZ;
+    const m = new THREE.Mesh(new THREE.BoxGeometry(sx, 0.12, sz), platMat);
+    m.position.set(p.minX + sx / 2, (p.y0 + p.y1) / 2 - 0.06, p.minZ + sz / 2);
+    if (p.y0 !== p.y1) {
+      const slope = (p.y1 - p.y0) / (p.axis === 'x' ? sx : sz);
+      if (p.axis === 'z') m.rotation.x = -Math.atan(slope);
+      else m.rotation.z = Math.atan(slope);
+      m.scale.z = p.axis === 'z' ? Math.hypot(1, slope) : 1;
+      m.scale.x = p.axis === 'x' ? Math.hypot(1, slope) : 1;
+    }
+    worldGroup.add(m);
+  }
+  scene.add(worldGroup);
+}
+
+// capsule marker for tape playback / third-person view
+const capsule = new THREE.Group();
+const capBody = new THREE.Mesh(new THREE.CapsuleGeometry(0.45, 0.8, 4, 12),
+  new THREE.MeshStandardMaterial({ color: 0xd9782e }));
+capBody.position.y = 0.85;
+capsule.add(capBody);
+scene.add(capsule);
+
+// ── live drive world (simple arena with one of everything) ──
+const liveWorld = {
+  half: 40, killY: -25,
+  platforms: [
+    { minX: -3, maxX: 3, minZ: 6, maxZ: 20, y0: 0, y1: 3.5, axis: 'z' },   // ramp
+    { minX: -12, maxX: -6, minZ: -12, maxZ: -4, y0: 0.3, y1: 0.3, axis: 'z' }, // step
+    { minX: 6, maxX: 14, minZ: -14, maxZ: -6, y0: 3, y1: 3, axis: 'z' },   // deck
+  ],
+  boxes: [
+    { min: [-16, 0, 4], max: [-10, 3, 6] },                                 // wall
+    { min: [4, 1.25, 4], max: [12, 4, 8] },                                 // crouch tunnel
+  ],
+  gravLifts: [], teleporters: [],
+};
+
+const hud = document.getElementById('hud');
+const keys = new Set();
+addEventListener('keydown', (e) => { keys.add(e.code); if (e.code === 'Space') edges.jump = true;
+  if (e.code === 'ControlLeft' || e.code === 'KeyC') edges.crouch = true;
+  if (e.code === 'KeyQ') edges.tele = true; });
+addEventListener('keyup', (e) => keys.delete(e.code));
+let yaw = Math.PI, pitch = 0;
+renderer.domElement.addEventListener('click', () => renderer.domElement.requestPointerLock());
+addEventListener('mousemove', (e) => {
+  if (document.pointerLockElement !== renderer.domElement) return;
+  yaw -= e.movementX * 0.0024; pitch -= e.movementY * 0.0024;
+  pitch = Math.max(-1.5, Math.min(1.5, pitch));
+});
+
+let mode = 'live';
+let state = createState(0, 0, 0), prev = state, acc = 0;
+const edges = { jump: false, crouch: false, tele: false };
+let playback = null;   // { fixture, tape, i, states }
+buildWorldMeshes(liveWorld);
+
+// fixture buttons
+const btns = document.getElementById('fxbtns');
+const out = document.getElementById('fxout');
+for (const f of FIXTURES) {
+  const b = document.createElement('button');
+  b.textContent = f.id;
+  b.title = f.title;
+  b.onclick = () => {
+    mode = 'tape';
+    buildWorldMeshes(f.world);
+    playback = { fixture: f, tape: expandTape(f.tape), i: 0 };
+    state = createState(...f.spawn); prev = state;
+    out.innerHTML = `▶ ${f.id} (${playback.tape.length} ticks)`;
+  };
+  btns.appendChild(b);
+}
+const back = document.createElement('button');
+back.textContent = '← live drive';
+back.onclick = () => { mode = 'live'; playback = null; buildWorldMeshes(liveWorld); state = createState(0, 0, 0); prev = state; };
+btns.appendChild(back);
+
+let last = performance.now();
+function frame(now) {
+  requestAnimationFrame(frame);
+  const dt = Math.min(0.25, (now - last) / 1000); last = now;
+
+  if (mode === 'live') {
+    acc += dt;
+    while (acc >= DT) {
+      acc -= DT;
+      const mz = (keys.has('KeyW') ? 1 : 0) - (keys.has('KeyS') ? 1 : 0);
+      const mx = (keys.has('KeyD') ? 1 : 0) - (keys.has('KeyA') ? 1 : 0);
+      const inp = makeInput({ mx, mz, yaw, pitch, sprint: keys.has('ShiftLeft'),
+        crouch: keys.has('ControlLeft') || keys.has('KeyC'),
+        jumpJust: edges.jump, crouchJust: edges.crouch, teleJust: edges.tele });
+      edges.jump = edges.crouch = edges.tele = false;
+      prev = state; state = step(state, inp, liveWorld);
+    }
+  } else if (playback) {
+    // deterministic tape playback at 2 ticks per frame
+    for (let k = 0; k < 2 && playback.i < playback.tape.length; k++) {
+      prev = state; state = step(state, playback.tape[playback.i++], playback.fixture.world);
+    }
+    if (playback.i >= playback.tape.length && !playback.done) {
+      playback.done = true;
+      const err = playback.fixture.check ? null : null;
+      out.innerHTML = `■ ${playback.fixture.id} final hash <b class="ok">${hashState(state)}</b>`;
+    }
+  }
+
+  const a = mode === 'live' ? acc / DT : 1;
+  const ix = prev.px + (state.px - prev.px) * a;
+  const iy = prev.py + (state.py - prev.py) * a;
+  const iz = prev.pz + (state.pz - prev.pz) * a;
+  capsule.position.set(ix, iy, iz);
+
+  if (mode === 'live' && document.pointerLockElement === renderer.domElement) {
+    camera.position.set(ix, iy + state.eye, iz);
+    camera.rotation.order = 'YXZ';
+    camera.rotation.y = yaw; camera.rotation.x = pitch;
+    capsule.visible = false;
+  } else {
+    capsule.visible = true;
+    camera.position.set(ix + 10, iy + 9, iz + 12);
+    camera.lookAt(ix, iy + 1, iz);
+  }
+
+  hud.textContent =
+    `mode      ${mode}${playback ? ` (${playback.i}/${playback.tape.length})` : ''}\n` +
+    `tick      ${state.tick}\n` +
+    `pos       ${state.px.toFixed(3)} ${state.py.toFixed(3)} ${state.pz.toFixed(3)}\n` +
+    `vel       ${state.vx.toFixed(2)} ${state.vy.toFixed(2)} ${state.vz.toFixed(2)}\n` +
+    `ground    ${state.onGround} n=(${state.nX.toFixed(3)},${state.nY.toFixed(3)},${state.nZ.toFixed(3)})\n` +
+    `crouch    ${state.crouch}  slide ${state.slide}  stamina ${state.stamina.toFixed(0)}\n` +
+    `hash      ${hashState(state)}`;
+  renderer.render(scene, camera);
+}
+requestAnimationFrame(frame);
+addEventListener('resize', () => {
+  renderer.setSize(innerWidth, innerHeight);
+  camera.aspect = innerWidth / innerHeight;
+  camera.updateProjectionMatrix();
+});
+</script>
+</body>
+</html>

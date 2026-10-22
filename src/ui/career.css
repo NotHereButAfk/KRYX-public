@@ -1,0 +1,60 @@
+/* Career shares the game's blurred backdrop; cards keep dense data readable. */
+#panel-profile.nav-panel {
+  width: min(1120px, calc(100vw - 48px)) !important;
+  max-height: calc(100dvh - 64px); padding: 32px !important;
+  border: 0 !important; box-shadow: none !important; border-radius: 0;
+}
+#panel-profile .career-header { display:flex; align-items:center; justify-content:space-between; gap:24px; padding:0 52px 26px 0; border-bottom:1px solid #ffffff25; margin-bottom:24px; }
+#panel-profile .prof-username { font-size:clamp(24px,3vw,38px); line-height:1.2; border:0; padding:0; margin:6px 0; overflow-wrap:anywhere; }
+.career-eyebrow { color:#82d9df; font-size:11px; letter-spacing:2px; margin:0; }
+.career-subtitle, .career-note { color:#bcc8cf; font-size:14px; line-height:1.5; margin:8px 0 16px; }
+.career-balance { flex-shrink:0; text-align:right; }
+.career-balance span { display:block; font-size:11px; letter-spacing:2px; color:#b8c5ce; }
+.career-balance strong { display:block; font-size:25px; color:#f4da84; margin-top:8px; }
+.career-layout { display:grid; grid-template-columns:320px minmax(0,1fr); gap:24px; }
+.career-character,.career-record,.career-connection { background:rgba(17,23,29,.72); border:1px solid #ffffff20; border-radius:12px; padding:22px; min-width:0; }
+.career-section-heading { display:flex; align-items:center; justify-content:space-between; gap:12px; }
+.career-section-heading h2,.career-connections-title { font-size:14px; letter-spacing:1.5px; margin:0; }
+.career-section-heading span { font-size:11px; color:#9cddd1; letter-spacing:1px; }
+#panel-profile .prof-char { width:100%; height:320px; background:radial-gradient(ellipse at 50% 80%,#344f5866,transparent 70%) !important; border:0; box-shadow:none; margin:10px 0; }
+#panel-profile .prof-char canvas { width:100%; height:100%; object-fit:contain; }
+.career-skin-caption { text-align:center; margin:8px 0 20px; }
+.career-skin-caption h3 { margin:0 0 6px; font-size:20px; }
+.career-skin-caption span { color:#b5c8ce; text-transform:capitalize; font-size:13px; }
+.career-secondary { background:#ffffff0a; border:1px solid #ffffff30; color:white; padding:12px 18px; width:100%; cursor:pointer; border-radius:6px; }
+#panel-profile .prof-stats { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:0; }
+#panel-profile .prof-stat { text-align:left; border:0; border-radius:0; background:transparent !important; border-bottom:1px solid #ffffff14; padding:16px 8px 16px 0; box-shadow:none; }
+#panel-profile .prof-stat-label { font-size:11px; color:#bdc9d0 !important; text-transform:uppercase; letter-spacing:.7px; text-shadow:none; }
+#panel-profile .prof-stat-val { font-size:25px; text-shadow:none; }
+#panel-profile .community-profile { background:none; border:0; border-radius:0; padding:0; margin:28px 0 0; }
+.career-connections { display:grid; grid-template-columns:1fr 1fr; gap:24px; }
+.career-connection h3 { font-size:22px; margin:8px 0; }
+.career-connection-state { color:#a4e6d0; font-size:14px; }
+.career-connection input { width:100%; min-width:0; box-sizing:border-box; background:#0c1218aa; border:1px solid #71858f; border-radius:6px; padding:12px; color:white; font:inherit; font-size:14px; margin:8px 0 12px; }
+.career-connection-actions { display:flex; flex-wrap:wrap; gap:8px; }
+#panel-profile .tournament-action { width:auto; min-height:42px; padding:10px 14px; font:inherit; font-size:12px; border-radius:6px; margin:4px 0; }
+.career-connection a { display:block; margin-top:20px; font-size:12px; }
+.career-connection label { font-size:13px; color:#bdc9d0; }
+#panel-profile #profile-logout-btn { width:auto; padding:10px 20px; margin-top:24px !important; }
+#panel-profile .page-close { top:14px; right:14px; }
+@media(max-width:800px) {
+  #panel-profile.nav-panel { width:calc(100vw - 24px) !important; padding:20px !important; max-height:calc(100dvh - 24px); }
+  .career-layout { grid-template-columns:230px minmax(0,1fr); gap:14px; }
+  #panel-profile .prof-stats { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .career-character,.career-record,.career-connection { padding:16px; }
+  .career-connections { gap:14px; }
+}
+@media(max-width:560px) {
+  #panel-profile .career-header { display:block; padding-right:32px; }
+  .career-balance { text-align:left; margin-top:16px; }
+  .career-layout,.career-connections { grid-template-columns:1fr; }
+  #panel-profile .prof-char { height:280px; }
+  #panel-profile .prof-stats { grid-template-columns:repeat(2,minmax(0,1fr)); }
+}
+
+#panel-profile .prof-username { border:0 !important; text-shadow:none !important; }
+#panel-profile .prof-stat { border:0 !important; border-bottom:1px solid #ffffff18 !important; border-radius:0 !important; }
+#panel-profile .prof-stat:hover { transform:none; }
+#panel-profile .prof-char { border:0 !important; box-shadow:none !important; }
+
+#panel-profile .career-connection > a { display:block; width:fit-content; margin:18px 0 0; line-height:1.5; }

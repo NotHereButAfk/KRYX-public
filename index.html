@@ -1,0 +1,799 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>KYX.IO — The Halo of Web3</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Michroma&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/src/style.css" />
+</head>
+<body>
+  <!-- Colour-blind correction matrices (Phase 8 accessibility). Applied to the
+       scene canvas + HUD via CSS filter when a filter is selected in Settings.
+       Standard Machado/Brettel daltonisation approximations. -->
+  <svg id="cb-filters" aria-hidden="true" style="position:absolute;width:0;height:0;overflow:hidden">
+    <defs>
+      <filter id="cb-protanopia"><feColorMatrix type="matrix" values="
+        0.567 0.433 0 0 0  0.558 0.442 0 0 0  0 0.242 0.758 0 0  0 0 0 1 0"/></filter>
+      <filter id="cb-deuteranopia"><feColorMatrix type="matrix" values="
+        0.625 0.375 0 0 0  0.7 0.3 0 0 0  0 0.3 0.7 0 0  0 0 0 1 0"/></filter>
+      <filter id="cb-tritanopia"><feColorMatrix type="matrix" values="
+        0.95 0.05 0 0 0  0 0.433 0.567 0 0  0 0.475 0.525 0 0  0 0 0 1 0"/></filter>
+    </defs>
+  </svg>
+  <div id="app">
+    <canvas id="game-canvas"></canvas>
+
+    <!-- First-paint startup shell. It is deliberately static HTML so branding
+         appears before the game bundle, renderer, map, or network can load. -->
+    <div id="connect-screen" class="overlay" aria-live="polite" aria-label="Loading game">
+      <div class="boot-shell">
+        <svg class="boot-connect-logo" viewBox="0 0 420 100" role="img" aria-label="KYX.IO">
+          <g fill-rule="evenodd">
+            <path pathLength="1" d="M8 12H24V43L52 12H73L39 48L77 88H55L24 54V88H8Z"/>
+            <path pathLength="1" d="M84 12H103L123 43L143 12H162L131 59V88H115V59Z"/>
+            <path pathLength="1" d="M170 12H191L210 39L229 12H250L220 49L251 88H230L210 61L190 88H169L200 49Z"/>
+            <path pathLength="1" d="M268 72A8 8 0 1 1 268 88A8 8 0 1 1 268 72Z"/>
+            <path pathLength="1" d="M294 12H310V88H294Z"/>
+            <path pathLength="1" d="M364 10C335 10 326 26 326 50S335 90 364 90S402 74 402 50S393 10 364 10ZM364 26C381 26 386 33 386 50S381 74 364 74S342 67 342 50S347 26 364 26Z"/>
+          </g>
+        </svg>
+        <span class="boot-activity" aria-hidden="true"></span>
+        <div id="boot-status" class="boot-connect-text">INITIALIZING...</div>
+        <div class="boot-progress" role="progressbar" aria-label="Game loading progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+          <span id="boot-progress-fill"></span>
+        </div>
+        <div class="boot-progress-copy"><span id="boot-detail">Starting engine...</span><span id="boot-percent">0%</span></div>
+        <button id="boot-retry" class="boot-retry hidden" type="button">RETRY</button>
+      </div>
+    </div>
+
+    <!-- Login & register are standalone pages: /login and /register -->
+
+    <!-- ===================== TOP NAV (ev.io-style) ===================== -->
+    <div id="top-nav" class="hidden">
+      <div class="nav-brand" aria-label="KYX.IO">kyx.io</div>
+      <button id="nav-mobile-toggle" type="button" aria-label="Open navigation" aria-expanded="false">MENU</button>
+      <nav class="nav-items">
+        <!-- PUBLIC GAME — game-mode picker dropdown -->
+        <div class="nav-dd-wrap">
+          <button class="nav-item nav-dd-btn" data-dd="publicgame">PUBLIC GAME &#9660;</button>
+          <div class="nav-dd modes-dropdown hidden" id="dd-publicgame">
+            <button class="mode-option" data-mode="deathmatch">
+              <span class="mode-opt-icon">&#9876;</span>
+              <div class="mode-opt-body">
+                <div class="mode-opt-name">DEATHMATCH</div>
+                <div class="mode-opt-sub">FFA &bull; 8 Players &bull; 3 Minutes</div>
+              </div>
+            </button>
+            <button class="mode-option" data-mode="survival">
+              <span class="mode-opt-icon">&#129503;</span>
+              <div class="mode-opt-body">
+                <div class="mode-opt-name">SURVIVAL</div>
+                <div class="mode-opt-sub">Co-op &bull; Up to 5 &bull; Wave Defense</div>
+              </div>
+            </button>
+          </div>
+        </div>
+
+
+        <!-- PROFILE dropdown — Inventory / Career / Achievements (gated) -->
+        <div class="nav-dd-wrap">
+          <button class="nav-item nav-dd-btn" data-dd="profile">PROFILE &#9660;</button>
+          <div class="nav-dd profile-dropdown hidden" id="dd-profile">
+            <button class="profile-menu-item" data-panel="loadout">
+              <span class="pm-icon">&#9776;</span>
+              <div class="pm-body"><div class="pm-name">INVENTORY</div><div class="pm-sub">Weapons, skins &amp; character</div></div>
+            </button>
+            <button class="profile-menu-item" data-panel="profile" data-gated="1">
+              <span class="pm-icon">&#9733;</span>
+              <div class="pm-body"><div class="pm-name">CAREER</div><div class="pm-sub">Stats, rank &amp; record</div></div>
+            </button>
+            <button class="profile-menu-item" data-panel="achievements" data-gated="1">
+              <span class="pm-icon">&#127942;</span>
+              <div class="pm-body"><div class="pm-name">ACHIEVEMENTS</div><div class="pm-sub">Challenges &amp; rewards</div></div>
+            </button>
+          </div>
+        </div>
+
+        <!-- NIGHT MARKET dropdown — Night Market + Battle Pass (gated) -->
+        <div class="nav-dd-wrap">
+          <button class="nav-item nav-dd-btn" data-dd="store">STORE &#9660;</button>
+          <div class="nav-dd profile-dropdown hidden" id="dd-store">
+            <button class="profile-menu-item" data-panel="shop" data-gated="1">
+              <span class="pm-icon">&#127769;</span>
+              <div class="pm-body"><div class="pm-name">NIGHT MARKET</div><div class="pm-sub">5 skins · Refreshes weekly</div></div>
+            </button>
+            <button class="profile-menu-item" data-panel="battlepass" data-gated="1">
+              <span class="pm-icon">&#127903;</span>
+              <div class="pm-body"><div class="pm-name">BATTLE PASS</div><div class="pm-sub">Season 1 rewards track</div></div>
+            </button>
+            <a class="profile-menu-item" href="/earnings">
+              <span class="pm-icon">$</span>
+              <div class="pm-body"><div class="pm-name">K EARNINGS</div><div class="pm-sub">Balance, items and reward history</div></div>
+            </a>
+          </div>
+        </div>
+
+        <!-- SOCIAL dropdown — Fireteam, tournaments, and community links. -->
+        <div class="nav-dd-wrap">
+          <button class="nav-item nav-dd-btn" data-dd="social">SOCIAL &#9660;</button>
+          <div class="nav-dd profile-dropdown hidden" id="dd-social">
+            <button class="profile-menu-item" data-panel="party" data-gated="1">
+              <span class="pm-icon">&#128101;</span>
+              <div class="pm-body"><div class="pm-name">FIRETEAM</div><div class="pm-sub">Squad up with friends</div></div>
+            </button>
+            <button class="profile-menu-item" data-panel="tournaments">
+              <span class="pm-icon">&#127942;</span>
+              <div class="pm-body"><div class="pm-name">TOURNAMENTS</div><div class="pm-sub">Competitive events and standings</div></div>
+            </button>
+            <a class="profile-menu-item" href="https://twitter.com" target="_blank" rel="noopener">
+              <span class="pm-icon">&#128038;</span>
+              <div class="pm-body"><div class="pm-name">TWITTER</div><div class="pm-sub">Follow for updates</div></div>
+            </a>
+            <a class="profile-menu-item" href="https://discord.gg/e5ebChfaE" target="_blank" rel="noopener">
+              <span class="pm-icon">&#128172;</span>
+              <div class="pm-body"><div class="pm-name">DISCORD</div><div class="pm-sub">Join the community</div></div>
+            </a>
+          </div>
+        </div>
+
+        <!-- SETTINGS — open to everyone (local config) -->
+        <button class="nav-item" data-panel="settings">SETTINGS</button>
+      </nav>
+    </div>
+
+    <!-- Right-side vertical menu (ev.io): login / rankings -->
+    <div id="nav-side" class="hidden">
+      <a id="nav-login-link" class="side-login" href="/login">login</a>
+      <a id="nav-register-link" class="side-register" href="/register">register</a>
+      <div id="nav-account" class="side-account hidden">
+        <span id="nav-username" class="side-user"></span>
+        <span id="nav-coins" class="side-coins">0.00 K</span>
+        <button id="nav-logout-btn" class="side-link side-logout">logout</button>
+      </div>
+      <button class="side-link" data-panel="rankings">rankings</button>
+      <button class="side-link" data-panel="feedback">feedback</button>
+      <button class="side-link" data-panel="more">more</button>
+    </div>
+
+    <!-- Bottom-left: share game -->
+    <div id="share-game" class="hidden">
+      <span class="share-ico">&#128279;</span> share game
+    </div>
+
+    <!-- ===================== CENTER PLAY ===================== -->
+    <div id="center-play" class="hidden">
+      <button id="play-btn" class="click-to-play">CLICK TO PLAY</button>
+      <button id="spectate-btn" class="spectate-hint">[ SPECTATE ]</button>
+    </div>
+
+    <div id="spectator-controls" class="hidden"><button id="spectator-prev" aria-label="Previous player">◀</button><span id="spectator-name">Waiting for players</span><button id="spectator-next" aria-label="Next player">▶</button><small>← / → Switch player · ESC Menu / Join</small></div>
+
+    <!-- ===================== PANEL: ABILITIES ===================== -->
+    <div id="panel-abilities" class="nav-panel nav-panel-wide hidden">
+      <button class="panel-x" data-close-panel aria-label="Close abilities">[X]</button>
+      <div class="ev-page-title">ABILITIES</div>
+      <p class="ev-page-copy">Choose the tactical kit you take into every public match.</p>
+      <div class="ability-page-grid">
+        <article class="ability-page-card selected">
+          <span class="ability-page-key">Q</span>
+          <div><strong>TELEPORT</strong><p>Blink forward through open space to break sightlines.</p></div>
+        </article>
+        <article class="ability-page-card">
+          <span class="ability-page-key">G</span>
+          <div><strong>FRAG GRENADE</strong><p>Throw a timed explosive that deals radial damage.</p></div>
+        </article>
+        <article class="ability-page-card">
+          <span class="ability-page-key">F</span>
+          <div><strong>SMOKE GRENADE</strong><p>Block long lanes with a temporary smoke volume.</p></div>
+        </article>
+      </div>
+    </div>
+
+    <!-- ===================== PANEL: LOADOUT (ev.io-style) ===================== -->
+    <div id="panel-loadout" class="nav-panel nav-panel-inv hidden">
+      <button id="inv-close-btn" class="inv-close-btn" title="Close">[X]</button>
+
+      <a class="inv-wallet-link" href="/?panel=profile">Wallet address ↗</a>
+      <a class="inv-account-link" href="/earnings.html">Account ↗</a>
+      <div class="inv-profile-head">
+        <div class="inv-avatar-big"><img id="inv-profile-picture" src="/assets/anime-skin-cards/remake_84.webp" alt="Equipped character artwork" width="138" height="138" /></div>
+        <div class="inv-id">
+          <div class="inv-username" id="inv-username">Recruit</div>
+          <input id="player-name" type="hidden" value="Recruit" />
+          <div class="inv-currency-line">
+            <div class="inv-meta inv-balance-line"><span>Balance:</span><span class="inv-ecoin"></span><span id="inv-balance">500</span></div>
+            <div class="inv-meta inv-networth">Networth: <span id="inv-networth">0</span><span class="inv-tt" title="Total value of the skins you own">?</span></div>
+          </div>
+        </div>
+      </div>
+
+      <h2 class="inv-page-title inv-equipped-title">Equipped</h2>
+      <div id="inv-equipped" class="inv-card-row"></div>
+
+      <h2 class="inv-page-title inv-inventory-title">Inventory</h2>
+      <p class="inv-help"><a href="/preview.html" target="_blank" rel="noopener">Preview all skins in 3D ↗</a></p>
+      <p class="inv-help">Choose a character, gun, or sword below. Click an owned skin to replace that equipped slot.</p>
+      <div id="inv-tabs" class="inv-tabs"></div>
+      <div id="inv-grid" class="inv-grid"></div>
+    </div>
+
+    <!-- ===================== PANEL: MODES ===================== -->
+    <div id="panel-modes" class="nav-panel hidden">
+      <p class="modes-intro">Choose a game mode for your next session.</p>
+      <div id="mode-cards" class="mode-cards"></div>
+    </div>
+
+    <!-- ===================== PANEL: SETTINGS ===================== -->
+    <div id="panel-settings" class="nav-panel hidden">
+
+      <div class="settings-title-row">
+        <h2>GAME SETTINGS</h2>
+        <button class="panel-x settings-x" data-close-panel aria-label="Close settings">[X]</button>
+      </div>
+      <div class="settings-actions">
+        <button type="button" id="settings-export-btn" class="settings-utility">EXPORT SETTINGS</button>
+        <button type="button" id="settings-import-btn" class="settings-utility cyan">IMPORT SETTINGS</button>
+        <button type="button" id="settings-defaults-btn" class="settings-utility amber">RESTORE DEFAULTS</button>
+        <input id="settings-import-file" type="file" accept="application/json,.json" hidden />
+      </div>
+
+      <div class="settings-section">CONTROLS</div>
+
+      <label class="field-label">Mouse Sensitivity</label>
+      <div class="setting-row">
+        <input type="range" id="set-sens" min="30" max="300" step="5" value="100" class="setting-slider" />
+        <span id="set-sens-val" class="setting-val">1.0×</span>
+      </div>
+
+      <label class="field-label">Field of View</label>
+      <div class="setting-row">
+        <input type="range" id="set-fov" min="60" max="110" step="1" value="78" class="setting-slider" />
+        <span id="set-fov-val" class="setting-val">78°</span>
+      </div>
+
+      <label class="field-label">Invert Look (Vertical)</label>
+      <div class="quality-btns" id="invert-btns">
+        <button class="quality-btn invert-btn active" data-inv="off">NORMAL</button>
+        <button class="quality-btn invert-btn" data-inv="on">INVERTED</button>
+      </div>
+
+      <div class="settings-section">AUDIO</div>
+
+      <label class="field-label">Master Volume</label>
+      <div class="setting-row">
+        <input type="range" id="set-vol" min="0" max="100" step="5" value="50" class="setting-slider" />
+        <span id="set-vol-val" class="setting-val">50%</span>
+      </div>
+
+      <div class="settings-section">GRAPHICS</div>
+
+      <label class="field-label">Render Quality</label>
+      <div class="quality-btns" id="quality-btns">
+        <button class="quality-btn" data-q="low">LOW</button>
+        <button class="quality-btn active" data-q="medium">MEDIUM</button>
+        <button class="quality-btn" data-q="high">HIGH</button>
+      </div>
+
+      <div class="settings-section">ACCESSIBILITY</div>
+
+      <label class="field-label">Crosshair Shape</label>
+      <div class="quality-btns" id="xhair-shape-btns">
+        <button class="quality-btn xhair-shape active" data-xh="cross">CROSS</button>
+        <button class="quality-btn xhair-shape" data-xh="dot">DOT</button>
+        <button class="quality-btn xhair-shape" data-xh="circle">CIRCLE</button>
+      </div>
+
+      <label class="field-label">Crosshair Colour</label>
+      <div class="quality-btns" id="xhair-color-btns">
+        <button class="quality-btn xhair-color" data-xc="cyan" style="color:#33e0ff">CYAN</button>
+        <button class="quality-btn xhair-color" data-xc="green" style="color:#54ff8a">GREEN</button>
+        <button class="quality-btn xhair-color active" data-xc="white" style="color:#fff">WHITE</button>
+        <button class="quality-btn xhair-color" data-xc="magenta" style="color:#ff4dd2">MAGENTA</button>
+        <button class="quality-btn xhair-color" data-xc="yellow" style="color:#ffe23a">YELLOW</button>
+      </div>
+
+      <label class="field-label">Colour-Blind Filter</label>
+      <div class="quality-btns" id="cblind-btns">
+        <button class="quality-btn cblind active" data-cb="none">OFF</button>
+        <button class="quality-btn cblind" data-cb="protanopia">PROTAN</button>
+        <button class="quality-btn cblind" data-cb="deuteranopia">DEUTAN</button>
+        <button class="quality-btn cblind" data-cb="tritanopia">TRITAN</button>
+      </div>
+
+      <label class="field-label">HUD Scale</label>
+      <div class="setting-row">
+        <input type="range" id="set-hudscale" min="80" max="140" step="5" value="100" class="setting-slider" />
+        <span id="set-hudscale-val" class="setting-val">100%</span>
+      </div>
+
+      <label class="field-label">Reduce Motion (shake / bob / recoil cam)</label>
+      <div class="quality-btns" id="reduce-motion-btns">
+        <button class="quality-btn rmotion active" data-on="off">OFF</button>
+        <button class="quality-btn rmotion" data-on="on">ON</button>
+      </div>
+
+      <label class="field-label">Reduce Flashes (photosensitivity)</label>
+      <div class="quality-btns" id="reduce-flash-btns">
+        <button class="quality-btn rflash active" data-on="off">OFF</button>
+        <button class="quality-btn rflash" data-on="on">ON</button>
+      </div>
+
+      <label class="field-label">High Contrast UI</label>
+      <div class="quality-btns" id="contrast-btns">
+        <button class="quality-btn hcontrast active" data-on="off">OFF</button>
+        <button class="quality-btn hcontrast" data-on="on">ON</button>
+      </div>
+
+      <label class="field-label">Hit Sound Cue</label>
+      <div class="quality-btns" id="hitsound-btns">
+        <button class="quality-btn hitsound" data-on="off">OFF</button>
+        <button class="quality-btn hitsound active" data-on="on">ON</button>
+      </div>
+
+      <button id="settings-save-btn" class="play-btn" style="margin-top:22px">SAVE SETTINGS</button>
+    </div>
+
+    <!-- ===================== PANEL: FIRETEAM ===================== -->
+    <div id="panel-party" class="nav-panel hidden">
+      <div class="party-header">
+        <div class="panel-label">YOUR FIRETEAM</div>
+        <div class="party-size-badge" id="party-size-badge">1 / 4</div>
+      </div>
+      <div id="party-slots" class="party-slots">
+        <div class="party-slot party-slot-you">
+          <div class="party-slot-avatar"></div>
+          <div class="party-slot-name">You</div>
+          <div class="party-slot-badge">LEADER</div>
+        </div>
+        <div class="party-slot party-slot-empty">
+          <div class="party-slot-plus">+</div>
+          <div class="party-slot-name">Open Slot</div>
+        </div>
+        <div class="party-slot party-slot-empty">
+          <div class="party-slot-plus">+</div>
+          <div class="party-slot-name">Open Slot</div>
+        </div>
+        <div class="party-slot party-slot-empty">
+          <div class="party-slot-plus">+</div>
+          <div class="party-slot-name">Open Slot</div>
+        </div>
+      </div>
+      <div class="panel-divider"></div>
+      <div class="panel-label" style="margin-bottom:10px">INVITE SPARTAN</div>
+      <div class="party-invite-row">
+        <input id="party-invite-input" class="text-input" placeholder="Enter callsign" style="flex:1" />
+        <button class="play-btn" style="width:auto;margin:0;padding:10px 18px">INVITE</button>
+      </div>
+      <div class="panel-divider"></div>
+      <div class="panel-label" style="margin-bottom:10px">FIRETEAM CODE</div>
+      <div class="party-code-wrap">
+        <div class="party-code" id="party-code">KYX-4F2A</div>
+        <button class="ghost-btn" style="width:auto;padding:8px 14px;margin:0">COPY</button>
+      </div>
+      <p class="party-hint">Share this code so squadmates can join your fireteam directly.</p>
+    </div>
+
+    <!-- ===================== PANEL: PROFILE ===================== -->
+    <div id="panel-profile" class="nav-panel nav-panel-wide hidden">
+      <header class="career-header"><div><p class="career-eyebrow">PLAYER PROFILE</p><h1 id="profile-username" class="prof-username">RECRUIT</h1><p class="career-subtitle">Your character. Your record. Your connections.</p></div><div class="career-balance"><span>K COINS</span><strong id="ps-balance">—</strong></div></header>
+      <div class="career-layout">
+        <section class="career-character"><div class="career-section-heading"><h2>CURRENT SKIN</h2><span class="career-equipped">EQUIPPED</span></div>
+          <div class="prof-char"><canvas id="profile-char-canvas" width="400" height="500" aria-label="Your equipped character"></canvas></div>
+          <div class="career-skin-caption"><h3 id="profile-skin-name">Loading character…</h3><span id="profile-skin-rarity"></span></div>
+          <button type="button" class="career-secondary" data-panel="loadout">OPEN INVENTORY ↗</button>
+        </section>
+        <section class="career-record"><div class="career-section-heading"><h2>CAREER STATS</h2><span id="ps-rank">RECRUIT</span></div><p id="career-stats-status" class="career-note" aria-live="polite">Loading your record…</p><div class="prof-stats">
+          <div class="prof-stat"><div class="prof-stat-label">Eliminations</div><div class="prof-stat-val" id="ps-kills">—</div></div>
+          <div class="prof-stat"><div class="prof-stat-label">Deaths</div><div class="prof-stat-val" id="ps-deaths">—</div></div>
+          <div class="prof-stat"><div class="prof-stat-label">K / D</div><div class="prof-stat-val" id="ps-kd">—</div></div>
+          <div class="prof-stat"><div class="prof-stat-label">Matches played</div><div class="prof-stat-val" id="ps-games">—</div></div>
+          <div class="prof-stat"><div class="prof-stat-label">Total score</div><div class="prof-stat-val" id="ps-score">—</div></div>
+          <div class="prof-stat"><div class="prof-stat-label">Longest survival time</div><div class="prof-stat-val" id="ps-survival">—</div></div>
+        </div></section>
+      </div>
+      <section id="community-profile" class="community-profile"></section>
+      <button id="profile-logout-btn" class="ghost-btn" style="margin-top:16px;display:none">LOGOUT</button>
+    </div>
+
+    <!-- ===================== PANEL: ACHIEVEMENTS ===================== -->
+    <div id="panel-achievements" class="nav-panel nav-panel-wide hidden">
+      <div class="ach-header">
+        <div class="inv-section-label" style="margin-top:0">ACHIEVEMENTS</div>
+        <div class="ach-progress-pill"><span id="ach-done">0</span> / <span id="ach-total">0</span> COMPLETE</div>
+      </div>
+      <div id="ach-grid" class="ach-grid"></div>
+    </div>
+
+    <!-- ===================== PANEL: RANKINGS ===================== -->
+    <div id="panel-rankings" class="nav-panel nav-panel-wide hidden">
+      <div class="rnk-header">
+        <div class="inv-section-label" style="margin-top:0">RANKINGS</div>
+        <div class="rnk-sub">All players ranked by total kills</div>
+      </div>
+      <table class="rnk-table">
+        <thead><tr>
+          <th class="rnk-th-rank">#</th>
+          <th class="rnk-th-name">PLAYER</th>
+          <th>KILLS</th>
+          <th>DEATHS</th>
+          <th>K/D</th>
+          <th>SCORE</th>
+          <th>GAMES</th>
+        </tr></thead>
+        <tbody id="rnk-rows"></tbody>
+      </table>
+    </div>
+
+    <!-- ===================== PANEL: FEEDBACK / MORE ===================== -->
+    <div id="panel-feedback" class="nav-panel nav-panel-wide hidden">
+      <div class="panel-label">FEEDBACK</div>
+      <p class="private-desc">Tell us what felt wrong, where it happened, and what you expected.</p>
+      <label class="field-label" for="feedback-text">Message</label>
+      <textarea id="feedback-text" class="text-input feedback-text" maxlength="1200" placeholder="Your feedback..."></textarea>
+      <button id="feedback-save-btn" class="play-btn feedback-save">SAVE FEEDBACK</button>
+      <div id="feedback-status" class="party-hint" aria-live="polite"></div>
+    </div>
+
+    <div id="panel-more" class="nav-panel nav-panel-wide hidden">
+      <div class="panel-label">MORE</div>
+      <div class="more-grid">
+        <button class="profile-menu-item" data-panel="settings"><span class="pm-icon">&#9881;</span><div class="pm-body"><div class="pm-name">SETTINGS</div><div class="pm-sub">Controls, video and accessibility</div></div></button>
+        <button class="profile-menu-item" data-panel="achievements" data-gated="1"><span class="pm-icon">&#127942;</span><div class="pm-body"><div class="pm-name">ACHIEVEMENTS</div><div class="pm-sub">Challenges and rewards</div></div></button>
+        <a class="profile-menu-item" href="/community.html" target="_blank" rel="noopener"><span class="pm-icon">?</span><div class="pm-body"><div class="pm-name">GAME GUIDE</div><div class="pm-sub">Controls and community help</div></div></a>
+        <a class="profile-menu-item" href="https://discord.gg/e5ebChfaE" target="_blank" rel="noopener"><span class="pm-icon">&#128172;</span><div class="pm-body"><div class="pm-name">COMMUNITY</div><div class="pm-sub">Join the Discord</div></div></a>
+      </div>
+    </div>
+
+    <!-- ===================== PANEL: NIGHT MARKET ===================== -->
+    <div id="panel-shop" class="nav-panel nav-panel-shop hidden">
+      <!-- Top bar -->
+      <div class="nm-topbar">
+        <button id="nm-back" class="nm-brand" type="button">‹ BACK <span>// NIGHT.MARKET</span></button>
+        <a class="nm-balance-link" href="/earnings">K balance & history ↗</a>
+      </div>
+
+      <!-- Guest / not-logged-in wall -->
+      <div id="shop-auth-wall" class="shop-auth-wall hidden">
+        <div class="saw-lock">&#128274;</div>
+        <div class="saw-title">SIGN IN TO ACCESS THE NIGHT MARKET</div>
+        <div class="saw-sub">Create a free account to browse player and weapon skins.</div>
+      </div>
+
+      <!-- Main Night Market content (shown when logged in) -->
+      <div id="shop-content" class="hidden">
+        <div class="nm-header">
+          <div class="nm-title">NIGHT.MARKET</div>
+          <div class="nm-sub">5 weekly offers &middot; Resets Monday at 00:00 UTC</div>
+        </div>
+        <div id="nm-timer" aria-live="off">Weekly refresh</div>
+        <div id="shop-grid-root"></div>
+        <div class="shop-earn-tip">Earn K from eligible server-validated play &middot; <a href="/earnings">Balance, K items and history</a></div>
+      </div>
+    </div>
+
+    <!-- ===================== PANEL: TOURNAMENTS ===================== -->
+    <div id="panel-tournaments" class="nav-panel nav-panel-wide tournament-menu-panel hidden">
+      <button class="panel-x" data-close-panel aria-label="Close tournaments">[X]</button>
+      <div class="tournament-menu-head"><div>
+        <h2>TOURNAMENTS</h2>
+        <p>Available, closed, and finished tournaments. Select one to see its objective and details.</p>
+      </div><a href="https://discord.gg/e5ebChfaE" target="_blank" rel="noopener" class="tournament-action">JOIN DISCORD</a></div>
+      <section class="tournament-entry-guide" aria-label="Entry requirements"><div id="tournament-requirements"></div></section>
+      <div id="tournament-events" aria-live="polite"></div>
+    </div>
+
+    <div id="checkout-modal" class="checkout-modal hidden" role="dialog" aria-modal="true" aria-labelledby="checkout-title">
+      <div class="checkout-card">
+        <button id="checkout-close" class="checkout-close" type="button" aria-label="Close checkout">&times;</button>
+        <div class="checkout-kicker">SECURE CHECKOUT</div>
+        <h2 id="checkout-title">PURCHASE SKIN</h2>
+        <div class="checkout-item"><strong id="checkout-item"></strong><span id="checkout-price"></span></div>
+        <label class="checkout-terms-accept">
+          <input id="checkout-terms-checkbox" type="checkbox" />
+          <span>I agree to the <a href="/terms#digital-purchases" target="_blank" rel="noopener">Digital Skin Purchase Terms</a>.</span>
+        </label>
+        <details class="checkout-details checkout-terms-details"><summary>Purchase terms summary</summary><p>This digital purchase is final except where required by law. The skin entitlement is permanent for your account. Skin visuals may be modified and reward multipliers may be rebalanced.</p></details>
+        <button id="checkout-continue" class="checkout-continue" type="button" disabled>ACCEPT &amp; CONTINUE</button>
+        <div id="checkout-payment-options" class="checkout-payment-options hidden">
+          <div id="checkout-assets" class="checkout-assets">
+            <button id="checkout-sol" class="checkout-continue" type="button">PAY WITH SOL</button>
+            <button id="checkout-usdc" class="checkout-continue" type="button">PAY WITH USDC</button>
+          </div>
+          <div id="checkout-order" class="hidden">
+            <div class="checkout-payment-heading"><span>PAYMENT AMOUNT</span><h3 id="checkout-amount"></h3><p>Solana mainnet · Network fees extra</p></div>
+            <div class="checkout-payment-grid">
+              <div class="checkout-scan"><canvas id="checkout-qr" aria-label="Solana Pay payment request"></canvas><span>Scan with a Solana Pay wallet</span></div>
+              <div class="checkout-actions"><p>Scan the QR code or copy the payment request.</p><button id="checkout-copy" type="button">Copy payment request</button><span id="checkout-expiry"></span></div>
+            </div>
+            <details class="checkout-details"><summary>Order details</summary><dl><dt>Order ID</dt><dd id="checkout-order-id"></dd><dt>Recipient</dt><dd id="checkout-recipient"></dd></dl></details>
+          </div>
+        </div>
+        <div id="checkout-status" class="checkout-status" aria-live="polite"></div>
+        <div class="checkout-trust">Approve payment in your wallet. We never ask for your private key or recovery phrase. Skin purchases do not convert K coins into cryptocurrency.</div>
+      </div>
+    </div>
+
+    <!-- ===================== PANEL: BATTLE PASS ===================== -->
+    <div id="panel-battlepass" class="nav-panel nav-panel-wide hidden">
+      <div class="bp-header-row">
+        <div>
+          <div class="panel-label">SEASON 01 <span class="bp-season-tag">30 TIERS</span></div><h2 class="bp-title">BATTLE PASS</h2><p class="bp-intro">Play. Progress. Collect.</p>
+          <div id="bp-tier-label" class="bp-tier-label">Tier 1 / 30</div>
+          <div class="bp-xp-bar-wrap">
+            <div class="bp-xp-bar-bg"><div id="bp-xp-bar" class="bp-xp-bar-fill"></div></div>
+            <span id="bp-xp-text" class="bp-xp-text">0 / 500 XP</span>
+          </div>
+        </div>
+        <div class="bp-premium-box" id="bp-premium-box">
+          <div class="bp-prem-label">PREMIUM PASS</div>
+          <div class="bp-prem-desc">An extra reward at every tier</div>
+          <button id="bp-unlock-btn" class="bp-unlock-btn">UNLOCK — &#128176; 1000</button>
+        </div>
+      </div>
+      <div class="bp-toolbar"><div><strong id="bp-summary"></strong><p>Earn XP by playing matches and eliminating enemies.</p></div><button id="bp-claim-all" type="button">CLAIM ALL</button></div>
+      <div class="bp-navigation"><button id="bp-prev" aria-label="Previous five tiers">←</button><span id="bp-page-label"></span><button id="bp-next" aria-label="Next five tiers">→</button><button id="bp-current">CURRENT TIER</button></div>
+      <div id="bp-track" class="bp-track"></div>
+      <p class="bp-footnote">Free rewards are available to everyone. Premium unlocks the second track, including reached tiers. Pass credits are separate from your K-coin balance.</p>
+    </div>
+
+    <!-- ===================== MAP LOADING SCREEN (ev.io style) ===================== -->
+    <div id="map-loading" class="hidden" aria-live="polite" aria-label="Loading arena">
+      <div class="ml-building" id="ml-building">Building map...</div>
+      <div class="ml-panel">
+        <div class="ml-name">DAYTIME ROOK</div>
+        <div class="ml-region" id="ml-region">Rook Sector</div>
+        <div class="ml-mode" id="ml-mode">Deathmatch</div>
+        <div class="ml-players" id="ml-players">8 players</div>
+        <div class="ml-progress" aria-hidden="true"><span id="ml-progress-fill"></span></div>
+        <div class="ml-tip" id="ml-tip">TIP: press Q to aim teleport, then left-click to blink</div>
+      </div>
+      <div class="ml-spinner" aria-label="Loading arena"></div>
+    </div>
+
+    <!-- ===================== PAUSE MENU ===================== -->
+    <div id="pause-menu" class="overlay hidden">
+      <div class="menu-panel small">
+        <h2>PAUSED</h2>
+        <button id="resume-btn" class="play-btn">RESUME</button>
+        <button id="quit-btn" class="ghost-btn">QUIT TO MENU</button>
+      </div>
+    </div>
+
+    <!-- ===================== GAME OVER ===================== -->
+    <div id="gameover-menu" class="overlay hidden">
+      <div class="menu-panel small">
+        <h2 id="gameover-title">YOU DIED</h2>
+        <div class="stats" id="gameover-stats"></div>
+        <button id="restart-btn" class="play-btn">RESPAWN</button>
+        <button id="menu-btn" class="ghost-btn">MAIN MENU</button>
+      </div>
+    </div>
+
+    <!-- ===================== HUD ===================== -->
+    <div id="hud" class="hidden">
+      <div id="crosshair">
+        <span></span><span></span><span></span><span></span>
+      </div>
+      <div id="hitmarker"></div>
+      <div id="kill-confirm" class="hidden" aria-live="polite">
+        <span class="kill-confirm-icon" aria-hidden="true">&#9760;</span>
+        <span id="kill-confirm-title">ELIMINATION</span>
+        <span id="kill-confirm-score">+100</span>
+      </div>
+      <svg id="reload-ring" class="hidden" viewBox="0 0 60 60" aria-label="Reloading"><circle cx="30" cy="30" r="25"/><circle class="reload-ring-fill" cx="30" cy="30" r="25" pathLength="1"/></svg>
+      <div id="damage-flash"></div>
+      <div id="blind-overlay" aria-hidden="true"></div>
+      <!-- Directional damage arcs: which way the shot that just hit you came
+           from. Rotated around the crosshair by HUD.showDamageFrom(). -->
+      <div id="damage-dirs"></div>
+
+      <div id="mode-info" class="hidden"></div>
+
+      <div id="health-wrap" class="hud-panel">
+        <div class="hud-icon health-icon">&hearts;</div>
+        <div class="bar-bg"><div id="health-bar" class="bar-fill"></div></div>
+        <span id="health-text">100</span>
+      </div>
+
+      <div id="shield-wrap" class="hud-panel hidden">
+        <div class="hud-icon shield-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 28" focusable="false">
+            <path d="M12 1.8 21 5.7v7.1c0 6.1-3.8 10.7-9 13.4-5.2-2.7-9-7.3-9-13.4V5.7L12 1.8Z"/>
+            <path class="shield-mark" d="M12 5.6v16.5M6.8 9.2H12"/>
+          </svg>
+        </div>
+        <div class="bar-bg"><div id="shield-bar" class="bar-fill shield-fill"></div></div>
+        <span id="shield-text">0</span>
+        <span id="shield-stacks" aria-label="Shield stacks">&times;0</span>
+      </div>
+
+      <div id="stamina-wrap" class="hud-panel">
+        <div class="hud-icon stamina-icon">&#9889;</div>
+        <div class="bar-bg"><div id="stamina-bar" class="bar-fill stamina-fill"></div></div>
+        <span id="stamina-text">100</span>
+      </div>
+
+      <div id="grenade-wrap" class="hud-panel">
+        <div class="grenade-slot">
+          <span class="grenade-icon smoke-icon cooldown-gray"><svg viewBox="0 0 48 48" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="3"><circle cx="24" cy="26" r="13"/><path d="M18 14V7h12v7M15 24l19 7M9 12l-4 5M38 36l5-4"/><circle cx="24" cy="26" r="18" stroke-width="1"/></g></svg></span><span class="grenade-icon smoke-icon cooldown-color"><svg viewBox="0 0 48 48" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="3"><circle cx="24" cy="26" r="13"/><path d="M18 14V7h12v7M15 24l19 7M9 12l-4 5M38 36l5-4"/><circle cx="24" cy="26" r="18" stroke-width="1"/></g></svg></span>
+          <span id="smoke-count">2</span>
+          <span class="grenade-label">G</span>
+        </div>        <div class="grenade-slot">
+          <span class="grenade-icon frag-icon cooldown-gray"><svg viewBox="0 0 48 48" aria-hidden="true"><g transform="rotate(35 24 24)" fill="none" stroke="currentColor" stroke-width="3"><rect x="14" y="16" width="20" height="25" rx="6"/><path d="M20 16V8h12v5h7v10M15 25h18M15 33h18M24 17v23"/></g></svg></span><span class="grenade-icon frag-icon cooldown-color"><svg viewBox="0 0 48 48" aria-hidden="true"><g transform="rotate(35 24 24)" fill="none" stroke="currentColor" stroke-width="3"><rect x="14" y="16" width="20" height="25" rx="6"/><path d="M20 16V8h12v5h7v10M15 25h18M15 33h18M24 17v23"/></g></svg></span>
+          <span id="frag-count">2</span>
+          <span class="grenade-label">U</span>
+        </div><div class="grenade-slot"><span class="grenade-icon timebomb-icon cooldown-gray"><svg viewBox="0 0 48 48" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2"><circle cx="24" cy="27" r="16"/><path d="M18 11V5h12v6M24 16v13l8 5"/></svg></span><span class="grenade-icon timebomb-icon cooldown-color"><svg viewBox="0 0 48 48" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2"><circle cx="24" cy="27" r="16"/><path d="M18 11V5h12v6M24 16v13l8 5"/></svg></span><span id="timebomb-count">1</span><span class="grenade-label">V</span></div><div class="grenade-slot"><span class="grenade-icon impulse-icon cooldown-gray"><svg viewBox="0 0 48 48" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2"><circle cx="24" cy="24" r="9"/><circle cx="24" cy="24" r="17"/><path d="M24 1v9M24 38v9M1 24h9M38 24h9"/></svg></span><span class="grenade-icon impulse-icon cooldown-color"><svg viewBox="0 0 48 48" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2"><circle cx="24" cy="24" r="9"/><circle cx="24" cy="24" r="17"/><path d="M24 1v9M24 38v9M1 24h9M38 24h9"/></svg></span><span id="impulse-count">1</span><span class="grenade-label">E</span></div>
+      </div>
+
+      <div id="weapon-wrap" class="hud-panel">
+        <div id="weapon-name">SIDEARM</div>
+        <div id="ammo-text">12 / 60</div>
+        <div id="reload-text" class="hidden">
+          <div class="reload-copy">
+            <span>RELOADING</span>
+            <span id="reload-time">0.0s</span>
+          </div>
+          <div class="reload-track"><div id="reload-progress"></div></div>
+        </div>
+      </div>
+
+      <div id="score-wrap" class="hud-panel">
+        <div id="server-pop"><span id="server-pop-count">1</span><span id="server-pop-max">8</span></div>
+        <div>KILLS <span id="kill-count">0</span></div>
+        <div>SCORE <span id="score-count">0</span></div>
+      </div>
+
+      <div id="weapon-slots"></div>
+      <div id="killfeed"></div>
+
+      <!-- Large center timer for deathmatch -->
+      <div id="dm-timer" class="hidden"></div>
+
+      <!-- Kill streak badge -->
+      <div id="streak-badge" class="hidden"></div>
+
+      <!-- Survival: downed overlay -->
+      <div id="downed-overlay" class="hidden">
+        <div class="downed-text">DOWNED</div>
+        <div class="downed-sub">TEAMMATE REVIVING...</div>
+        <div class="downed-bar-wrap"><div id="downed-bar"></div></div>
+        <div id="downed-countdown" class="downed-countdown"></div>
+      </div>
+
+      <!-- Deathmatch death state: the live match remains visible while input
+           is frozen and the authoritative respawn timer runs. -->
+      <div id="respawn-overlay" class="hidden" role="status" aria-live="polite">
+        <div class="respawn-vignette"></div>
+        <div class="respawn-card">
+          <div class="respawn-title">ELIMINATED</div>
+          <div class="respawn-sub">RESPAWNING IN</div>
+          <div id="respawn-countdown">3</div>
+        </div>
+      </div>
+
+      <!-- Survival: wave incoming banner (auto-hides) -->
+      <div id="wave-banner" class="hidden"></div>
+
+      <!-- Mid-match player join/leave toast (auto-hides) -->
+      <div id="join-notification" class="hidden"></div>
+
+      <!-- Teleport blink screen flash -->
+      <div id="teleport-flash"></div>
+
+      <!-- Q ability indicator (teleport blink cooldown ring) -->
+      <div id="ability-q" class="ability-indicator">
+        <span class="ability-key">Q</span>
+        <svg class="ability-art cooldown-gray" viewBox="0 0 48 48" aria-hidden="true"><circle cx="26" cy="9" r="5"/><path d="M20 16h12l5 13-5 2-4-9v12l5 11h-6l-4-9-4 9h-6l6-14V22l-4 8-5-2z"/><path d="M3 17h10M1 24h9M3 32h9" fill="none" stroke="currentColor" stroke-width="2"/></svg><svg class="ability-art cooldown-color" viewBox="0 0 48 48" aria-hidden="true"><circle cx="26" cy="9" r="5"/><path d="M20 16h12l5 13-5 2-4-9v12l5 11h-6l-4-9-4 9h-6l6-14V22l-4 8-5-2z"/><path d="M3 17h10M1 24h9M3 32h9" fill="none" stroke="currentColor" stroke-width="2"/></svg><span class="ability-name">BLINK</span>
+      </div>
+
+      <!-- Scope overlay: visible when ADS on scoped weapons -->
+      <div id="scope-overlay">
+        <div class="scope-ring">
+          <div class="scope-ch-v"></div>
+          <div class="scope-ch-h"></div>
+          <div class="scope-mildot scope-mildot-l"></div>
+          <div class="scope-mildot scope-mildot-r"></div>
+          <div class="scope-mildot scope-mildot-t"></div>
+          <div class="scope-mildot scope-mildot-b"></div>
+          <div class="scope-ch-dot"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===================== POST-MATCH LEADERBOARD ===================== -->
+    <!-- Sits outside #hud so hud.hide() doesn't bury it -->
+    <section id="post-match-ads" class="hidden" aria-label="Between matches">
+      <h2>ADVERTISEMENT</h2>
+      <p>Next match loads in <span id="post-match-ad-countdown" aria-live="polite">5</span>s</p>
+    </section>
+    <div id="leaderboard-overlay" class="hidden">
+      <div class="lb-panel">
+        <div class="lb-winner"><span id="lb-winner-name">SPARTAN</span> <span class="lb-won">WON</span></div>
+        <div class="lb-match-over-sub">FREE FOR ALL &bull; DAYTIME ROOK</div>
+        <div class="lb-tabs" role="tablist" aria-label="Match results">
+          <button class="lb-tab active" type="button" data-lb-tab="leaderboard">LEADERBOARD</button>
+          <button class="lb-tab" type="button" data-lb-tab="earn">EARN</button>
+          <button class="lb-tab" type="button" data-lb-tab="performance">PERFORMANCE</button>
+        </div>
+        <div id="lb-leaderboard-view" class="lb-view">
+          <table class="lb-table">
+            <thead><tr>
+              <th class="lb-th-rank">#</th>
+              <th class="lb-th-name">PLAYER</th>
+              <th>SCORE</th>
+              <th>ASSISTS</th>
+              <th>KILLS</th>
+              <th>DEATHS</th>
+              <th>K/D</th>
+            </tr></thead>
+            <tbody id="lb-rows"></tbody>
+          </table>
+        </div>
+        <div id="lb-earn-view" class="lb-view hidden">
+          <div class="lb-earn-card">
+            <span class="lb-earn-label">MATCH REWARD</span>
+            <span class="lb-earn-total"><span class="lb-earned-coin">&#9670;</span> <span id="lb-earned-val">0</span></span>
+            <span class="lb-earn-detail">Server-validated K · caps and participation rules apply</span>
+          </div>
+        </div>
+        <div id="lb-performance-view" class="lb-view hidden">
+          <div class="lb-performance-grid">
+            <div class="lb-stat"><span>ACCURACY</span><strong id="lb-stat-accuracy">0%</strong></div>
+            <div class="lb-stat"><span>DAMAGE</span><strong id="lb-stat-damage">0</strong></div>
+            <div class="lb-stat"><span>SHOTS / HITS</span><strong id="lb-stat-shots">0 / 0</strong></div>
+            <div class="lb-stat"><span>HEADSHOTS</span><strong id="lb-stat-headshots">0</strong></div>
+            <div class="lb-stat"><span>BEST STREAK</span><strong id="lb-stat-streak">0</strong></div>
+            <div class="lb-stat"><span>TIME ACTIVE</span><strong id="lb-stat-time">0:00</strong></div>
+          </div>
+        </div>
+        <div class="lb-footer">
+          <div class="lb-new-match">NEXT MATCH IN <span id="lb-countdown">10</span>s</div>
+          <div class="lb-bar-wrap"><div id="lb-bar"></div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===================== IN-GAME SCOREBOARD (hold TAB) ===================== -->
+    <div id="scoreboard-overlay" class="hidden">
+      <div class="sb-panel">
+        <div class="sb-head"><div id="sb-sub">FREE FOR ALL</div></div>
+        <div class="sb-tabs" role="tablist" aria-label="Match scoreboard">
+          <button class="sb-tab active" id="sb-tab-leaderboard" data-sb-tab="leaderboard" role="tab" aria-selected="true" aria-controls="sb-leaderboard-view">Leaderboard</button>
+          <button class="sb-tab" id="sb-tab-earn" data-sb-tab="earn" role="tab" aria-selected="false" aria-controls="sb-earn-view" tabindex="-1">Earn</button>
+          <button class="sb-tab" id="sb-tab-performance" data-sb-tab="performance" role="tab" aria-selected="false" aria-controls="sb-performance-view" tabindex="-1">Performance</button>
+        </div>
+        <div id="sb-leaderboard-view" role="tabpanel" aria-labelledby="sb-tab-leaderboard">
+        <table class="sb-table">
+          <thead><tr>
+            <th class="sb-th-rank" aria-label="Rank"></th>
+            <th class="sb-th-name">PLAYER</th>
+            <th>SCORE</th>
+            <th>ASSISTS</th>
+            <th>KILLS</th>
+            <th>DEATHS</th>
+            <th>K/D</th>
+          </tr></thead>
+          <tbody id="sb-rows"></tbody>
+        </table>
+        <div class="sb-spectators" id="sb-spectators">Spectators: —</div>
+        </div>
+        <div id="sb-earn-view" class="sb-detail hidden" role="tabpanel" aria-labelledby="sb-tab-earn">
+          <span class="sb-detail-label">K THIS MATCH · PENDING VALIDATION</span><strong id="sb-earned">0</strong>
+          <p>Coins awarded during this match.</p>
+        </div>
+        <div id="sb-performance-view" class="sb-detail hidden" role="tabpanel" aria-labelledby="sb-tab-performance">
+          <dl id="sb-performance"></dl>
+        </div>
+        <div class="sb-hint">Hold TAB · ← / → to switch tabs</div>
+      </div>
+    </div>
+  </div>
+
+  <script defer src="/maintenance-register.js"></script>
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>

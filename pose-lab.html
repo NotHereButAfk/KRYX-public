@@ -1,0 +1,335 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>pose lab</title>
+<style>html,body{margin:0;background:#20242c}canvas{display:block}</style></head>
+<body>
+<script type="module">
+// ═══════════════════════════════════════════════════════════════════════════
+// Rifle-carry graybox.
+//
+//   ?weapon=m4&aim=0..1&walk=<phase>&run=0..1&firing=0..1&scoped=0..1
+//                                     render the live applyRifleCarry() pose
+//   ?sweep=1                          search anchor/muzzle space for a carry
+//                                     that keeps the hands on the gun AND the
+//                                     gun out of the torso, and print the
+//                                     winning numbers for RifleCarry.js
+//
+// window.__probe reports hand-to-grip error and how deep the weapon sinks into
+// the body (torso/pelvis/head meshes are the unnamed ones; limbs are named).
+// ═══════════════════════════════════════════════════════════════════════════
+import * as THREE from 'three';
+import { buildLowPolyCharacter } from '/src/player/LowPolyModels.js';
+import { rigCharacterLimbs } from '/src/player/PreviewCharacter.js';
+import { buildWeaponModel } from '/src/weapons/WeaponModels.js';
+import { getWeapon } from '/src/weapons/weaponDefs.js';
+import { applyRifleCarry, GRIP_LOCAL, HANDGUARD_LOCAL } from '/src/player/RifleCarry.js';
+import { weaponHandPose } from '/src/weapons/WeaponHandPoses.js';
+import { applyWalkCycle } from '/src/player/Locomotion.js';
+
+const Q = new URLSearchParams(location.search);
+const n = (k, d) => (Q.has(k) ? parseFloat(Q.get(k)) : d);
+const AIM   = n('aim', 0);
+const WALK  = n('walk', 0);      // walk-cycle phase (0 = stand)
+const ANG   = n('ang', -1);      // single camera angle override (radians)
+const MODEL = Q.get('model') || 'vanguard';
+const WEAPON = Q.get('weapon') || 'm4';
+
+const W = 1200, H = 560, NV = ANG >= 0 ? 1 : 3;
+// Galleries capture each completed diagnostic canvas before releasing its
+// WebGL context, so retain the final frame for toDataURL(). This page is a QA
+// lab only; the production arena renderer remains unchanged.
+const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+renderer.setSize(W, H);
+document.body.appendChild(renderer.domElement);
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x20242c);
+scene.add(new THREE.HemisphereLight(0xffffff, 0x404050, 2.2));
+const key = new THREE.DirectionalLight(0xffffff, 1.6); key.position.set(3, 6, 4); scene.add(key);
+const rim = new THREE.DirectionalLight(0x99bbff, 0.9); rim.position.set(-4, 3, -5); scene.add(rim);
+
+const ground = new THREE.Mesh(new THREE.PlaneGeometry(12, 12),
+  new THREE.MeshStandardMaterial({ color: 0x3a4150, roughness: 0.95 }));
+ground.rotation.x = -Math.PI / 2;
+scene.add(ground);
+scene.add(new THREE.GridHelper(12, 24, 0x5a6376, 0x4a5162));
+
+const body = buildLowPolyCharacter(MODEL);
+scene.add(body);
+const rig = rigCharacterLimbs(body);
+
+const weaponDef = getWeapon(WEAPON) || getWeapon('m4');
+const { group: wm } = buildWeaponModel(weaponDef, { procedural: true });
+body.add(wm);
+
+// ── rig constants the poses are solved against ───────────────────────────────
+const UP_ARM = 0.48, FOREARM = 0.385;
+const S_R = new THREE.Vector3( 0.27, 1.76, 0);
+const S_L = new THREE.Vector3(-0.27, 1.76, 0);
+
+function weaponQuat(muzzle, roll) {
+  const z = muzzle.clone().normalize().negate();
+  const x = new THREE.Vector3().crossVectors(new THREE.Vector3(0, 1, 0), z).normalize();
+  const y = new THREE.Vector3().crossVectors(z, x);
+  const q = new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().makeBasis(x, y, z));
+  if (roll) q.multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), roll));
+  return q;
+}
+// 2-bone IK: elbow is a hinge on local X, shoulder is a free 3-DOF rotation.
+function solveArm(S, T, swivel) {
+  const d = T.clone().sub(S), D = d.length(), reach = UP_ARM + FOREARM;
+  const c = THREE.MathUtils.clamp(
+    (Math.min(D, reach * 0.995) ** 2 - UP_ARM ** 2 - FOREARM ** 2) / (2 * UP_ARM * FOREARM), -1, 1);
+  const te = Math.acos(c);
+  const h = new THREE.Vector3(0, -UP_ARM - FOREARM * Math.cos(te), -FOREARM * Math.sin(te));
+  const q = new THREE.Quaternion().setFromUnitVectors(h.clone().normalize(), d.clone().normalize());
+  if (swivel) q.premultiply(new THREE.Quaternion().setFromAxisAngle(d.clone().normalize(), swivel));
+  const e = new THREE.Euler().setFromQuaternion(q, 'XYZ');
+  return { e: [e.x, e.y, e.z], elbowX: te, reach: D / reach,
+           elbow: new THREE.Vector3(0, -UP_ARM, 0).applyQuaternion(q).add(S) };
+}
+function buildPose(muzzle, roll, anchor, swR, swL) {
+  const q = weaponQuat(muzzle, roll);
+  const wp = anchor.clone().sub(GRIP_LOCAL.clone().applyQuaternion(q));
+  const T_L = wp.clone().add(HANDGUARD_LOCAL.clone().applyQuaternion(q));
+  return { q, wp, r: solveArm(S_R, anchor, swR), l: solveArm(S_L, T_L, swL) };
+}
+function poseInto(p) {
+  wm.position.copy(p.wp); wm.quaternion.copy(p.q);
+  rig.armR.rotation.set(...p.r.e); rig.elbowR.rotation.set(p.r.elbowX, 0, 0);
+  rig.armL.rotation.set(...p.l.e); rig.elbowL.rotation.set(p.l.elbowX, 0, 0);
+}
+
+// ── body-penetration probe ───────────────────────────────────────────────────
+// Torso/pelvis/head are the UNNAMED meshes (limbs all carry names); AABB those
+// and test every weapon vertex against them.
+const _LIMB = /^(uarm|farm|elbow|hand|thigh|lleg|knee|boot)_/;
+const solids = [];
+body.updateWorldMatrix(true, true);
+body.traverse((o) => {
+  if (!o.isMesh) return;
+  let p = o, inWeapon = false;
+  while (p) { if (p === wm) { inWeapon = true; break; } p = p.parent; }
+  if (inWeapon || _LIMB.test(o.name)) return;
+  const b = new THREE.Box3().setFromObject(o);
+  if (b.isEmpty()) return;
+  const c = b.getCenter(new THREE.Vector3());
+  // Deltoids + pauldrons are excluded: a buttstock tucked INTO the shoulder
+  // pocket is the pose, not a clip. Only the core torso/pelvis/head count.
+  if (Math.abs(c.x) > 0.22) return;
+  // Boxing a cone (the trapezius, the abdomen taper) reports phantom clips at
+  // its corners, so cylinders/spheres get their real shape.
+  const g = o.geometry, t = g.type, prm = g.parameters || {};
+  if (t === 'CylinderGeometry') {
+    solids.push({ kind: 'cyl', cx: c.x, cz: c.z, y0: b.min.y, y1: b.max.y,
+                  rt: prm.radiusTop, rb: prm.radiusBottom, box: b });
+  } else if (t === 'SphereGeometry') {
+    solids.push({ kind: 'sph', c, r: prm.radius, box: b });
+  } else {
+    solids.push({ kind: 'box', box: b });
+  }
+});
+function penetration(p, s) {
+  if (!s.box.containsPoint(p)) return 0;
+  if (s.kind === 'cyl') {
+    const f = (p.y - s.y0) / Math.max(1e-6, s.y1 - s.y0);
+    const r = s.rb + (s.rt - s.rb) * f;                 // radius at this height
+    const d = Math.hypot(p.x - s.cx, p.z - s.cz);
+    if (d >= r) return 0;
+    return Math.min(r - d, p.y - s.y0, s.y1 - p.y);
+  }
+  if (s.kind === 'sph') {
+    const d = p.distanceTo(s.c);
+    return d < s.r ? s.r - d : 0;
+  }
+  const b = s.box;
+  return Math.min(p.x - b.min.x, b.max.x - p.x,
+                  p.y - b.min.y, b.max.y - p.y,
+                  p.z - b.min.z, b.max.z - p.z);
+}
+// Cache the weapon's vertices in weapon-local space once, so a sweep only pays
+// for the transform.
+const wVerts = [];
+{
+  const inv = new THREE.Matrix4().copy(wm.matrixWorld).invert();
+  wm.traverse((o) => {
+    const pos = o.isMesh && o.geometry?.attributes?.position;
+    if (!pos) return;
+    const m = new THREE.Matrix4().multiplyMatrices(inv, o.matrixWorld);
+    for (let i = 0; i < pos.count; i += 2)   // every other vertex: plenty dense
+      wVerts.push(new THREE.Vector3().fromBufferAttribute(pos, i).applyMatrix4(m));
+  });
+}
+const _p = new THREE.Vector3();
+const _toBody = new THREE.Matrix4();
+let clipWhere = null;
+function clipDepth() {
+  body.updateWorldMatrix(true, true);
+  // The solids were captured with the body at the origin, so measure the weapon
+  // in BODY space — the bob/lean the gait applies to the body must not count.
+  _toBody.copy(body.matrixWorld).invert().multiply(wm.matrixWorld);
+  let worst = 0; clipWhere = null;
+  for (const v of wVerts) {
+    _p.copy(v).applyMatrix4(_toBody);
+    for (const s of solids) {
+      const d = penetration(_p, s);
+      if (d > worst) { worst = d; clipWhere = s.box.getCenter(new THREE.Vector3()).toArray().map(x => +x.toFixed(2)); }
+    }
+  }
+  return worst;
+}
+
+// ── sweep mode: find a carry that reads right and stays out of the body ──────
+if (Q.has('sweep')) {
+  const f = (x) => x.toFixed(3);
+  const results = [];
+  const which = Q.get('sweep');            // 'patrol' | 'aim'
+  const cand = [];
+  if (which === 'aim') {
+    for (const ax of [0.16, 0.20, 0.24, 0.28, 0.32])
+      for (const ay of [1.30, 1.34, 1.38, 1.42, 1.46])
+        for (const az of [-0.16, -0.22, -0.28, -0.34])
+          for (const dy of [-0.02, -0.06, -0.10])
+            cand.push({ m: new THREE.Vector3(0, dy, -1), roll: 0,
+                        a: new THREE.Vector3(ax, ay, az) });
+  } else {
+    for (const ax of [0.18, 0.21, 0.24, 0.27, 0.30])
+      for (const ay of [1.22, 1.26, 1.30, 1.34])
+        for (const az of [-0.20, -0.25, -0.30, -0.35])
+          for (const m of [[-0.50, -0.52, -0.69], [-0.44, -0.58, -0.69],
+                           [-0.56, -0.46, -0.69], [-0.50, -0.52, -0.80],
+                           [-0.60, -0.50, -0.62], [-0.46, -0.62, -0.64]])
+            for (const roll of [0.15, 0.25, 0.35])
+              cand.push({ m: new THREE.Vector3(...m), roll,
+                          a: new THREE.Vector3(ax, ay, az) });
+  }
+  for (const c of cand) {
+    for (const swR of [-0.6, -0.2, 0.2]) {
+      for (const swL of [0.2, 0.4, 0.6]) {
+        const p = buildPose(c.m, c.roll, c.a, swR, swL);
+        if (p.r.reach > 0.92 || p.l.reach > 0.92) continue;   // no locked-out arms
+        poseInto(p);
+        const cd = clipDepth();
+        results.push({ cd, where: clipWhere, swR, swL, c, p });
+      }
+    }
+  }
+  // Rank: no clipping first, then hug the centreline (a rifle held way out to
+  // the side reads wrong even when it's geometrically clear).
+  const score = (r) => (r.cd > 0.008 ? r.cd * 100 : 0) + r.c.a.x
+    + Math.abs(r.p.l.reach - 0.85) + Math.abs(r.p.r.reach - 0.58);
+  results.sort((a, b) => score(a) - score(b));
+  window.__sweep = results.slice(0, 8).map((r) => ({
+    clip: +r.cd.toFixed(4), where: r.where,
+    anchor: r.c.a.toArray().map((v) => +v.toFixed(3)),
+    muzzle: r.c.m.toArray().map((v) => +v.toFixed(3)),
+    swR: r.swR, swL: r.swL,
+    wp: r.p.wp.toArray().map((v) => +v.toFixed(3)),
+    wr: new THREE.Euler().setFromQuaternion(r.p.q, 'XYZ').toArray().slice(0, 3).map((v) => +v.toFixed(3)),
+    armR: r.p.r.e.map((v) => +v.toFixed(3)), elbowR: +r.p.r.elbowX.toFixed(3),
+    armL: r.p.l.e.map((v) => +v.toFixed(3)), elbowL: +r.p.l.elbowX.toFixed(3),
+    reach: [+r.p.r.reach.toFixed(2), +r.p.l.reach.toFixed(2)],
+  }));
+  const pick = results[Math.min(results.length - 1, Math.max(0, n('pick', 0)))];
+  if (pick) poseInto(pick.p);
+} else {
+  // dt = 1 ⇒ the ease factor saturates, so these land exactly on the pose.
+  const gait = applyWalkCycle(rig, {
+    t: WALK, moving: !!Q.has('walk'), run: n('run', 0), dt: 1,
+    crouch: n('crouch', 0), slide: n('slide', 0), grounded: n('grounded', 1) > 0,
+  });
+  body.position.y = gait.bob;
+  body.rotation.order = 'YXZ';
+  body.rotation.x = gait.lean;
+  applyRifleCarry(rig, wm, AIM, 1, {
+    swing: gait.swing, kick: n('kick', 0), aimPitch: n('pitch', 0),
+    reload: n('reload', 0), swap: n('swap', 0), flinch: n('flinch', 0),
+    throwP: n('throw', 0), bodyPitch: gait.lean,
+    move: Q.has('walk') ? 1 : 0, run: n('run', 0),
+    firing: n('firing', 0), scoped: n('scoped', 0),
+  });
+}
+
+body.updateWorldMatrix(true, true);
+const handW = {};
+const _inv = new THREE.Matrix4().copy(body.matrixWorld).invert();
+body.traverse((o) => { if (/^hand_[LR]$/.test(o.name))
+  handW[o.name] = o.getWorldPosition(new THREE.Vector3()).applyMatrix4(_inv); });
+// Skinned Hero bodies expose wrist bones instead of one mesh per hand.
+const heroBones = body.userData?.bones;
+if (!handW.hand_R && heroBones?.handR)
+  handW.hand_R = heroBones.handR.getWorldPosition(new THREE.Vector3()).applyMatrix4(_inv);
+if (!handW.hand_L && heroBones?.handL)
+  handW.hand_L = heroBones.handL.getWorldPosition(new THREE.Vector3()).applyMatrix4(_inv);
+const handPose = weaponHandPose(wm);
+const gripW = new THREE.Vector3(...handPose.trigger).multiply(wm.scale)
+  .applyQuaternion(wm.quaternion).add(wm.position);
+const hgW   = wm.userData.rifleSupportTarget ||
+  HANDGUARD_LOCAL.clone().applyQuaternion(wm.quaternion).add(wm.position);
+// Lowest point of either boot, in WORLD space (bob included) — how well the
+// stride keeps the feet on the floor.
+let footLow = Infinity, footHigh = -Infinity;
+{
+  const bb = new THREE.Box3();
+  body.traverse((o) => {
+    if (!o.isMesh || !/^boot_/.test(o.name)) return;
+    bb.setFromObject(o);
+    footLow = Math.min(footLow, bb.min.y);
+  });
+  for (const side of ['L', 'R']) {
+    let lo = Infinity;
+    body.traverse((o) => {
+      if (!o.isMesh || !new RegExp('^boot_' + side).test(o.name)) return;
+      bb.setFromObject(o); lo = Math.min(lo, bb.min.y);
+    });
+    footHigh = Math.max(footHigh, lo);   // the higher of the two planted feet
+  }
+}
+const receiverRight = wm.position.x
+  - body.worldToLocal(rig.armR.getWorldPosition(new THREE.Vector3())).x;
+window.__probe = {
+  footLow: +footLow.toFixed(3), footHigh: +footHigh.toFixed(3),
+  gripErr: handW.hand_R ? +handW.hand_R.distanceTo(gripW).toFixed(4) : null,
+  hgErr:   handW.hand_L ? +handW.hand_L.distanceTo(hgW).toFixed(4)   : null,
+  receiverRight: +receiverRight.toFixed(4),
+  // A merged SkinnedMesh spans the whole body, so its global AABB cannot be a
+  // meaningful penetration solid. The lateral shoulder metric above is the
+  // regression gate for Hero bodies; keep the geometric probe for segmented.
+  clip: body.userData?.isHero ? null : +clipDepth().toFixed(4),
+  where: body.userData?.isHero ? null : clipWhere,
+};
+if (Q.has('dbg')) {
+  const dot = (p, c) => { const m = new THREE.Mesh(new THREE.SphereGeometry(0.04, 10, 8),
+    new THREE.MeshBasicMaterial({ color: c, depthTest: false })); m.renderOrder = 99;
+    m.position.copy(p); body.add(m); };
+  dot(gripW, 0x00ff66); dot(hgW, 0x00aaff);
+}
+
+const weaponSpan = new THREE.Box3().setFromObject(wm)
+  .getSize(new THREE.Vector3()).length();
+// Long launchers/snipers need a wider diagnostic lens in the narrow three-view
+// panels; otherwise a clear gun can look embedded simply because both ends are
+// cropped off. Compact guns retain the closer portrait framing.
+const cam = new THREE.PerspectiveCamera(weaponSpan > 1.25 ? 44 : 28,
+  (W / NV) / H, 0.1, 100);
+const target = new THREE.Vector3(0, 0.95, 0);
+const angles = ANG >= 0 ? [{ a: ANG, e: 0.08 }] : [
+  { a: Math.PI,        e: 0.06 },   // model's FRONT (-Z)
+  { a: Math.PI * 0.72, e: 0.10 },   // three-quarter
+  { a: Math.PI * 0.5,  e: 0.05 },   // model's right side
+];
+renderer.setScissorTest(true);
+angles.forEach((v, i) => {
+  const r = 4.4;
+  cam.position.set(
+    target.x + Math.sin(v.a) * Math.cos(v.e) * r,
+    target.y + Math.sin(v.e) * r + 0.15,
+    target.z + Math.cos(v.a) * Math.cos(v.e) * r
+  );
+  cam.lookAt(target);
+  const x = i * (W / NV);
+  renderer.setViewport(x, 0, W / NV, H);
+  renderer.setScissor(x, 0, W / NV, H);
+  renderer.render(scene, cam);
+});
+window.__ready = true;
+</script>
+</body></html>

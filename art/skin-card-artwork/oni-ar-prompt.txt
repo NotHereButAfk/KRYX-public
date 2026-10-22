@@ -1,0 +1,5 @@
+Generator: built-in image_gen, edit mode.
+Input: public/assets/weapon-skins/remake_236.png
+Output: public/assets/anime-skin-cards/remake_236.webp
+
+Use case: compositing. Asset type: square game shop skin illustration. Edit target: attached original red and silver sci-fi auto rifle. Preserve its recognizable silhouette, proportions, red armor, silver bands, stock, magazine, cyan details, and barrel; no new weapon parts. Make a polished anime cel-shaded illustration of this exact weapon, large diagonal three-quarter view filling 80% of a square composition, fully in frame. Replace the empty background with an original atmospheric crimson-lit futuristic shrine courtyard, dark volcanic stone, drifting red embers and pale mist. The background should complement the red-and-silver Oni theme, with strong subject separation and detailed painted anime environments like premium collectible game card artwork. No characters, text, logos, prices or watermarks. Save the resulting image for use in the project.

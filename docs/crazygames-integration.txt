@@ -1,0 +1,50 @@
+CrazyGames account integration
+
+Entry: https://kryx.live/crazygames.html (inside the CrazyGames preview/player).
+Normal index.html retains the existing website authentication and ads.
+The dedicated build removes third-party ad requests and does not install the
+ad-blocker gate. Ordinary login/register/logout controls are replaced by the
+CrazyGames login prompt. Guests do not receive registered-player progress.
+
+Server verification uses only the fixed official SDK public-key endpoint and
+RS256. Expiry, issue time, optional not-before, user ID and game ID are checked.
+The fixed game ID is 139186, verified from the signed token delivered in the
+owner's KRYX draft preview on 2026-10-11. The portal draft UUID
+38e21277-c54d-4f92-8c18-2d6125432cf2 is a separate submission identifier.
+Set CRAZYGAMES_GAME_ID on the server if CrazyGames assigns a different token
+gameId for the final release. Never dynamically accept a token's game ID:
+the server must compare it with this fixed operator-configured value.
+No private CrazyGames API key is required for public-key verification.
+
+users.crazygames_id is unique. Existing accounts are never merged by username
+or email. Repeated logins update the display name and preserve the same user
+row, stats, inventory, achievements and economy records. Password login does
+not accept these provider accounts. Existing KRYX purchases are not migrated.
+
+The embedded session uses Secure, HttpOnly, SameSite=None, Partitioned cookies.
+After login the client checks /api/account/me before starting the game. A
+blocked cookie or rejected identity stops startup with a retry message rather
+than silently losing progress. Account changes reload the game and reconnect.
+
+Checks:
+node tools/crazygames_account_check.mjs
+node tools/crazygames_client_check.mjs (after npm run build)
+npm run test:account
+
+Signed-in Edge preview and automatic account restoration passed on 2026-10-11.
+Platform integration includes room data, invitation links, join listeners,
+instant multiplayer private rooms, loading/play events and enforced audio mute.
+Private rooms have eight seats, no cash rewards, a maximum of eight concurrent
+rooms, and expire after two minutes without human players. Map changes keep
+the same humans together. Public deathmatch/survival remain separate.
+The CrazyGames build disables chat and external purchase menus for Basic Launch.
+Normal website chat, purchases and advertisements are unchanged.
+node tools/crazygames_multiplayer_check.mjs tests two real sockets and rotation.
+Before submission, complete live platform QA and measure initial loading.
+
+CrazyGames presentation uses the original connected HeroBody and procedural
+first-person gloves, plus original Blender arsenal-v1 weapons. Imported EV
+character/arm bakes, cosmetic collection models and legacy GLB preloads are
+disabled on this entry point. Cosmetic inventory is unavailable there. Website
+presentation is unchanged. Map inclusion is authorized by the owner.
+Gameplay transitions report immediately as well as through the polling fallback.

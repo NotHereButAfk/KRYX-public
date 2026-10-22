@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>KYX.IO — Privacy policy</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Michroma&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet" />
+</head>
+<body>
+  <div class="auth-page">
+    <header class="login-topbar">
+      <a class="login-brand" href="/">KYX<span>.IO</span></a>
+      <nav class="login-nav"><a class="login-nav-link" href="/">Play</a><a class="login-nav-link" href="/login">Log in</a></nav>
+    </header>
+    <main class="legal-main">
+      <h1 class="login-title">Privacy policy</h1>
+      <div class="legal-copy">
+        <p>On kryx.live, account registration and login use our game server. We store your username, email address, password hash, game statistics, achievement progress, cosmetic rewards, and active login sessions to operate your account. Browser storage also holds settings and cached profile information.</p>
+        <h2>Browser storage</h2>
+        <p>Account passwords are stored on the server as salted scrypt hashes, not plaintext. Login uses an HttpOnly session cookie. Clearing browser storage does not delete your server account or its progress. Local development builds may use a separate browser-only demo account store.</p>
+        <p>When you request password recovery, the configured email provider processes your email address and a temporary four-digit code to deliver the message. Codes expire after ten minutes; the account database stores a keyed hash rather than the code itself. A successful password reset invalidates the code and your existing login sessions.</p>
+        <h2>Skin purchases</h2>
+        <p>For Solana skin purchases, the server stores your account ID, purchased item, payment currency and amount, order reference, quote, accepted terms version, timestamps, merchant address, and transaction signature. The blockchain transaction is public and may reveal the paying wallet address. We use a Solana RPC service to verify payment and Coinbase public market data to quote SOL prices. We do not request or store wallet private keys or recovery phrases. Purchase records remain on the server for delivery and support; clearing browser storage does not delete them.</p>
+        <h2>Online matches</h2>
+        <p>When you join an online match, the game server processes your session and gameplay state to run the match and record account progress.</p>
+        <p><a class="login-link" href="/register">Return to account creation</a></p>
+      </div>
+    </main>
+  </div>
+  <script type="module" src="/src/legalPage.js"></script>
+</body>
+</html>

@@ -1,0 +1,142 @@
+[
+  {
+    "id": 0,
+    "slug": "quarantine",
+    "name": "Quarantine",
+    "design": "hazmat",
+    "details": 9
+  },
+  {
+    "id": 1,
+    "slug": "riot",
+    "name": "Riot Breaker",
+    "design": "riot",
+    "details": 7
+  },
+  {
+    "id": 2,
+    "slug": "miner",
+    "name": "Deep Miner",
+    "design": "miner",
+    "details": 6
+  },
+  {
+    "id": 3,
+    "slug": "medic",
+    "name": "Lost Medic",
+    "design": "medic",
+    "details": 4
+  },
+  {
+    "id": 4,
+    "slug": "cinder",
+    "name": "Cinder Husk",
+    "design": "fire",
+    "details": 14
+  },
+  {
+    "id": 5,
+    "slug": "bloom",
+    "name": "Spore Bloom",
+    "design": "mushroom",
+    "details": 15
+  },
+  {
+    "id": 6,
+    "slug": "thorn",
+    "name": "Thornwalker",
+    "design": "garden",
+    "details": 19
+  },
+  {
+    "id": 7,
+    "slug": "cryo",
+    "name": "Cryo Subject",
+    "design": "ice",
+    "details": 9
+  },
+  {
+    "id": 8,
+    "slug": "reactor",
+    "name": "Reactor Leak",
+    "design": "toxic",
+    "details": 7
+  },
+  {
+    "id": 9,
+    "slug": "diver",
+    "name": "Sunken Diver",
+    "design": "diver",
+    "details": 8
+  },
+  {
+    "id": 10,
+    "slug": "scrapper",
+    "name": "Scrap Collector",
+    "design": "scrap",
+    "details": 9
+  },
+  {
+    "id": 11,
+    "slug": "warden",
+    "name": "Prison Warden",
+    "design": "warden",
+    "details": 7
+  },
+  {
+    "id": 12,
+    "slug": "runner",
+    "name": "Track Runner",
+    "design": "runner",
+    "details": 7
+  },
+  {
+    "id": 13,
+    "slug": "engineer",
+    "name": "Dead Engineer",
+    "design": "engineer",
+    "details": 10
+  },
+  {
+    "id": 14,
+    "slug": "parasite",
+    "name": "Parasite Host",
+    "design": "parasite",
+    "details": 8
+  },
+  {
+    "id": 15,
+    "slug": "bone",
+    "name": "Bone Carapace",
+    "design": "bone",
+    "details": 14
+  },
+  {
+    "id": 16,
+    "slug": "signal",
+    "name": "Signal Lost",
+    "design": "antenna",
+    "details": 8
+  },
+  {
+    "id": 17,
+    "slug": "breacher",
+    "name": "Breach Unit",
+    "design": "breacher",
+    "details": 7
+  },
+  {
+    "id": 18,
+    "slug": "crystal",
+    "name": "Crystal Revenant",
+    "design": "crystal",
+    "details": 12
+  },
+  {
+    "id": 19,
+    "slug": "scavenger",
+    "name": "Wasteland Scavenger",
+    "design": "scavenger",
+    "details": 10
+  }
+]
