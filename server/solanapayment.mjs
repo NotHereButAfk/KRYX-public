@@ -30,7 +30,7 @@ export function quoteUnits(cents, asset, solUsd) {
 export function paymentUrl(order) {
   const params = new URLSearchParams({
     amount: decimalAmount(order.amount_units, order.asset === 'SOL' ? 9 : 6),
-    reference: order.reference, label: 'KYX.IO', message: `Skin purchase ${order.id}`,
+    reference: order.reference, label: 'KRYX.IO', message: `Skin purchase ${order.id}`,
   });
   if (order.asset === 'USDC') params.set('spl-token', USDC_MINT);
   return `solana:${order.merchant}?${params}`;

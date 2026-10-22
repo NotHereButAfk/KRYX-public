@@ -252,7 +252,7 @@ export class MenuUI {
       const url = URL.createObjectURL(new Blob([JSON.stringify(settings, null, 2)], { type: 'application/json' }));
       const link = document.createElement('a');
       link.href = url;
-      link.download = 'kyx-settings.json';
+      link.download = 'kryx-settings.json';
       link.click();
       URL.revokeObjectURL(url);
     });

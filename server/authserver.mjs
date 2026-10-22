@@ -182,7 +182,7 @@ export function makeAuthServer({ server, port, staticRoot, targetPopulation = 0,
   room.mode=mode;
   const staticFallback = staticRoot
     ? staticHandler(staticRoot)
-    : (_req, res) => { res.writeHead(200, { 'content-type': 'text/plain' }); res.end('kyx auth server'); };
+    : (_req, res) => { res.writeHead(200, { 'content-type': 'text/plain' }); res.end('kryx auth server'); };
   const accounts = accountService === undefined ? createAccountService() : accountService;
   const achievements = createAchievementService(accounts);
   const economy = createEconomyService(accounts, {serverId:process.env.E_SERVER_ID || 'public-1',mode,privateMatch:process.env.PRIVATE_MATCH==='1'});
