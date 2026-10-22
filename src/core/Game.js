@@ -317,6 +317,7 @@ export class Game {
     document.addEventListener('sponsor-play-blocked', this._onSponsorBlocked);
     this._rafId = requestAnimationFrame(() => this._loop());
     document.getElementById('boot-retry')?.addEventListener('click', () => {
+      clearTimeout(this._startupRetryTimer);
       this._startupReadyPromise = this._runConnectSequence();
     });
     // Match entry awaits this exact promise. The menu is initialized before
@@ -448,11 +449,12 @@ export class Game {
 
   // ── Connect sequence ─────────────────────────────────────────────────────────
 
-  // Game and map cards each remain visible for at least seven seconds,
-  // and longer when their actual loading work has not completed.
-  _setStartupProgress(status, progress, detail = status) {
-    const value = Math.max(0, Math.min(100, Math.round(progress)));
+  // Stage completion drives progress; a completed stage never moves backward.
+  _setStartupProgress(status, progress, detail = status, stage = null) {
+    const value = Math.max(this._startupProgress || 0, Math.max(0, Math.min(100, Math.round(progress))));
+    this._startupProgress = value;
     const screen = document.getElementById('connect-screen');
+    if (screen) screen.dataset.stage = stage || (value >= 100 ? 'ready' : value >= 82 ? 'systems' : 'assets');
     const statusEl = document.getElementById('boot-status');
     const detailEl = document.getElementById('boot-detail');
     const percentEl = document.getElementById('boot-percent');
@@ -463,16 +465,18 @@ export class Game {
     if (percentEl) percentEl.textContent = `${value}%`;
     if (fill) fill.style.width = `${value}%`;
     bar?.setAttribute('aria-valuenow', String(value));
+    bar?.setAttribute('aria-valuetext', `${value}% — ${detail}`);
   }
 
   _showStartupError(error) {
     if (this._disposed) return;
     const screen = document.getElementById('connect-screen');
     screen?.classList.remove('hidden', 'fade-out');
-    screen?.classList.remove('boot-error');
-    this._setStartupProgress('LOADING GAME...', this._startupProgress || 0,
-      'Retrying game preparation automatically...');
-    document.getElementById('boot-retry')?.classList.add('hidden');
+    screen?.classList.add('boot-error');
+    if (screen) screen.dataset.state = 'retrying';
+    this._setStartupProgress('PREPARATION INTERRUPTED', this._startupProgress || 0,
+      'Retrying automatically. You can also retry now.', 'assets');
+    document.getElementById('boot-retry')?.classList.remove('hidden');
     clearTimeout(this._startupRetryTimer);
     this._startupRetryTimer = setTimeout(() => {
       if (!this._disposed) this._startupReadyPromise = this._runConnectSequence();
@@ -482,30 +486,31 @@ export class Game {
   async _runConnectSequence() {
     if (this._startupInFlight) return;
     this._startupInFlight = true;
+    clearTimeout(this._startupRetryTimer);
+    const attempt = { acceptingAssetProgress: true };
+    this._startupAttempt = attempt;
     const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
     const startupShownAt = performance.now();
     const connectScreen = document.getElementById('connect-screen');
     connectScreen?.classList.remove('hidden', 'fade-out', 'boot-error');
+    if (connectScreen) connectScreen.dataset.state = 'loading';
     document.getElementById('boot-retry')?.classList.add('hidden');
     this._startupProgress = 0;
     this._setStartupProgress('INITIALIZING...', 0, 'Starting engine...');
     try {
       await delay(70); // guarantee the first-paint loader reaches the screen
-      this._startupProgress = 10;
       this._setStartupProgress('LOADING GAME...', 10, 'Loading player session...');
 
       let loadedStages = 0;
       await this._startPresentationPreloads((label) => {
-        this._startupProgress = 10 + (++loadedStages * 20);
-        this._setStartupProgress('LOADING GAME...', this._startupProgress, `Loaded ${label}`);
+        if (this._disposed || this._startupAttempt !== attempt || !attempt.acceptingAssetProgress) return;
+        this._setStartupProgress('LOADING GAME...', 10 + (++loadedStages * 16), `Loaded ${label}`);
       });
-      this._startupProgress = 72;
-      this._setStartupProgress('LOADING GAME...', 72, 'Preparing gameplay systems...');
-      this._startupProgress = 92;
+      attempt.acceptingAssetProgress = false;
+      this._setStartupProgress('LOADING GAME...', 82, 'Preparing gameplay systems...');
       this._setStartupProgress('PREPARING MATCH...', 92, 'Preparing menu and match systems...');
       this._initAuth();
       await delay(80);
-      this._startupProgress = 100;
       this._setStartupProgress('PREPARING ARENA...', 100, 'Game assets loaded — preparing arena...');
       await delay(remainingLoadingMs(startupShownAt));
       this._setStartupProgress('READY', 100, 'Game loaded');
@@ -553,6 +558,7 @@ export class Game {
       this._hideMapLoading();
       this._showStartupError(error);
     } finally {
+      attempt.acceptingAssetProgress = false;
       this._startupInFlight = false;
     }
   }
@@ -1537,6 +1543,7 @@ export class Game {
   _showServerJoining(modeId) {
     const el = document.getElementById('map-loading');
     if (!el) return;
+    el.dataset.state = 'loading';
     const name = el.querySelector('.ml-name');
     // Wait for server welcome before displaying an arena image or name.
     // Guessing here flashes the default/previous map before the real one.
@@ -1565,8 +1572,9 @@ export class Game {
   _showServerJoinError(message = 'No public server is available') {
     const el = document.getElementById('map-loading');
     if (!el) return;
+    el.dataset.state = 'retrying';
     const name = el.querySelector('.ml-name');
-    if (name) name.textContent = 'GOING INTO MAINTENANCE';
+    if (name) name.textContent = 'CONNECTION INTERRUPTED';
     const building = document.getElementById('ml-building');
     if (building) building.textContent = 'The game server is temporarily unavailable. Please try again shortly.';
     const region = document.getElementById('ml-region');
@@ -1657,6 +1665,7 @@ export class Game {
   ) {
     const el = document.getElementById('map-loading');
     if (!el) return;
+    el.dataset.state = 'loading';
     const map = getImportedMap(mapId);
     el.style.setProperty('--ml-image', `url("${map.loadingImage}")`);
     const building = document.getElementById('ml-building');
@@ -1664,12 +1673,12 @@ export class Game {
       ? 'Joining lobby and loading arena...'
       : 'Loading arena geometry...';
     const TIPS = [
-      'TIP: keep moving between cover to avoid enemy fire',
-      'TIP: hold TAB to check the scoreboard mid-match',
-      'TIP: stop sprinting before firing for better accuracy',
-      'TIP: headshots deal bonus damage — aim high',
-      'TIP: use stairs and high ground to find another route',
-      'TIP: press ESC to open the menu',
+      'Keep moving between cover to avoid enemy fire',
+      'Hold TAB to check the scoreboard mid-match',
+      'Stop sprinting before firing for better accuracy',
+      'Headshots deal bonus damage — aim high',
+      'Use stairs and high ground to find another route',
+      'Press ESC to open the menu',
     ];
     const modeNames = {
       deathmatch: 'Deathmatch', survival: 'Survival',
@@ -1684,7 +1693,7 @@ export class Game {
     if (players) {
       const count = this._selectedMatch?.players;
       const capacity = this._selectedMatch?.capacity || MAX_PLAYERS;
-      players.textContent = Number.isFinite(count) ? `${count} / ${capacity} players` : `${capacity} players`;
+      players.textContent = Number.isFinite(count) ? `${count} / ${capacity} players` : `Up to ${capacity} players`;
     }
     const tip = document.getElementById('ml-tip');
     if (tip) tip.textContent = TIPS[Math.floor(Math.random() * TIPS.length)];
@@ -1736,8 +1745,15 @@ export class Game {
     const el = document.getElementById('map-loading');
     const status = document.getElementById('ml-building');
     const fill = document.getElementById('ml-progress-fill');
+    const percent = document.getElementById('ml-percent');
+    const bar = el?.querySelector('.ml-progress');
+    const value = Math.max(0, Math.min(100, Math.round(progress)));
     if (status) status.textContent = label;
-    if (fill) fill.style.width = `${Math.max(0, Math.min(100, progress))}%`;
+    if (fill) fill.style.width = `${value}%`;
+    if (percent) percent.textContent = `${value}%`;
+    if (el) el.dataset.stage = ready ? 'ready' : value <= 12 ? 'joining' : 'arena';
+    bar?.setAttribute('aria-valuenow', String(value));
+    bar?.setAttribute('aria-valuetext', `${value}% — ${label}`);
     el?.classList.toggle('ml-arena-ready', ready);
   }
 
@@ -1752,7 +1768,7 @@ export class Game {
         this._roundGateVisible = true;
         this._showMapLoading(this._mode?.id || 'deathmatch', c.mapId, { joining: true });
       }
-      if (!loading) this._setMapLoadingPhase(`Waiting for ${c.roundGate?.pending || 0} player(s) — up to 10 seconds`, 100, true);
+      if (!loading) this._setMapLoadingPhase(`Waiting for ${c.roundGate?.pending || 0} player(s) — up to 10 seconds`, 100, false);
       return;
     }
     if (this._roundGateVisible) { this._roundGateVisible = false; this._hideMapLoading(); }

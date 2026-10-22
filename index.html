@@ -8,6 +8,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Michroma&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/src/style.css" />
+  <link rel="stylesheet" href="/src/loading.css" />
 </head>
 <body>
   <!-- Colour-blind correction matrices (Phase 8 accessibility). Applied to the
@@ -28,18 +29,20 @@
 
     <!-- First-paint startup shell. It is deliberately static HTML so branding
          appears before the game bundle, renderer, map, or network can load. -->
-    <div id="connect-screen" class="overlay" aria-live="polite" aria-label="Loading game">
+    <div id="connect-screen" class="overlay" aria-label="Loading game" data-stage="assets" data-state="loading">
       <div class="boot-shell">
-        <svg class="boot-connect-logo" viewBox="0 0 420 100" role="img" aria-label="KRYX.IO">
-          <text x="210" y="78" text-anchor="middle" fill="currentColor" style="font:bold 78px Arial,sans-serif">KRYX.IO</text>
-        </svg>
-        <span class="boot-activity" aria-hidden="true"></span>
-        <div id="boot-status" class="boot-connect-text">INITIALIZING...</div>
-        <div class="boot-progress" role="progressbar" aria-label="Game loading progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
-          <span id="boot-progress-fill"></span>
+        <header class="loading-header"><span class="loading-brand">KRYX<span> / </span></span><span class="loading-chapter">01 <i>/</i> 02 &nbsp; GAME PREPARATION</span></header>
+        <div class="boot-hero">
+          <div class="boot-intro"><span class="loading-eyebrow">BROWSER ARENA SHOOTER</span><h1>ENTER<br>THE <em>ARENA.</em></h1><p>Gear up. Find your angle.<br>Make every shot count.</p></div>
+          <div class="boot-art" aria-hidden="true"><img src="/assets/anime-skin-cards/default-reforged-loading.webp" alt="" decoding="async" fetchpriority="low"><div class="boot-art-caption"><span>STARTER CHARACTER</span><strong>DEFAULT REFORGED</strong></div></div>
         </div>
-        <div class="boot-progress-copy"><span id="boot-detail">Starting engine...</span><span id="boot-percent">0%</span></div>
-        <button id="boot-retry" class="boot-retry hidden" type="button">RETRY</button>
+        <footer class="boot-load">
+          <div class="loading-status-row"><div><span class="loading-pulse" aria-hidden="true"></span><span id="boot-status" role="status" class="boot-connect-text">INITIALIZING</span></div><span id="boot-percent">0%</span></div>
+          <div class="boot-progress" role="progressbar" aria-label="Game preparation" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><span id="boot-progress-fill"></span></div>
+          <div class="boot-progress-copy"><span id="boot-detail">Starting engine...</span><span class="loading-note">Next: connect to an arena</span></div>
+          <div class="loading-steps"><span data-step="assets"><b>01</b> Assets</span><span data-step="systems"><b>02</b> Systems</span><span data-step="ready"><b>03</b> Ready</span></div>
+          <button id="boot-retry" class="boot-retry hidden" type="button">TRY AGAIN</button>
+        </footer>
       </div>
     </div>
 
@@ -520,17 +523,20 @@
     </div>
 
     <!-- ===================== MAP LOADING SCREEN (ev.io style) ===================== -->
-    <div id="map-loading" class="hidden" aria-live="polite" aria-label="Loading arena">
-      <div class="ml-building" id="ml-building">Building map...</div>
-      <div class="ml-panel">
-        <div class="ml-name">DAYTIME ROOK</div>
-        <div class="ml-region" id="ml-region">Rook Sector</div>
-        <div class="ml-mode" id="ml-mode">Deathmatch</div>
-        <div class="ml-players" id="ml-players">8 players</div>
-        <div class="ml-progress" aria-hidden="true"><span id="ml-progress-fill"></span></div>
-        <div class="ml-tip" id="ml-tip">TIP: press Q to aim teleport, then left-click to blink</div>
+    <div id="map-loading" class="hidden" aria-label="Loading arena" data-stage="joining" data-state="loading">
+      <header class="loading-header"><span class="loading-brand">KRYX<span> / </span></span><span class="loading-chapter">02 <i>/</i> 02 &nbsp; ARENA BRIEFING</span></header>
+      <div class="ml-layout">
+        <div class="ml-panel">
+          <span class="loading-eyebrow">UP NEXT</span><h2 class="ml-name">FINDING MATCH</h2>
+          <div class="ml-facts"><div><span>MODE</span><strong id="ml-mode">Deathmatch</strong></div><div><span>LOBBY</span><strong id="ml-players">Finding players...</strong></div><div><span>SERVER</span><strong id="ml-region">Connecting...</strong></div></div>
+        </div>
+        <aside class="ml-fieldnote"><span class="loading-eyebrow">FIELD NOTES</span><p class="ml-tip" id="ml-tip">Keep moving between cover to avoid enemy fire.</p><span class="ml-fieldnote-rule" aria-hidden="true"></span><small>Move smart. Stay in the fight.</small></aside>
       </div>
-      <div class="ml-spinner" aria-label="Loading arena"></div>
+      <footer class="ml-load">
+        <div class="loading-status-row"><div><span class="loading-pulse" aria-hidden="true"></span><span class="ml-building" id="ml-building" role="status">Finding lobby...</span></div><span id="ml-percent">0%</span></div>
+        <div class="ml-progress" role="progressbar" aria-label="Arena preparation" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><span id="ml-progress-fill"></span></div>
+        <div class="loading-steps"><span data-step="joining"><b>01</b> Connect</span><span data-step="arena"><b>02</b> Prepare arena</span><span data-step="ready"><b>03</b> Ready</span></div>
+      </footer>
     </div>
 
     <!-- ===================== PAUSE MENU ===================== -->
