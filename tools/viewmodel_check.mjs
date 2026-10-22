@@ -1207,8 +1207,8 @@ for (const def of WEAPONS.filter((weapon) => weapon.kind !== 'melee')) {
       const sightNdc = record.sight.clone().applyMatrix4(record.group.matrixWorld).project(camera);
       assert(Math.abs(sightNdc.x) < 0.001,
         `${def.id} rear sight misses horizontal screen centre (${sightNdc.x.toFixed(3)})`);
-      assert(Math.abs(sightNdc.y) < 0.18,
-        `${def.id} rear sight misses the reticle (${sightNdc.y.toFixed(3)})`);
+      assert(Math.abs(sightNdc.y - ADS_SIGHT_SCREEN_Y) < 0.001,
+        `${def.id} sight misses the lowered ADS position (${sightNdc.y.toFixed(3)})`);
       assert(system.weaponMount.position.z < -0.35 && system.weaponMount.position.z > -1.55,
         `${def.id} ADS depth over-crops or loses the gun (${system.weaponMount.position.z.toFixed(3)})`);
       const visibleGun = [];
