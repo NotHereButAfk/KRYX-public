@@ -44,6 +44,7 @@ const WEAPON_CATALOG = [
   },
   {
     id: 'levershotgun',
+    canAim: false,
     name: 'Shotgun',
     key: '3',
     kind: 'hitscan',
@@ -154,6 +155,7 @@ const WEAPON_CATALOG = [
   },
   {
     id: 'rpg',
+    canAim: false,
     name: 'Rocket Launcher',
     key: 'G',
     kind: 'rocket',
@@ -358,6 +360,7 @@ const WEAPON_CATALOG = [
   },
   {
     id: 'concussion',
+    canAim: false,
     name: 'Grenade Launcher',
     key: 'Y',
     kind: 'rocket',
@@ -380,6 +383,7 @@ const WEAPON_CATALOG = [
   },
   {
     id: 'energyshotgun',
+    canAim: false,
     name: 'Sweeper',
     key: 'U',
     kind: 'hitscan',
@@ -460,3 +464,8 @@ export function getWeapon(id) {
 export function weaponsByCategory(category) {
   return WEAPONS.filter((w) => w.category === category);
 }
+
+export function canAimWeapon(def) {
+  return !!def && def.kind !== 'melee' && def.canAim !== false;
+}
+

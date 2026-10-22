@@ -1191,6 +1191,11 @@ for (const def of WEAPONS.filter((weapon) => weapon.kind !== 'melee')) {
   advanceSeconds(0.5 - 1 / 240, 240);
   assert(system.kickGroup.visible === !def.scoped,
     `${def.id} uses the wrong full-ADS viewmodel mode`);
+  if (def.canAim === false) {
+    assert.equal(system.scopeT, 0, 'weapon must not zoom');
+    input.rightMouseDown = false;
+    continue;
+  }
   if (!def.scoped) {
     const adsRecord = system.models.get(def.id);
     const adsMuzzle = adsRecord.muzzle.getWorldPosition(new THREE.Vector3());
@@ -1551,6 +1556,7 @@ for (const def of WEAPONS.filter(w => w.kind !== 'melee')) {
   activate(def); resetMotionState();
   input.rightMouseDown = true;
   advanceSeconds(2, 60);
+  if (def.canAim === false) { assert.equal(system.scopeT, 0); continue; }
   const adsModel = system.models.get(def.id);
   const adsSight = adsModel.sight.clone().applyMatrix4(adsModel.group.matrixWorld).project(camera);
   assert(Math.abs(adsSight.x) < .001 && Math.abs(adsSight.y - ADS_SIGHT_SCREEN_Y) < .001,
@@ -1720,3 +1726,4 @@ for (const id of ['rpg', 'concussion']) for (const fps of rates) for (const fov 
   }
 }
 console.log('Launchers use a low rifle-style first-person hold through stopping, look-up and ESC at 30/60/144Hz.');
+

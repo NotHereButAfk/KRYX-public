@@ -9,7 +9,7 @@ import { triggerLegendaryShot, triggerLegendaryKill } from './LegendaryEffects.j
 import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import { WEAPONS, isMainWeaponId, isMatchPickupWeaponId } from './weaponDefs.js';
+import { WEAPONS, isMainWeaponId, isMatchPickupWeaponId, canAimWeapon } from './weaponDefs.js';
 import { weaponHandPose } from './WeaponHandPoses.js';
 import { buildWeaponModel, onWeaponModelReady } from './WeaponModels.js';
 import { applyWeaponSkin, animateWeaponSkin } from './WeaponSkins.js';
@@ -2265,10 +2265,10 @@ export class WeaponSystem {
       dt,
     );
 
-    // Every EV.IO firearm can zoom. Regular guns remain visible and travel
+    // Aim-enabled firearms remain visible and travel
     // onto their physical sight axis; snipers hand off to the overlay late in
     // the same motion rather than disappearing on the first held frame.
-    const wantScope = def.kind !== 'melee'
+    const wantScope = canAimWeapon(def)
       && input.rightMouseDown
       && !sprinting
       && !st.isReloading;
@@ -2759,3 +2759,4 @@ export class WeaponSystem {
     return info;
   }
 }
+

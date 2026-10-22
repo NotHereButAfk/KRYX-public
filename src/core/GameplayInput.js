@@ -1,4 +1,4 @@
-import { getWeapon } from '../weapons/weaponDefs.js';
+import { getWeapon, canAimWeapon } from '../weapons/weaponDefs.js';
 import { FIRE_SPRINT_RECOVERY } from '../sim/MovementConfig.js';
 
 // Shared desktop/mobile sprint intent. Keeping this in one place prevents the
@@ -25,7 +25,8 @@ export function consumeThrowable(input) {
 export function updateWeaponSprintBlock(player, input, weaponId, dt) {
   const weapon = getWeapon(weaponId);
   player._weaponSprintRecovery = weapon && weapon.kind !== 'melee' && !player.isDead
-    ? ((input.mouseDown || input.rightMouseDown) ? FIRE_SPRINT_RECOVERY : Math.max(0, (player._weaponSprintRecovery || 0) - dt)) : 0;
+    ? ((input.mouseDown || (input.rightMouseDown && canAimWeapon(weapon))) ? FIRE_SPRINT_RECOVERY : Math.max(0, (player._weaponSprintRecovery || 0) - dt)) : 0;
   player.weaponSprintBlocked = player._weaponSprintRecovery > 0;
   if (player.weaponSprintBlocked) player.isSprinting = false;
 }
+
