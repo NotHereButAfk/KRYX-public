@@ -1,6 +1,7 @@
 export const THEMED_SKIN_CARDS = Object.freeze({
+  "default": "/assets/anime-skin-cards/default-reforged-v2.png",
   "remake_236": "/assets/anime-skin-cards/remake_236.webp",
-  "remake_84": "/assets/anime-skin-cards/remake_84.webp",
+  "remake_84": "/assets/anime-skin-cards/default-reforged-v2.png",
   "remake_110": "/assets/anime-skin-cards/remake_110.webp",
   "remake_153": "/assets/anime-skin-cards/remake_153.webp",
   "remake_154": "/assets/anime-skin-cards/remake_154.webp",
@@ -336,3 +337,5 @@ export function setMarketPreview(button, modelSrc, skin) {
     document.body.append(dialog); dialog.showModal();
   };
 }
+
+export function skinArtwork(skin) { return THEMED_SKIN_CARDS[skin?.id || "default"] || skin?.thumbnail || `/assets/character-skins/${skin.id}.png`; }

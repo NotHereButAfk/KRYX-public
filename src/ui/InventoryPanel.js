@@ -7,8 +7,8 @@
  * as main and applies its skin. The EQUIPPED row shows the current character
  * skin + main weapon card.
  */
-import { characterPortrait } from './CareerPreview.js';
-import { THEMED_SKIN_CARDS } from './MarketPreview.js';
+
+import { THEMED_SKIN_CARDS, skinArtwork } from './MarketPreview.js';
 import { getSkin } from '../player/skins.js';
 import { ARMOR_SKINS, RARITY_COLORS, getArmorSkin } from '../player/ArmorSkins.js';
 import { MAIN_WEAPON_IDS, WEAPONS, isMainWeaponId } from '../weapons/weaponDefs.js';
@@ -162,12 +162,11 @@ export class InventoryPanel {
     const playerSkin  = getSkin(this.host.selectedSkinId);
     const portrait=document.getElementById('inv-profile-picture');
     if(portrait){
-      const fallback='/assets/anime-skin-cards/remake_84.webp';
-      const source=armorSkin ? (THEMED_SKIN_CARDS[armorSkin.id] || '/assets/character-skins/'+armorSkin.id+'.png') : fallback;
+      const fallback=skinArtwork(playerSkin);
+      const source=skinArtwork(armorSkin || playerSkin);
       portrait.onerror=()=>{portrait.onerror=null;portrait.src=fallback;};
-      if (armorSkin) portrait.src=source; else portrait.removeAttribute('src');
+      portrait.src=source;
       portrait.alt=(armorSkin?.name || 'Default')+' character artwork';
-      if (!armorSkin) characterPortrait(playerSkin, this.host.selectedArmorId).then(src => { if (!Shop.getEquipped()) portrait.src = src; }).catch(() => {});
     }
     if (armorSkin) {
       row.appendChild(this._characterCard(armorSkin, /*equipped=*/true));
@@ -357,7 +356,7 @@ export class InventoryPanel {
     const fig = document.createElement('div');
     fig.className = 'inv-card-fig';
     const image = document.createElement('img');
-    image.src = THEMED_SKIN_CARDS[armorSkin.id] || `/assets/character-skins/${armorSkin.id}.png`;
+    image.src = skinArtwork(armorSkin);
     image.alt = armorSkin.name;
     image.style.cssText = 'width:100%;height:100%;object-fit:contain';
     fig.appendChild(image);
@@ -375,7 +374,7 @@ export class InventoryPanel {
     fig.className = 'inv-card-fig';
     const image = document.createElement('img');
     image.alt = playerSkin.name;
-    characterPortrait(playerSkin, this.host.selectedArmorId).then(src => { image.src = src; }).catch(() => { image.alt = 'Character preview unavailable'; });
+    image.src = skinArtwork(playerSkin);
     image.style.cssText = 'width:100%;height:100%;object-fit:contain'; fig.appendChild(image);
     card.insertBefore(fig, card.firstChild);
     return card;

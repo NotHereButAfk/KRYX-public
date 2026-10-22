@@ -1,7 +1,7 @@
 import './battlepass.css';
 import './career.css';
 import { openTournamentPanel, openCommunityProfile } from './TournamentPanel.js';
-import { setMarketPreview } from './MarketPreview.js';
+import { setMarketPreview, skinArtwork } from './MarketPreview.js';
 import { isCrazyGames } from '../core/CrazyGamesAccount.js';
 import { EAccount } from '../core/EAccount.js';
 import { mobileIcon } from './MobileIcons.js';
@@ -710,15 +710,18 @@ export class MenuUI {
   _startProfilePreview() {
     const canvas = document.getElementById('profile-char-canvas');
     if (!canvas) return;
-    if (!this._profilePreview) this._profilePreview = new CareerPreview(canvas);
+
     const playerSkin = getSkin(this.selectedSkinId);
     const armorSkin  = getArmorSkin(Shop.getEquipped());
-    document.getElementById('profile-skin-name').textContent = armorSkin?.name || 'Default';
+    document.getElementById('profile-skin-name').textContent = armorSkin?.name || playerSkin.name;
     document.getElementById('profile-skin-rarity').textContent = armorSkin?.rarity || 'Starter';
-    this._profilePreview.loadArmor(playerSkin, this.selectedArmorId, armorSkin).catch(() => {
-      document.getElementById('profile-skin-name').textContent = 'Character preview unavailable';
-    });
-    this._profilePreview.start();
+    this._profilePreview?.stop();
+    let image = document.getElementById('profile-skin-artwork');
+    if (!image) { image = new Image(); image.id = 'profile-skin-artwork'; canvas.after(image); }
+    canvas.style.display = 'none';
+    image.src = skinArtwork(armorSkin || playerSkin);
+    image.alt = armorSkin?.name || playerSkin.name;
+    image.style.cssText = 'width:100%;height:100%;object-fit:cover;display:block';
   }
 
   // ── Visibility helpers ─────────────────────────────────────────────────────
