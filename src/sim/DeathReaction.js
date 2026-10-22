@@ -1,4 +1,4 @@
-import { deathFallProgress, DEATH_IMPACT_TIME, DEATH_SETTLE_TIME, DEATH_BODY_DURATION } from '../player/DeathAnimation.js';
+import { deathFallProgress, DEATH_IMPACT_TIME, DEATH_SETTLE_TIME, DEATH_BODY_DURATION } from './DeathTiming.js';
 export { DEATH_IMPACT_TIME, DEATH_SETTLE_TIME, DEATH_BODY_DURATION };
 
 // Cosmetic fall only: no hit impulse is fed back into character physics.
