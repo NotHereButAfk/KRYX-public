@@ -4,6 +4,8 @@ import * as THREE from 'three';
 // A fixed camera-local convergence point keeps its projected bore aimed at the
 // reticle without changing the hold when a look ray crosses a wall or ceiling.
 export const PRESENTATION_AIM_DEPTH = 8;
+// Lower scoped presentation by 2.5% of the viewport height.
+export const ADS_SIGHT_SCREEN_Y = -0.05;
 
 // Weapons use -Z for their normalized bore. Rotate the complete gun/hand rig
 // around its muzzle so correcting aim preserves the muzzle and hand contacts.
@@ -48,7 +50,8 @@ export class ViewmodelAim {
         this.sight.copy(model.sight).applyMatrix4(model.group.matrixWorld);
         camera.worldToLocal(this.sight);
         mount.position.x -= this.sight.x * THREE.MathUtils.clamp(adsWeight, 0, 1);
-        mount.position.y -= this.sight.y * THREE.MathUtils.clamp(adsWeight, 0, 1);
+        const sightY = ADS_SIGHT_SCREEN_Y * -this.sight.z * Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
+        mount.position.y += (sightY - this.sight.y) * THREE.MathUtils.clamp(adsWeight, 0, 1);
         this._rotate(camera, mount, model, 1);
       }
     }

@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { MAIN_WEAPON_IDS, WEAPONS } from '../src/weapons/weaponDefs.js';
-import { ViewmodelAim, PRESENTATION_AIM_DEPTH } from '../src/weapons/ViewmodelAim.js';
+import { ViewmodelAim, ADS_SIGHT_SCREEN_Y, PRESENTATION_AIM_DEPTH } from '../src/weapons/ViewmodelAim.js';
 import { weaponHandPose } from '../src/weapons/WeaponHandPoses.js';
 import { BLENDER_ARSENAL, buildBlenderWeapon } from '../src/weapons/BlenderArsenal.js';
 
@@ -1552,8 +1552,8 @@ for (const def of WEAPONS.filter(w => w.kind !== 'melee')) {
   advanceSeconds(2, 60);
   const adsModel = system.models.get(def.id);
   const adsSight = adsModel.sight.clone().applyMatrix4(adsModel.group.matrixWorld).project(camera);
-  assert(Math.abs(adsSight.x) < .001 && Math.abs(adsSight.y) < .001,
-    `${def.id} sight must sit on the crosshair in ADS`);
+  assert(Math.abs(adsSight.x) < .001 && Math.abs(adsSight.y - ADS_SIGHT_SCREEN_Y) < .001,
+    `${def.id} sight must stay centered horizontally and slightly below the crosshair in ADS`);
   assert(system.scopeT > .99 && camera.fov < player.baseFov,
     `${def.id} must enter zoom, including pickup launchers and shotgun`);
 }
