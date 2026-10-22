@@ -1,3 +1,5 @@
+import { installInlineAds } from './ui/InlineAds.js';
+installInlineAds();
 import { installFullscreen } from './ui/Fullscreen.js';
 if (!isCrazyGames()) installFullscreen();
 import './style.css';

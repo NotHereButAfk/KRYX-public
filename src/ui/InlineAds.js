@@ -6,7 +6,24 @@ export function installInlineAds() {
     document.body.classList.remove('has-top-ad');
     return;
   }
-  const frame = document.getElementById('frame');
+  let frame = document.getElementById('frame');
+  if (!frame) {
+    frame = document.createElement('aside');
+    frame.id = 'frame'; frame.className = 'aads-inline';
+    frame.setAttribute('aria-label', 'Advertisement');
+    const banner = document.createElement('div');
+    banner.className = 'aads-banner';
+    banner.dataset.unit = '2458071';
+    banner.dataset.src = 'https://acceptable.a-ads.com/2458071/?size=Adaptive';
+    frame.appendChild(banner); document.body.appendChild(frame);
+  }
+  if (!document.querySelector('script[data-kryx-adsense]')) {
+    const script = document.createElement('script');
+    script.async = true; script.crossOrigin = 'anonymous';
+    script.dataset.kryxAdsense = 'true';
+    script.src = 'https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-2402830875754567';
+    document.head.appendChild(script);
+  }
   const slot = frame?.querySelector('.aads-banner');
   if (!slot) return;
   const pages = [...document.querySelectorAll('.nav-panel')];
@@ -54,7 +71,7 @@ export function installInlineAds() {
     }
     clearTimeout(timer);
     // Check overlays and layout changes only while an ad placement is active.
-    timer = target ? setTimeout(update, 250) : null;
+    timer = target ? setTimeout(update, 1000) : null;
   };
   const observer = new MutationObserver(update);
   for (const node of [...pages, loading, startup, intermission, home, nav].filter(Boolean)) {

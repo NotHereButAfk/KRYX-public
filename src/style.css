@@ -8013,3 +8013,7 @@ body:has(.nav-panel:not(.hidden)) :is(#center-play,#nav-side,#share-game,#social
 }
 
 .discord-link-box input { display:block; width:min(100%,520px); box-sizing:border-box; padding:12px; color:#fff; background:#101820; border:1px solid #667580; font:16px monospace; }
+
+/* Reserve space only while the restored banner is installed. */
+body.has-top-ad { --game-ad-height:90px; --top-ad-height:90px; }
+@media(max-width:767px) { body.has-top-ad { --game-ad-height:50px; --top-ad-height:50px; } }
