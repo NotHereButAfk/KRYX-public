@@ -173,14 +173,14 @@ export const FIXTURES = [
   },
   {
     id: 'slide',
-    title: 'Slide — sprint+crouch covers ground, ends clean',
+    title: 'Slide — C while running covers ground, ends clean',
     world: W({}),
     spawn: [0, 0, 0],
     tape: [
       { ticks: 3, crouch: true, crouchJust: true },         // too slow: crouch only
       { ticks: 5 },
       { ticks: 30, mz: 1, sprint: true, yaw: 0 },
-      { ticks: 20, mz: 1, sprint: true, yaw: 0, crouch: true, crouchJust: true },
+      { ticks: 20, mz: 1, sprint: true, yaw: 0, crouchJust: true },
       { ticks: 40 },
     ],
     check(states) {

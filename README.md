@@ -17,6 +17,8 @@ Jump into free-for-all deathmatch with first-person combat, weapon pickups, and 
 
 Survival is temporarily disabled. Features that depend on hosted accounts or payments are not enabled in the local guest demo.
 
+**Movement:** use WASD to move, hold Shift to run, and press **C while running** to slide. Ctrl crouches; Space jumps and can jump out of a slide.
+
 ### Current skin and weapon artwork
 
 <img src="public/assets/anime-skin-cards/default-reforged-v2.png" alt="Default Reforged character artwork" width="280"> <img src="public/assets/default-weapon-cards/plasmarifle.png" alt="Default laser rifle artwork" width="280">

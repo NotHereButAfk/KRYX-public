@@ -6,10 +6,14 @@ import { SLIDE_LAUNCH_SPEED, SLIDE_DURATION, SLIDE_RECOVERY, WALK_SPEED, SPRINT_
 const world = {half:100,killY:-25,boxes:[],platforms:[],gravLifts:[],teleporters:[]};
 const sprintSpeed = WALK_SPEED * SPRINT_MULT;
 const ready = () => ({...createState(),vz:-sprintSpeed});
-const command = extra => makeInput({mz:1,sprint:true,crouch:true,...extra});
+const command = extra => makeInput({mz:1,sprint:true,crouch:false,...extra});
 const begin = s => step(s,command({crouchJust:true}),world);
 assert.equal(begin(createState()).slide,0,'standing crouch must not launch');
 assert.equal(begin({...ready(),onGround:0,py:2}).slide,0,'slide must start on the ground');
+const walkingTap=step(ready(),command({sprint:false,crouchJust:true}),world);
+assert(!walkingTap.slide && !walkingTap.crouch,'C while walking must neither slide nor crouch, even with leftover sprint momentum');
+assert.equal(begin({...ready(),stamina:0}).slide,0,'exhausted player must not start a running slide');
+assert.equal(step(ready(),command({crouch:true}),world).slide,0,'Ctrl crouch without C must not launch a slide');
 let s=begin(ready());
 assert(s.slide && -s.vz>sprintSpeed && -s.vz<SLIDE_LAUNCH_SPEED,'slide must begin with a modest burst');
 let previous=-s.vz,ticks=1;
@@ -21,8 +25,11 @@ while(s.slide && ticks<30){
 }
 assert.equal(ticks,Math.round(SLIDE_DURATION/DT),'slide duration changed between controllers');
 assert.equal(s.slideCD,SLIDE_RECOVERY,'finished slide must enter recovery');
-assert(s.pz<-5.5 && s.pz>-7,'slide must cover a useful but controlled distance');
-assert.equal(s.crouch,1,'holding crouch must finish low');
+assert(s.pz<-7.5 && s.pz>-9,'slide must cover a useful but controlled distance');
+assert.equal(s.crouch,0,'dedicated slide must return to standing');
+let crouchedExit=begin(ready());
+for(let i=0;i<20;i++)crouchedExit=step(crouchedExit,command({crouch:true}),world);
+assert.equal(crouchedExit.crouch,1,'holding Ctrl after a slide must finish crouched');
 const held=step({...s,vz:-sprintSpeed},command(),world);
 assert.equal(held.slide,0,'held key must not chain another slide');
 assert.equal(begin({...s,vz:-sprintSpeed}).slide,0,'fresh press during recovery must not add another boost');
@@ -78,6 +85,12 @@ const localWorld={groundHeightAt:()=>0,resolveCollisions:()=>{}};
 const input=(first,jump=false)=>({mouseDX:0,mouseDY:0,isDown:k=>['KeyW','ShiftLeft','KeyC'].includes(k),
   consumeJustPressed:k=>(first&&k==='KeyC')||(jump&&k==='Space')});
 const local=()=>{const p=new Player(16/9);p.position.set(0,0,0);p.velocity.set(0,0,-sprintSpeed);p.yaw=0;return p;};
+const localWalking=local();
+localWalking.update(DT,{...input(true),isDown:k=>['KeyW','KeyC'].includes(k)},localWorld);
+assert(!localWalking.isSliding && !localWalking.isCrouching,'offline C without running must do nothing');
+const localCtrl=local();
+localCtrl.update(DT,{...input(false),isDown:k=>['KeyW','ShiftLeft','ControlLeft'].includes(k)},localWorld);
+assert(!localCtrl.isSliding && localCtrl.isCrouching,'offline Ctrl while running must only crouch');
 const p=local();let predicted=ready();
 for(let i=0;i<18;i++){
   p.update(DT,input(i===0),localWorld);

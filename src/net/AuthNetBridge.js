@@ -42,7 +42,7 @@ import {
 } from '../weapons/FireControl.js';
 import { countAuthoritativePlayers } from '../core/Population.js';
 import { isNameplateOccluded } from '../ui/NameplateOcclusion.js';
-import { sprintRequested, crouchRequested, consumeCrouchPress } from '../core/GameplayInput.js';
+import { sprintRequested, crouchRequested, consumeSlidePress } from '../core/GameplayInput.js';
 import { applyAuthoritativeResources } from './AuthoritativePresentation.js';
 import { PLAYABLE_ARMOR_IDS } from '../player/ArmorTypes.js';
 import { getSkin, BOT_SKIN } from '../player/skins.js';
@@ -289,7 +289,7 @@ export class AuthNetBridge {
 
     // edges collected per frame, consumed on the next tick
     if (canControl && input.consumeJustPressed('Space')) this._edges.jump = true;
-    if (canControl && consumeCrouchPress(input)) this._edges.crouch = true;
+    if (canControl && consumeSlidePress(input)) this._edges.crouch = true;
     if (canControl && input.teleportConfirmed) this._edges.tele = true;
 
     // ── fixed-tick input send + prediction ──

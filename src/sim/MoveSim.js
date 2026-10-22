@@ -82,7 +82,7 @@ export function makeInput(o = {}) {
 /** Exact authoritative sprint predicate shared by the sim and snapshots. */
 export function isSprinting(s, input) {
   const moving = Math.hypot(input.mx, input.mz) > 0;
-  return moving && input.sprint === 1 && input.mz >= 0
+  return moving && input.sprint === 1 && !input.crouch && input.mz >= 0
     && s.stamina > 2 && !s.slide && !s.crouch;
 }
 
@@ -238,7 +238,7 @@ export function step(s, input, world, tuning = {}) {
   if (n.slide && !s.onGround) {
     n.slide = 0; n.slideT = 0; n.slideCD = SLIDE_RECOVERY;
   }
-  if (canStartSlide(s.vx, s.vz, s.onGround, s.slide, n.slideCD, input.crouchJust)) {
+  if (sprinting && canStartSlide(s.vx, s.vz, s.onGround, s.slide, n.slideCD, input.crouchJust)) {
     n.slide = 1;
     n.slideT = SLIDE_DURATION;
     n.slideDx = q((s.vx / horizontalSpeed) * SLIDE_LAUNCH_SPEED);

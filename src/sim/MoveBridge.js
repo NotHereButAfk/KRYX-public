@@ -12,7 +12,7 @@ import { applyMouseLook } from '../core/MouseLook.js';
 // did (position, velocity, onGround, isCrouching, stamina, teleportCooldown).
 
 import * as THREE from 'three';
-import { sprintRequested, crouchRequested, consumeCrouchPress } from '../core/GameplayInput.js';
+import { sprintRequested, crouchRequested, consumeSlidePress } from '../core/GameplayInput.js';
 import { createState, step, makeInput, isSprinting, worldAdapter, hashState, DT } from './MoveSim.js';
 
 const SHIELD_REGEN = 6, SHIELD_REGEN_DELAY = 3.0;
@@ -92,7 +92,7 @@ export class MoveBridge {
 
     // ── collect edge inputs every frame, consume on the next tick ──
     if (input.consumeJustPressed('Space')) this._edges.jump = true;
-    if (consumeCrouchPress(input)) this._edges.crouch = true;
+    if (consumeSlidePress(input)) this._edges.crouch = true;
     if (input.teleportConfirmed) this._edges.tele = true;
 
     // ── fixed-tick stepping ──

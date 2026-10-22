@@ -31,7 +31,6 @@ export class HUD {
     this.healthBar   = document.getElementById('health-bar');
     this.healthText  = document.getElementById('health-text');
     this.shieldWrap  = document.getElementById('shield-wrap');
-    this.healthBar?.parentElement?.appendChild(this.shieldWrap);
     this.shieldBar   = document.getElementById('shield-bar');
     this.shieldText  = document.getElementById('shield-text');
     this.shieldStacks = document.getElementById('shield-stacks');
@@ -84,6 +83,7 @@ export class HUD {
     this._slotEls             = [];
     this._slotAmmoEls         = [];
     this._activeSlot          = -1;
+    this._initPresentation();
     this._scoreboardTab = 'leaderboard';
     const scoreboard = document.getElementById('scoreboard-overlay');
     scoreboard?.querySelectorAll('[data-sb-tab]').forEach((tab) => {
@@ -97,6 +97,41 @@ export class HUD {
       const next = (tabs.indexOf(this._scoreboardTab) + (event.code === 'ArrowRight' ? 1 : 2)) % 3;
       this._selectScoreboardTab(tabs[next]);
     }, true);
+  }
+
+  _initPresentation() {
+    if (!this.root) return;
+    this.root.classList.add('hud-refined');
+    // Keep the existing live data nodes; only their visual grouping changes.
+    let vitals = this.root.querySelector('.hud-vitals');
+    if (!vitals) {
+      vitals = document.createElement('div');
+      vitals.id = 'hud-vitals';
+      vitals.className = 'hud-vitals';
+      vitals.setAttribute('aria-label', 'Health, shield and stamina');
+      this.root.appendChild(vitals);
+    }
+    for (const id of ['health-wrap', 'shield-wrap', 'stamina-wrap']) {
+      const element = document.getElementById(id);
+      if (element) vitals.appendChild(element);
+    }
+    // Population must remain visible even though the redundant score tray is hidden.
+    if (this.serverPop) this.root.appendChild(this.serverPop);
+    if (this.dmTimer) this.dmTimer.setAttribute('aria-label', 'Time remaining');
+    for (const [id, label] of [['smoke-count', 'Smoke'], ['frag-count', 'Frag'], ['timebomb-count', 'Time bomb'], ['impulse-count', 'Impulse']]) {
+      const tile = document.getElementById(id)?.closest('.grenade-slot');
+      if (tile) tile.setAttribute('aria-label', label);
+    }
+    this._abilityQ?.setAttribute('aria-label', 'Teleport');
+    // Split magazine and reserve for hierarchy without changing their source.
+    if (this.ammoText) {
+      this.ammoText.textContent = '';
+      this._magazineText = document.createElement('span');
+      this._magazineText.className = 'hud-magazine';
+      this._reserveText = document.createElement('span');
+      this._reserveText.className = 'hud-reserve';
+      this.ammoText.append(this._magazineText, this._reserveText);
+    }
   }
 
   show() { this.root?.classList.remove('hidden'); }
@@ -291,9 +326,8 @@ export class HUD {
     toggleClass(this.staminaBar, 'stamina-low', player.stamina < 25);
 
     setText(this.weaponName, weaponInfo.name.toUpperCase());
-    setText(this.ammoText, weaponInfo.isMelee
-      ? '∞'
-      : `${weaponInfo.magAmmo} / ${weaponInfo.infiniteReserve ? '∞' : weaponInfo.reserveAmmo}`);
+    setText(this._magazineText, weaponInfo.isMelee ? '∞' : weaponInfo.magAmmo);
+    setText(this._reserveText, weaponInfo.isMelee ? '' : ` / ${weaponInfo.infiniteReserve ? '∞' : weaponInfo.reserveAmmo}`);
     toggleClass(this.weaponWrap, 'melee-active', weaponInfo.isMelee);
     this._slotAmmoEls.forEach((ammo, i) => {
       const slot = weaponInfo.slots?.[i];

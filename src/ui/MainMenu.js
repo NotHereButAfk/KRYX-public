@@ -219,15 +219,56 @@ export class MenuUI {
     document.querySelectorAll('.nav-dd-btn').forEach((btn) => {
       const dd = document.getElementById('dd-' + btn.dataset.dd);
       if (!dd) return;
+      btn.setAttribute('aria-controls', dd.id);
+      btn.setAttribute('aria-expanded', 'false');
+      const openDropdown = () => {
+        this._closeAllDropdowns();
+        this._closeAllPanels();
+        dd.classList.remove('hidden');
+        btn.classList.add('open');
+        btn.setAttribute('aria-expanded', 'true');
+      };
+      const items = () => [...dd.querySelectorAll('button:not(:disabled), a[href]')]
+        .filter((item) => item.getClientRects().length && item.getAttribute('aria-disabled') !== 'true');
       btn.addEventListener('click', (e) => {
         e.stopPropagation();
         const open = !dd.classList.contains('hidden');
-        this._closeAllDropdowns();
-        if (!open) {
-          dd.classList.remove('hidden');
-          btn.classList.add('open');
-          this._closeAllPanels();
+        if (open) this._closeAllDropdowns();
+        else openDropdown();
+      });
+      btn.addEventListener('keydown', (event) => {
+        if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+          event.preventDefault();
+          event.stopPropagation();
+          openDropdown();
+          const targets = items();
+          targets[event.key === 'ArrowUp' ? targets.length - 1 : 0]?.focus();
+        } else if (event.key === 'Escape' && !dd.classList.contains('hidden')) {
+          event.preventDefault();
+          event.stopPropagation();
+          this._closeAllDropdowns();
         }
+      });
+      dd.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape') {
+          event.preventDefault();
+          event.stopPropagation();
+          this._closeAllDropdowns();
+          btn.focus();
+          return;
+        }
+        if (!['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) return;
+        const targets = items();
+        if (!targets.length) return;
+        event.preventDefault();
+        event.stopPropagation();
+        const current = targets.indexOf(document.activeElement);
+        const next = event.key === 'Home' ? 0 : event.key === 'End' ? targets.length - 1
+          : (current + (event.key === 'ArrowUp' ? -1 : 1) + targets.length) % targets.length;
+        targets[next].focus();
+      });
+      dd.parentElement.addEventListener('focusout', (event) => {
+        if (!dd.parentElement.contains(event.relatedTarget)) this._closeAllDropdowns();
       });
     });
 
@@ -260,7 +301,8 @@ export class MenuUI {
     document.querySelectorAll('.nav-panel').forEach(panel => {
       if (panel.querySelector('[data-close-panel], #inv-close-btn, #nm-back')) return;
       const close = document.createElement('button');
-      close.className = 'page-close'; close.textContent = '[X]';
+      close.className = 'page-close'; close.textContent = '×';
+      close.type = 'button';
       close.setAttribute('aria-label', 'Close page');
       close.setAttribute('data-close-panel', ''); panel.prepend(close);
     });
@@ -364,7 +406,10 @@ export class MenuUI {
 
   _closeAllDropdowns() {
     document.querySelectorAll('.nav-dd').forEach((d) => d.classList.add('hidden'));
-    document.querySelectorAll('.nav-dd-btn').forEach((b) => b.classList.remove('open'));
+    document.querySelectorAll('.nav-dd-btn').forEach((b) => {
+      b.classList.remove('open');
+      b.setAttribute('aria-expanded', 'false');
+    });
   }
 
   _togglePanel(id) {

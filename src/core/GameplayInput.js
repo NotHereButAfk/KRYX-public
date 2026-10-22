@@ -10,17 +10,15 @@ export function sprintRequested(input, forwardAmount, weaponBlocked = false, sid
     || (input.isMobile && forwardAmount >= 0 && (forwardAmount > 0 || Math.abs(sidewaysAmount) > 0));
 }
 
-const CROUCH_KEYS = ['KeyC', 'ControlLeft', 'ControlRight'];
+const CROUCH_KEYS = ['ControlLeft', 'ControlRight'];
 
 export function crouchRequested(input) {
   return CROUCH_KEYS.some(code => input.isDown(code));
 }
 
-export function consumeCrouchPress(input) {
-  // Drain every alias together so C + Ctrl cannot queue a second slide.
-  let pressed = false;
-  for (const code of CROUCH_KEYS) pressed = input.consumeJustPressed(code) || pressed;
-  return pressed;
+export function consumeSlidePress(input) {
+  // C is a tap action; holding it never turns walking into a crouch.
+  return input.consumeJustPressed('KeyC');
 }
 
 // Five-slot reference layout: Q blink, G smoke, U frag, V planted bomb, E blast.

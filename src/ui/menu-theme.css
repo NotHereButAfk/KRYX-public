@@ -1,0 +1,540 @@
+/* Shared menu surface. Keep the live arena visible without a full-frame blur.
+   The body/app scope deliberately wins over the older per-page treatments. */
+body #app {
+  --menu-backdrop: rgba(24, 27, 30, .78);
+  --menu-surface: rgba(25, 29, 33, .72);
+  --menu-raised: rgba(45, 50, 55, .82);
+  --menu-line: rgba(219, 229, 234, .14);
+  --menu-line-strong: rgba(219, 229, 234, .3);
+  --menu-text: #f3f5f5;
+  --menu-muted: #b6bfc6;
+  --menu-accent: #a0d5cf;
+  --menu-accent-ink: #152e2c;
+  --menu-radius: 10px;
+}
+
+body:has(.nav-panel:not(.hidden)) #app #game-canvas {
+  filter: none !important;
+}
+body #app #mobile-home.panel-open { visibility: hidden; pointer-events: none; }
+body #app #mobile-home.panel-open::before {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+body #app .nav-panel[id] {
+  --menu-content-width: 1120px;
+  position: absolute !important;
+  inset: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  max-width: none !important;
+  max-height: 100% !important;
+  margin: 0 !important;
+  padding: 64px max(28px, calc((100% - var(--menu-content-width)) / 2)) 64px !important;
+  box-sizing: border-box;
+  transform: none !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: var(--menu-backdrop) !important;
+  color: var(--menu-text);
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: #6b767d transparent;
+  font-family: 'Rajdhani', 'Arial Narrow', sans-serif;
+  font-size: 17px;
+  line-height: 1.5;
+}
+
+body #app .nav-panel[id],
+body #app .nav-panel[id] *,
+body #top-nav, body #top-nav * {
+  text-shadow: none !important;
+}
+
+body #app .nav-panel[id]::before,
+body #app .nav-panel[id]::after { display: none !important; }
+
+body #app .nav-panel[id] > * { min-width: 0; }
+body #app .nav-panel[id] :is(h1, h2, h3, p) { overflow-wrap: anywhere; }
+body #app .nav-panel[id] :is(a, button, input, textarea, select, summary, [tabindex]):focus-visible,
+body #top-nav :is(a, button):focus-visible {
+  outline: 2px solid var(--menu-accent, #a0d5cf) !important;
+  outline-offset: 4px;
+}
+
+body #app .nav-panel[id] :is(button, .tournament-action, .career-secondary, .ghost-btn) {
+  min-height: 44px;
+  box-sizing: border-box;
+  padding: 10px 18px;
+  border: 1px solid var(--menu-line-strong);
+  border-radius: 6px;
+  background: var(--menu-raised);
+  color: var(--menu-text);
+  box-shadow: none !important;
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.25;
+  letter-spacing: .04em;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background-color .14s, border-color .14s, color .14s;
+}
+body #app .nav-panel[id] :is(button, .tournament-action, .career-secondary, .ghost-btn):hover:not(:disabled) {
+  border-color: #b7c5ca;
+  background-color: #455056;
+  color: #fff;
+  transform: none;
+}
+body #app .nav-panel[id] button:disabled {
+  opacity: .48;
+  cursor: not-allowed;
+}
+body #app .nav-panel[id] :is(.play-btn, .bp-unlock-btn, #bp-claim-all, #settings-save-btn) {
+  background: var(--menu-accent) !important;
+  color: var(--menu-accent-ink) !important;
+  border-color: transparent !important;
+  font-size: 15px !important;
+  font-weight: 700;
+  letter-spacing: .05em !important;
+  border-radius: 6px !important;
+}
+body #app .nav-panel[id] :is(.play-btn, .bp-unlock-btn, #bp-claim-all, #settings-save-btn):hover:not(:disabled) {
+  background: #c2e4df !important;
+}
+body #app .nav-panel[id] :is(a:not([class]), .career-connection > a) { color: #b3e2dc; }
+body #app .nav-panel[id] :is(input:not([type='range']):not([type='checkbox']):not([type='radio']), textarea, select) {
+  max-width: 100%;
+  min-height: 44px;
+  padding: 11px 14px;
+  border: 1px solid var(--menu-line-strong) !important;
+  border-radius: 6px !important;
+  background: rgba(14, 17, 20, .72) !important;
+  color: var(--menu-text);
+  box-shadow: none !important;
+  font: 16px/1.45 'Rajdhani', sans-serif;
+  box-sizing: border-box;
+}
+body #app .nav-panel[id] :is(input, textarea)::placeholder { color: #96a1a9; }
+body #app .nav-panel[id] :is(input[type='checkbox'], input[type='range']) { accent-color: var(--menu-accent); }
+body #app .nav-panel[id] :is(.field-label, .tournament-profile-form label) {
+  display: block;
+  color: #e1e6e8 !important;
+  font-size: 16px !important;
+  font-weight: 600;
+  letter-spacing: .02em !important;
+  margin: 20px 0 8px !important;
+}
+body #app .nav-panel[id] :is(.private-desc, .party-hint, .career-note, .career-subtitle, .nm-sub, .bp-intro, .bp-footnote) {
+  color: var(--menu-muted);
+  font-size: 16px;
+  line-height: 1.55;
+}
+body #app .nav-panel[id] :is(.panel-label, .inv-section-label, .nm-title, .tournament-menu-head h2, .settings-title-row h2) {
+  margin: 0 0 12px;
+  padding: 0 !important;
+  color: var(--menu-text) !important;
+  font-family: inherit !important;
+  font-size: clamp(28px, 3.4vw, 40px) !important;
+  font-weight: 700 !important;
+  line-height: 1.15;
+  letter-spacing: .025em !important;
+  text-transform: uppercase;
+}
+body #app .nav-panel[id] :is(.panel-label, .inv-section-label)::before { display: none !important; }
+body #app .nav-panel[id] .panel-divider { background: var(--menu-line); margin: 28px 0; }
+body #app .nav-panel[id] :is(.page-close, .inv-close-btn, .panel-x) {
+  position: absolute !important;
+  top: 16px !important;
+  right: 20px !important;
+  left: auto !important;
+  width: 44px !important;
+  min-width: 44px;
+  height: 44px !important;
+  padding: 0 !important;
+  border: 1px solid var(--menu-line) !important;
+  border-radius: 8px !important;
+  background: rgba(30, 34, 38, .7) !important;
+  color: var(--menu-text) !important;
+  font: 26px/42px 'Rajdhani', sans-serif !important;
+  z-index: 12;
+}
+
+/* Navigation stays compact; descriptions make each destination easy to scan. */
+body #app #top-nav {
+  height: 66px;
+  padding: 0 26px !important;
+  background: rgba(23, 27, 30, .88) !important;
+  border-bottom: 1px solid var(--menu-line) !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+}
+body #app #top-nav .nav-brand {
+  margin: 0 !important;
+  font-family: 'Rajdhani', sans-serif !important;
+  font-size: 32px !important;
+  font-weight: 700 !important;
+  letter-spacing: .055em !important;
+  text-transform: uppercase !important;
+}
+body #app #top-nav .nav-items { align-items: center; gap: 4px !important; }
+body #app #top-nav :is(.nav-item, .nav-dd-btn) {
+  height: 44px;
+  min-height: 44px;
+  padding: 0 16px !important;
+  line-height: 44px;
+  border-radius: 6px !important;
+  color: #d8e0e3 !important;
+  font-size: 15px !important;
+  font-weight: 600 !important;
+  letter-spacing: .04em !important;
+  transition: background-color .14s;
+}
+body #app #top-nav :is(.nav-item:hover, .nav-dd-btn.open, .nav-item.active) {
+  background: rgba(185, 212, 212, .13) !important;
+  color: #fff !important;
+}
+body #app #top-nav .nav-dd {
+  top: calc(100% + 10px) !important;
+  min-width: 238px !important;
+  max-width: min(320px, calc(100vw - 24px));
+  max-height: calc(100dvh - 100px);
+  padding: 6px !important;
+  border: 1px solid var(--menu-line) !important;
+  border-radius: 9px !important;
+  background: rgba(29, 33, 37, .96) !important;
+  box-shadow: 0 10px 26px #0003 !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+body #app #top-nav .nav-dd-wrap:nth-last-child(-n+2) .nav-dd { left: auto !important; right: 0; }
+body #app #top-nav .nav-dd :is(.mode-option, .profile-menu-item) {
+  display: flex !important;
+  align-items: center;
+  gap: 12px;
+  min-height: 52px !important;
+  padding: 11px 12px !important;
+  border-radius: 5px !important;
+  transition: background-color .14s;
+}
+body #app #top-nav .nav-dd :is(.mode-option, .profile-menu-item):hover { background: #ffffff0d !important; }
+body #app #top-nav .nav-dd :is(.mode-opt-name, .pm-name) { font-size: 16px !important; font-weight: 600 !important; }
+body #app #top-nav .nav-dd :is(.mode-opt-sub, .pm-sub) {
+  display: block !important;
+  margin-top: 3px;
+  color: #aeb9bf !important;
+  font-size: 12px;
+  line-height: 1.3;
+  letter-spacing: 0;
+  white-space: normal;
+}
+body #app #top-nav .nav-dd :is(.mode-option, .profile-menu-item)::before { display: none !important; }
+
+/* The side links can span most of a portrait pause screen. Only their actual
+   links should catch taps, never the empty space over the central controls. */
+body.mobile-ui #app #nav-side { pointer-events: none; }
+body.mobile-ui #app #nav-side :is(a, button) { pointer-events: auto; }
+
+/* Inventory: the equipped artwork and real account details lead the page. */
+body #app #panel-loadout .inv-profile-head {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  min-height: 0;
+  padding: 0 0 30px;
+  margin-bottom: 28px;
+  border-bottom: 1px solid var(--menu-line);
+}
+body #app #panel-loadout .inv-avatar-big {
+  width: 112px;
+  height: 112px;
+  flex: 0 0 112px;
+  border: 1px solid var(--menu-line);
+  border-radius: var(--menu-radius);
+  background: var(--menu-surface);
+}
+body #app #panel-loadout .inv-id { padding: 0; gap: 10px; }
+body #app #panel-loadout .inv-username { font-size: clamp(26px, 3.2vw, 38px); font-weight: 600; line-height: 1.1; }
+body #app #panel-loadout .inv-currency-line {
+  position: static;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 20px;
+  margin: 0;
+  white-space: normal;
+}
+body #app #panel-loadout :is(.inv-meta, .inv-networth) { position: static; font-size: 17px; color: var(--menu-muted); }
+body #app #panel-loadout #inv-balance { color: #eddbab; font-weight: 600; }
+body #app #panel-loadout .inv-page-title { font-size: 18px; font-weight: 600; letter-spacing: .1em; line-height: 1.3; }
+body #app #panel-loadout .inv-equipped-title { margin: 0 0 16px; }
+body #app #panel-loadout .inv-inventory-title { margin: 36px 0 16px; }
+body #app #panel-loadout :is(#inv-equipped, #inv-grid) { padding: 0; gap: 14px; }
+body #app #panel-loadout #inv-equipped { display: flex; flex-wrap: wrap; }
+body #app #panel-loadout #inv-equipped .inv-item { width: 154px; height: 154px; flex: 0 0 154px; max-width: none; max-height: none; }
+body #app #panel-loadout #inv-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(138px, 154px)); }
+body #app #panel-loadout #inv-grid .inv-item { width: 100%; height: 154px; min-height: 0; }
+body #app #panel-loadout .inv-item {
+  border: 1px solid var(--menu-line);
+  border-radius: 8px;
+  background: rgba(97, 106, 112, .35) !important;
+  box-shadow: none;
+  transform: none;
+  overflow: hidden;
+}
+body #app #panel-loadout .inv-item.equipped { border: 1px solid #a0d5cf99; box-shadow: none; }
+body #app #panel-loadout .inv-item:hover { border-color: #c2ddd9; background: rgba(119, 131, 138, .4) !important; }
+body #app #panel-loadout .inv-item-name {
+  height: 32px;
+  padding: 0 8px;
+  background: rgba(22, 26, 30, .88);
+  color: #f3f5f5;
+  font-size: 17px;
+  font-weight: 500;
+  line-height: 32px;
+}
+body #app #panel-loadout .inv-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px !important;
+  margin-bottom: 22px !important;
+  padding: 0;
+  border: 0;
+}
+body #app #panel-loadout .inv-tab {
+  min-height: 44px;
+  padding: 10px 15px !important;
+  border: 1px solid var(--menu-line) !important;
+  border-radius: 6px !important;
+  background: rgba(21, 25, 28, .52) !important;
+  color: #c5ced3 !important;
+  font-size: 16px !important;
+  line-height: 22px;
+}
+body #app #panel-loadout .inv-tab.active {
+  border-color: #a0d5cf99 !important;
+  background: #a0d5cf1f !important;
+  color: #e2f4f0 !important;
+}
+
+/* Career and connections share the same card material as the other pages. */
+body #app #panel-profile .career-header { align-items: center; padding-bottom: 26px; margin-bottom: 26px; border-color: var(--menu-line); }
+body #app #panel-profile .prof-username { color: var(--menu-text); font-size: clamp(27px, 3.4vw, 40px); letter-spacing: 0; }
+body #app #panel-profile .career-balance strong { color: #eddbab; font-size: 28px; }
+body #app #panel-profile .career-layout { grid-template-columns: minmax(240px, 310px) minmax(0, 1fr); gap: 20px; }
+body #app #panel-profile :is(.career-character, .career-record, .career-connection) {
+  padding: 24px;
+  border: 1px solid var(--menu-line);
+  border-radius: var(--menu-radius);
+  background: var(--menu-surface);
+}
+body #app #panel-profile :is(.career-eyebrow, .career-section-heading > span) { color: var(--menu-accent); }
+body #app #panel-profile .career-section-heading h2 { color: var(--menu-text); font-size: 17px; letter-spacing: .06em; }
+body #app #panel-profile .prof-char { height: 300px; background: transparent; border-radius: 6px; overflow: hidden; }
+body #app #panel-profile .prof-stats { gap: 0 22px; margin-top: 22px; }
+body #app #panel-profile .prof-stat { padding: 20px 0; border-bottom-color: var(--menu-line); }
+body #app #panel-profile .prof-stat-label { color: var(--menu-muted) !important; font-size: 12px; letter-spacing: .045em; }
+body #app #panel-profile .prof-stat-val { color: var(--menu-text); font-size: clamp(25px, 2.4vw, 34px); font-weight: 600; }
+body #app #panel-profile .career-connections { gap: 20px; }
+body #app #panel-profile .career-connection-actions { gap: 8px; }
+body #app #panel-profile .career-connections-title { margin-top: 32px; font-size: 18px; letter-spacing: .08em; }
+body #app #panel-profile .career-connection h3 { font-size: 22px; }
+body #app #panel-profile .career-secondary { margin-top: 14px; }
+
+/* Settings: readable sections, regular-sized controls and useful keycaps. */
+body #app #panel-settings { --menu-content-width: 860px; }
+body #app #panel-settings .settings-title-row { margin-bottom: 22px; }
+body #app #panel-settings .settings-actions { justify-content: flex-start; flex-wrap: wrap; margin: 0 0 30px; gap: 8px; }
+body #app #panel-settings .settings-utility { color: #d8e0e3; border-color: var(--menu-line-strong); }
+body #app #panel-settings .settings-section {
+  margin: 36px 0 20px !important;
+  padding-top: 28px;
+  border-top: 1px solid var(--menu-line);
+  color: var(--menu-text) !important;
+  font-size: 21px !important;
+  font-weight: 600 !important;
+  text-align: left;
+  letter-spacing: .04em !important;
+}
+body #app #panel-settings .setting-row { min-height: 44px; gap: 18px; }
+body #app #panel-settings .setting-val { min-width: 72px; color: #dde8e7 !important; font: 600 15px 'Rajdhani', sans-serif; text-align: right; }
+body #app #panel-settings .setting-slider { background: #7f96934d !important; }
+body #app #panel-settings .setting-slider::-webkit-slider-thumb { background: #b7d9d3 !important; border: 2px solid #263c3c !important; box-shadow: 0 2px 4px #0005 !important; }
+body #app #panel-settings .setting-slider::-moz-range-thumb { background: #b7d9d3; border: 2px solid #263c3c; box-shadow: 0 2px 4px #0005; width: 16px; height: 16px; border-radius: 50%; }
+body #app #panel-settings .quality-btns { display: flex; flex-wrap: wrap; gap: 8px; }
+body #app #panel-settings .quality-btn {
+  flex: 0 1 auto;
+  min-width: 72px;
+  padding: 10px 16px;
+  border: 1px solid var(--menu-line-strong) !important;
+  border-radius: 6px !important;
+  background: rgba(26, 31, 35, .66) !important;
+  color: #c5ced3 !important;
+}
+body #app #panel-settings .quality-btn.active {
+  border-color: #a0d5cf !important;
+  background: #a0d5cf26 !important;
+  color: #e8f6f3 !important;
+}
+body #app #panel-settings .quality-btn[data-xc='cyan'] { color: #7bdcea !important; }
+body #app #panel-settings .quality-btn[data-xc='green'] { color: #a3dfb4 !important; }
+body #app #panel-settings .quality-btn[data-xc='white'] { color: #fff !important; }
+body #app #panel-settings .quality-btn[data-xc='magenta'] { color: #e7a2d4 !important; }
+body #app #panel-settings .quality-btn[data-xc='yellow'] { color: #e6d99c !important; }
+body #app #panel-settings .control-guide > div { background: var(--menu-surface); border-color: var(--menu-line); border-radius: 6px; }
+body #app #panel-settings .control-guide kbd { color: #e2eeeb; border-color: #7b8a90; background: #414a50; box-shadow: 0 2px 0 #0005; }
+body #app #panel-settings #settings-save-btn { margin: 32px 0 0 !important; }
+
+/* Battle pass keeps real reward artwork and progress, with quiet track states. */
+body #app #panel-battlepass .panel-label { font-size: 13px !important; letter-spacing: .12em !important; color: var(--menu-muted) !important; }
+body #app #panel-battlepass .bp-title { font-size: clamp(28px, 3.4vw, 40px); letter-spacing: .025em; }
+body #app #panel-battlepass .bp-header-row { border-color: var(--menu-line); gap: 26px; align-items: flex-start; }
+body #app #panel-battlepass .bp-premium-box {
+  background: var(--menu-surface) !important;
+  border: 1px solid #c6b8dd55 !important;
+  border-radius: var(--menu-radius);
+  box-shadow: none;
+  padding: 22px;
+}
+body #app #panel-battlepass .bp-prem-label { color: #d5c7e5; font-size: 15px; letter-spacing: .08em; }
+body #app #panel-battlepass .bp-prem-desc { color: var(--menu-muted); }
+body #app #panel-battlepass .bp-tier-label { font-size: 23px; }
+body #app #panel-battlepass .bp-xp-bar-fill { background: var(--menu-accent) !important; box-shadow: none !important; }
+body #app #panel-battlepass .bp-xp-text { color: #bfd4d1 !important; }
+body #app #panel-battlepass .bp-toolbar { gap: 18px; padding: 24px 0; }
+body #app #panel-battlepass .bp-toolbar p { color: var(--menu-muted); }
+body #app #panel-battlepass .bp-navigation { gap: 10px; }
+body #app #panel-battlepass .bp-track { gap: 14px; padding-bottom: 14px; }
+body #app #panel-battlepass .bp-reward-card {
+  height: 188px;
+  padding: 16px 12px 48px;
+  border: 1px solid var(--menu-line) !important;
+  border-radius: 8px;
+  background: var(--menu-surface) !important;
+  box-shadow: none !important;
+}
+body #app #panel-battlepass .bp-reward-card.prem-track { border-color: #c6b8dd44 !important; background: rgba(43, 39, 48, .72) !important; }
+body #app #panel-battlepass .bp-reward-card.unlocked:not(.claimed) { border-color: #a0d5cf88 !important; }
+body #app #panel-battlepass .bp-reward-card.claimed { background: rgba(37, 47, 45, .66) !important; }
+body #app #panel-battlepass .bp-tier-col.current .bp-tier-num { color: #d8eee9; background: #a0d5cf22; }
+body #app #panel-battlepass .bp-claim-btn { min-height: 40px; height: 40px; background: #a0d5cf !important; color: var(--menu-accent-ink) !important; font-size: 12px; border-radius: 0; }
+body #app #panel-battlepass .bp-credit-icon { color: #e2ca96; }
+body #app #panel-battlepass .bp-claimed-badge { color: #b9dfc8; }
+
+/* Tournaments remain a list: status, time and action have distinct weight. */
+body #app #panel-tournaments .tournament-menu-head { gap: 20px; padding-bottom: 26px; border-color: var(--menu-line); }
+body #app #panel-tournaments .tournament-menu-head p { color: var(--menu-muted); font-size: 16px; }
+body #app #panel-tournaments #tournament-requirements { gap: 16px; padding: 22px 0; border-color: var(--menu-line); color: var(--menu-muted); }
+body #app #panel-tournaments .requirement-ready { color: #b2ddc4; }
+body #app #panel-tournaments .tournament-group { margin-top: 30px; }
+body #app #panel-tournaments .tournament-group-title { font-size: 19px; font-weight: 600; color: var(--menu-text); padding-bottom: 12px; border-color: var(--menu-line); }
+body #app #panel-tournaments .tournament-event { margin: 10px 0; padding: 0; border: 1px solid var(--menu-line); border-radius: 8px; background: var(--menu-surface); }
+body #app #panel-tournaments .tournament-row-summary { min-height: 70px; padding: 18px 20px; gap: 12px 18px; }
+body #app #panel-tournaments .tournament-row-summary:hover { background: #ffffff05; }
+body #app #panel-tournaments .tournament-row-summary::before { color: var(--menu-accent); }
+body #app #panel-tournaments .tournament-row-title { font-size: 20px; font-weight: 600; }
+body #app #panel-tournaments .tournament-row-date { color: var(--menu-muted); }
+body #app #panel-tournaments .tournament-kicker { padding: 4px 9px; border: 1px solid var(--menu-line); border-radius: 4px; color: #d3dfdd; font-size: 11px; letter-spacing: .1em; }
+body #app #panel-tournaments .tournament-row-details { padding: 0 20px 20px 54px; color: #c5ced3; }
+body #app #panel-tournaments .tournament-empty { padding: 10px 0 16px; color: var(--menu-muted); font-size: 16px; }
+body #app #panel-tournaments .tournament-facts { gap: 8px 20px; }
+body #app #panel-tournaments .tournament-facts dt { color: #a5b4bc; font-size: 12px; }
+body #app #panel-tournaments .tournament-facts dd { color: var(--menu-text); }
+body #app #panel-tournaments .tournament-action { display: inline-flex; align-items: center; justify-content: center; }
+body #app #panel-tournaments .tournament-report { overflow-wrap: anywhere; }
+
+/* Other destinations use the same neutral cards and restrained selection. */
+body #app #panel-shop .nm-header { margin-bottom: 26px; }
+body #app #panel-shop .nm-title { color: var(--menu-text) !important; }
+body #app #panel-shop :is(.shop-skin-card, .nm-featured-card) { border: 1px solid var(--menu-line); border-radius: 8px; background: var(--menu-surface); box-shadow: none !important; }
+body #app #panel-shop .shop-skin-grid { gap: 16px; }
+body #app #panel-shop .shop-preview-card { background: #6a737a24; }
+body #app #panel-shop .shop-card-body { padding: 14px; }
+body #app #panel-shop .shop-skin-name { color: var(--menu-text); font-size: 19px; }
+body #app #panel-shop .shop-card-cta { margin-top: 14px; }
+body #app #panel-shop .shop-btn { background: #a0d5cf !important; color: var(--menu-accent-ink) !important; }
+body #app #panel-shop :is(.nm-topbar, .shop-tabs) { gap: 8px; }
+body #app #panel-shop .nm-back { margin-bottom: 20px; }
+body #app .nav-panel[id] :is(.ach-card, .party-slot, .mode-card, .ability-card, .more-grid .profile-menu-item) {
+  border: 1px solid var(--menu-line);
+  border-radius: 8px;
+  background: var(--menu-surface);
+  box-shadow: none !important;
+}
+body #app .nav-panel[id] .profile-menu-item { padding: 18px; gap: 14px; }
+body #app .nav-panel[id] .profile-menu-item:hover { padding-left: 18px; }
+body #app .nav-panel[id] .profile-menu-item:hover::before { display: none; }
+body #app .nav-panel[id] :is(.pm-sub, .rnk-sub) { color: var(--menu-muted); }
+body #app .nav-panel[id] .rnk-table { width: 100%; font-size: 16px; font-variant-numeric: tabular-nums; }
+body #app .nav-panel[id] .rnk-table th { color: #aebec5; background: rgba(22, 26, 29, .6); font-size: 12px; letter-spacing: .06em; }
+body #app .nav-panel[id] .rnk-table :is(td, th) { padding: 16px 12px; border-color: var(--menu-line); }
+body #app .nav-panel[id] .rnk-table tbody tr:nth-child(even) { background: #ffffff04; }
+body #app #panel-feedback { --menu-content-width: 760px; }
+body #app #panel-feedback .feedback-text { min-height: 180px; resize: vertical; }
+
+@media (max-width: 900px) {
+  body #app .nav-panel[id] { padding: 64px 24px 40px !important; }
+  body #app #top-nav { padding: 0 16px !important; }
+  body #app #top-nav :is(.nav-item, .nav-dd-btn) { padding: 0 10px !important; font-size: 14px !important; }
+  body #app #panel-profile .career-layout { grid-template-columns: 240px minmax(0, 1fr); }
+  body #app #panel-profile .prof-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  body #app #panel-profile :is(.career-character, .career-record, .career-connection) { padding: 20px; }
+  body #app #panel-shop .shop-skin-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+
+@media (max-width: 640px) {
+  body #app .nav-panel[id] { padding: 70px 18px 36px !important; font-size: 16px; }
+  body #app .nav-panel[id] :is(.page-close, .inv-close-btn, .panel-x) { top: 12px !important; right: 16px !important; }
+  body #app #top-nav { height: 60px; }
+  body #app #top-nav .nav-brand { font-size: 28px !important; }
+  body #app #top-nav.mobile-open .nav-items { padding: 10px; background: rgba(25, 29, 33, .97); border: 1px solid var(--menu-line); border-radius: 8px; }
+  body #app #top-nav .nav-dd { max-height: 50dvh; min-width: 0 !important; width: 100% !important; }
+  body #app #panel-loadout .inv-profile-head { gap: 16px; padding-bottom: 24px; margin-bottom: 24px; }
+  body #app #panel-loadout .inv-avatar-big { width: 84px; height: 84px; flex-basis: 84px; }
+  body #app #panel-loadout .inv-username { font-size: 27px; overflow-wrap: anywhere; }
+  body #app #panel-loadout .inv-currency-line { gap: 2px 12px; }
+  body #app #panel-loadout :is(.inv-meta, .inv-networth) { font-size: 15px; }
+  body #app #panel-loadout :is(#inv-equipped, #inv-grid) { gap: 10px; }
+  body #app #panel-loadout #inv-equipped { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  body #app #panel-loadout #inv-equipped .inv-item { width: 100%; height: auto; aspect-ratio: 1; min-height: 0; }
+  body #app #panel-loadout #inv-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  body #app #panel-loadout #inv-grid .inv-item { height: auto; aspect-ratio: 1; }
+  body #app #panel-loadout .inv-item-name { font-size: 14px; padding: 0 4px; }
+  body #app #panel-loadout .inv-tabs { flex-wrap: nowrap !important; overflow-x: auto; padding: 4px 0 8px; }
+  body #app #panel-loadout .inv-tab { flex: 0 0 auto; white-space: nowrap; font-size: 15px !important; }
+  body #app #panel-profile .career-header { align-items: flex-start; gap: 18px; }
+  body #app #panel-profile .career-balance strong { font-size: 24px; }
+  body #app #panel-profile .career-layout { grid-template-columns: 1fr; }
+  body #app #panel-profile .career-connections { grid-template-columns: 1fr; }
+  body #app #panel-profile .prof-char { height: 280px; }
+  body #app #panel-profile .prof-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  body #app #panel-battlepass .bp-header-row { flex-direction: column; align-items: stretch; }
+  body #app #panel-battlepass .bp-premium-box { min-width: 0; }
+  body #app #panel-battlepass .bp-toolbar { flex-wrap: wrap; gap: 12px; }
+  body #app #panel-battlepass .bp-track { grid-template-columns: repeat(5, minmax(144px, 1fr)); }
+  body #app #panel-battlepass .bp-navigation { gap: 6px; flex-wrap: wrap; }
+  body #app #panel-battlepass #bp-page-label { min-width: 0; flex: 1; }
+  body #app #panel-battlepass #bp-current { margin-left: 0; }
+  body #app #panel-tournaments .tournament-menu-head { flex-wrap: wrap; }
+  body #app #panel-tournaments .tournament-row-summary { padding: 16px; }
+  body #app #panel-tournaments .tournament-row-title { flex-basis: calc(100% - 40px); }
+  body #app #panel-tournaments .tournament-row-date { margin-left: 34px; }
+  body #app #panel-tournaments .tournament-row-details { padding: 0 16px 20px; }
+  body #app #panel-shop .shop-skin-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  body #app .nav-panel[id] .rnk-table { display: block; overflow-x: auto; }
+  body #app .nav-panel[id] .rnk-table :is(td, th) { padding: 12px 9px; white-space: nowrap; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body #app .nav-panel[id] *, body #app #top-nav * { transition: none !important; animation: none !important; }
+}
+:root[data-contrast='1'] body #app .nav-panel[id] { --menu-backdrop: rgba(14, 17, 20, .97); --menu-surface: #1b2228; --menu-muted: #d3dce0; --menu-line: #79868f; }

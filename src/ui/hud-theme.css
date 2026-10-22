@@ -1,0 +1,364 @@
+/* Live-match presentation. No arena filters, camera, or crosshair overrides. */
+#hud.hud-refined {
+  --hud-surface: rgba(17, 21, 25, .84);
+  --hud-surface-soft: rgba(17, 21, 25, .64);
+  --hud-line: rgba(226, 238, 243, .16);
+  --hud-text: #f1f5f6;
+  --hud-muted: #b3bec4;
+  --hud-accent: #7fd3dd;
+  --hud-edge: max(18px, env(safe-area-inset-left));
+}
+
+#hud.hud-refined :is(#hud-vitals, #weapon-wrap, #server-pop, #dm-timer, .kill-entry, .weapon-slot, .grenade-slot, .ability-indicator) {
+  box-sizing: border-box;
+  font-family: 'Match Rajdhani', 'Rajdhani', sans-serif !important;
+  font-variant-numeric: tabular-nums;
+  text-shadow: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+/* One compact vitals group: green health, optional shield, then stamina. */
+#hud.hud-refined #hud-vitals {
+  position: absolute;
+  left: var(--hud-edge);
+  bottom: max(18px, env(safe-area-inset-bottom));
+  width: 258px;
+  padding: 9px 12px;
+  border: 1px solid var(--hud-line);
+  border-radius: 7px;
+  background: var(--hud-surface);
+  display: grid;
+  gap: 5px;
+}
+#hud.hud-refined #hud-vitals :is(#health-wrap, #shield-wrap, #stamina-wrap) {
+  position: relative !important;
+  inset: auto !important;
+  display: grid !important;
+  grid-template-columns: 42px minmax(0, 1fr) 28px;
+  align-items: center !important;
+  gap: 9px !important;
+  width: 100% !important;
+  height: 20px !important;
+  min-height: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+}
+#hud.hud-refined #hud-vitals #shield-wrap.hidden { display: none !important; }
+#hud.hud-refined #hud-vitals .hud-icon {
+  display: block !important;
+  width: auto !important;
+  height: auto !important;
+  min-width: 0 !important;
+  font-size: 0 !important;
+  text-align: left;
+  filter: none !important;
+}
+#hud.hud-refined #hud-vitals .hud-icon svg { display: none; }
+#hud.hud-refined #hud-vitals .hud-icon::after {
+  display: block !important;
+  font: 700 10px/1 'Match Rajdhani', 'Rajdhani', sans-serif !important;
+  letter-spacing: .7px;
+  color: var(--hud-muted) !important;
+}
+#hud.hud-refined .health-icon::after { content: 'HEALTH' !important; }
+#hud.hud-refined .shield-icon::after { content: 'SHIELD' !important; }
+#hud.hud-refined .stamina-icon::after { content: 'STAMINA' !important; }
+#hud.hud-refined #hud-vitals .bar-bg {
+  width: auto !important;
+  height: 5px !important;
+  margin: 0 !important;
+  background: rgba(255, 255, 255, .12) !important;
+  border: 0 !important;
+  border-radius: 2px !important;
+  overflow: hidden;
+}
+#hud.hud-refined #hud-vitals #health-wrap .bar-bg { height: 7px !important; }
+#hud.hud-refined #hud-vitals .bar-bg::after { display: none !important; }
+#hud.hud-refined #hud-vitals .bar-fill {
+  height: 100%;
+  border-radius: inherit !important;
+  box-shadow: none !important;
+  transition: none !important;
+}
+#hud.hud-refined #health-bar { background: #81d68b !important; }
+#hud.hud-refined #shield-bar { background: #8bd7eb !important; }
+#hud.hud-refined #stamina-bar { background: #b7a5d7 !important; animation: none !important; }
+#hud.hud-refined #stamina-bar.stamina-low { background: #e8ba75 !important; }
+#hud.hud-refined #hud-vitals :is(#health-text, #shield-text, #stamina-text) {
+  display: block !important;
+  position: static !important;
+  width: auto !important;
+  font: 600 15px/20px 'Match Rajdhani', 'Rajdhani', sans-serif !important;
+  text-align: right;
+  color: var(--hud-text) !important;
+  text-shadow: none !important;
+}
+#hud.hud-refined #hud-vitals #health-text { font-size: 20px !important; font-weight: 700 !important; }
+#hud.hud-refined #shield-stacks { display: none !important; }
+
+/* Ability silhouettes share a quiet tray, with readiness on the bottom edge. */
+#hud.hud-refined #grenade-wrap {
+  left: calc(var(--hud-edge) + 54px) !important;
+  bottom: max(112px, calc(env(safe-area-inset-bottom) + 94px)) !important;
+  height: 48px !important;
+  padding: 0 !important;
+  gap: 6px !important;
+  background: transparent !important;
+  border: 0 !important;
+}
+#hud.hud-refined .ability-indicator {
+  left: var(--hud-edge) !important;
+  bottom: max(112px, calc(env(safe-area-inset-bottom) + 94px)) !important;
+}
+#hud.hud-refined :is(.grenade-slot, .ability-indicator) {
+  width: 48px !important;
+  min-width: 48px !important;
+  height: 48px !important;
+  background: var(--hud-surface) !important;
+  border: 1px solid var(--hud-line) !important;
+  border-radius: 5px !important;
+  box-shadow: none !important;
+  opacity: 1 !important;
+}
+#hud.hud-refined :is(.grenade-slot, .ability-indicator)::after {
+  height: 2px !important;
+  background: var(--hud-accent) !important;
+  border-radius: 0 !important;
+  opacity: 1 !important;
+}
+#hud.hud-refined .ability-indicator::after { transform: none !important; }
+#hud.hud-refined :is(.grenade-icon svg, .ability-art) { color: #abd9df !important; }
+#hud.hud-refined .cooldown-gray { filter: grayscale(1) brightness(.52); }
+#hud.hud-refined :is(.grenade-icon, .ability-art) { left: 7px; top: 3px; }
+#hud.hud-refined .grenade-label,
+#hud.hud-refined .ability-indicator .ability-key {
+  position: absolute;
+  left: 5px !important;
+  bottom: 3px !important;
+  color: var(--hud-text) !important;
+  font: 700 11px/12px 'Match Rajdhani', 'Rajdhani', sans-serif !important;
+  text-shadow: none !important;
+}
+#hud.hud-refined :is(#frag-count, #smoke-count, #timebomb-count, #impulse-count) {
+  top: 3px !important;
+  right: 5px !important;
+  left: auto !important;
+  font: 700 11px/12px 'Match Rajdhani', 'Rajdhani', sans-serif !important;
+  color: var(--hud-text) !important;
+  text-shadow: none !important;
+}
+#hud.hud-refined .grenade-empty { color: #e7a093 !important; }
+
+/* Active ammunition is prominent; reserve and weapon name remain secondary. */
+#hud.hud-refined #weapon-wrap {
+  position: absolute !important;
+  right: max(18px, env(safe-area-inset-right)) !important;
+  bottom: max(18px, env(safe-area-inset-bottom)) !important;
+  width: 188px !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  padding: 9px 13px !important;
+  background: var(--hud-surface) !important;
+  border: 1px solid var(--hud-line) !important;
+  border-radius: 7px !important;
+  transform: none !important;
+}
+#hud.hud-refined #weapon-name {
+  display: block !important;
+  color: var(--hud-muted) !important;
+  font: 700 11px/16px 'Match Rajdhani', 'Rajdhani', sans-serif !important;
+  letter-spacing: 1px !important;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  overflow: hidden;
+  text-shadow: none !important;
+}
+#hud.hud-refined #ammo-text {
+  position: static !important;
+  min-height: 0 !important;
+  font: 700 35px/36px 'Match Rajdhani', 'Rajdhani', sans-serif !important;
+  text-align: left !important;
+  letter-spacing: 0 !important;
+  color: var(--hud-text) !important;
+  transform: none !important;
+  text-shadow: none !important;
+}
+#hud.hud-refined #ammo-text::before { display: none !important; }
+#hud.hud-refined .hud-reserve { color: var(--hud-muted); font-size: 19px; font-weight: 500; }
+
+/* Preserve count-aware slot heights, including the full carried inventory. */
+#hud.hud-refined #weapon-slots {
+  position: absolute !important;
+  right: max(18px, env(safe-area-inset-right)) !important;
+  bottom: 108px !important;
+  width: 152px !important;
+  transform: none !important;
+}
+#hud.hud-refined .weapon-slot {
+  --carried-slot-height: min(64px, calc((100dvh - var(--game-ad-height, 0px) - 260px) / var(--carried-slot-count, 3)));
+  background: var(--hud-surface-soft) !important;
+  border-right-width: 3px !important;
+  border-radius: 5px 0 0 5px !important;
+  outline: 1px solid rgba(255, 255, 255, .06);
+  outline-offset: -1px;
+}
+#hud.hud-refined .weapon-slot.active {
+  background: var(--hud-surface) !important;
+  border-right-color: var(--hud-accent) !important;
+}
+#hud.hud-refined .weapon-slot .ws-thumb,
+#hud.hud-refined .weapon-slot.melee-slot .ws-thumb,
+#hud.hud-refined .weapon-slot.active .ws-thumb {
+  inset: 4px 26px 8px 7px !important;
+  width: auto !important;
+  height: auto !important;
+  background-size: contain !important;
+  opacity: .75 !important;
+}
+#hud.hud-refined .weapon-slot.active .ws-thumb { opacity: 1 !important; }
+#hud.hud-refined .weapon-slot .ws-key {
+  top: 6px !important;
+  right: 6px !important;
+  padding: 0 !important;
+  color: var(--hud-muted) !important;
+  font: 700 13px/15px 'Match Rajdhani', 'Rajdhani', sans-serif !important;
+  text-shadow: none !important;
+}
+#hud.hud-refined .weapon-slot.active .ws-key { color: var(--hud-accent) !important; }
+#hud.hud-refined .weapon-slot .ws-ammo {
+  position: absolute;
+  left: auto !important;
+  right: 7px;
+  bottom: 3px !important;
+  width: auto !important;
+  color: var(--hud-muted) !important;
+  font: 600 11px/13px 'Match Rajdhani', 'Rajdhani', sans-serif !important;
+  text-shadow: none !important;
+}
+
+/* Match information is readable over both sunlit and dark maps. */
+#hud.hud-refined #dm-timer {
+  top: 16px !important;
+  min-width: 88px;
+  padding: 7px 14px !important;
+  border: 1px solid var(--hud-line) !important;
+  border-radius: 5px !important;
+  background: var(--hud-surface) !important;
+  color: var(--hud-text) !important;
+  font: 700 23px/25px 'Match Rajdhani', 'Rajdhani', sans-serif !important;
+  letter-spacing: 1px !important;
+}
+#hud.hud-refined #dm-timer::before { content: none !important; }
+#hud.hud-refined #dm-timer.dm-low { color: #ffb1a4 !important; animation: none !important; }
+#hud.hud-refined #server-pop {
+  position: absolute;
+  top: 16px;
+  right: max(18px, env(safe-area-inset-right));
+  margin: 0;
+  padding: 8px 11px;
+  border: 1px solid var(--hud-line);
+  border-radius: 5px;
+  background: var(--hud-surface);
+  color: var(--hud-muted) !important;
+  font-size: 0 !important;
+  letter-spacing: 0 !important;
+}
+#hud.hud-refined #server-pop span { color: var(--hud-text) !important; font-size: 16px !important; font-weight: 700; }
+#hud.hud-refined #server-pop::after { color: var(--hud-muted); font-size: 10px; letter-spacing: .8px; margin-left: 4px; }
+#hud.hud-refined #killfeed {
+  left: auto !important;
+  right: max(18px, env(safe-area-inset-right)) !important;
+  top: 66px !important;
+  width: min(310px, 36vw);
+  gap: 4px;
+}
+#hud.hud-refined .kill-entry {
+  max-width: 100%;
+  padding: 5px 9px !important;
+  border-left: 2px solid var(--hud-accent) !important;
+  border-radius: 3px !important;
+  background: var(--hud-surface) !important;
+  color: var(--hud-text) !important;
+  font: 600 13px/17px 'Match Rajdhani', 'Rajdhani', sans-serif !important;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 760px), (max-height: 500px) {
+  #hud.hud-refined { --hud-edge: max(10px, env(safe-area-inset-left)); }
+  #hud.hud-refined #hud-vitals { width: 220px; bottom: 10px; padding: 7px 9px; gap: 2px; }
+  #hud.hud-refined :is(#grenade-wrap, .ability-indicator) { bottom: 96px !important; }
+  #hud.hud-refined #weapon-wrap { right: 10px !important; bottom: 10px !important; width: 148px !important; padding: 7px 10px !important; }
+  #hud.hud-refined #ammo-text { font-size: 29px !important; line-height: 30px !important; }
+  #hud.hud-refined .hud-reserve { font-size: 16px; }
+  #hud.hud-refined #weapon-slots { right: 10px !important; bottom: 86px !important; width: 125px !important; }
+  #hud.hud-refined .weapon-slot { --carried-slot-height: min(54px, calc((100dvh - var(--game-ad-height, 0px) - 170px) / var(--carried-slot-count, 3))); }
+  #hud.hud-refined #dm-timer { top: 10px !important; padding: 4px 10px !important; min-width: 72px; font-size: 20px !important; }
+  #hud.hud-refined #server-pop { top: 10px; right: 10px; padding: 5px 8px; }
+  #hud.hud-refined #killfeed { top: 54px !important; right: 10px !important; width: min(260px, 36vw); }
+  #hud.hud-refined .kill-entry { font-size: 11px !important; line-height: 14px !important; padding: 3px 7px !important; }
+}
+
+/* Touch controls occupy the bottom corners; vital data sits above the scene. */
+.mobile-ui #hud.hud-refined :is(#weapon-slots, #grenade-wrap, .ability-indicator) { display: none !important; }
+.mobile-ui #hud.hud-refined #hud-vitals { top: 12px; bottom: auto; left: 68px; width: 190px; padding: 6px 9px; gap: 2px; }
+.mobile-ui #hud.hud-refined #hud-vitals :is(#health-wrap, #shield-wrap, #stamina-wrap) { grid-template-columns: 42px minmax(0, 1fr) 24px; gap: 6px !important; height: 16px !important; }
+.mobile-ui #hud.hud-refined #hud-vitals #health-text { font-size: 16px !important; line-height: 16px !important; }
+.mobile-ui #hud.hud-refined #weapon-wrap { right: 12px !important; top: 58px; bottom: auto !important; width: 144px !important; }
+.mobile-ui #hud.hud-refined #server-pop { top: 12px; right: 12px; }
+.mobile-ui #hud.hud-refined #killfeed { top: 124px !important; width: 190px; right: 12px !important; }
+@media (max-width: 540px) {
+  .mobile-ui #hud.hud-refined #hud-vitals { top: 68px; left: 12px; width: min(177px, 48vw); }
+  .mobile-ui #hud.hud-refined #weapon-wrap { top: 68px; width: 134px !important; }
+  .mobile-ui #hud.hud-refined #dm-timer { left: 50% !important; transform: translateX(-50%) !important; }
+  .mobile-ui #hud.hud-refined #killfeed { top: 180px !important; width: min(230px, 65vw); }
+}
+
+:root[data-contrast='1'] #hud.hud-refined { --hud-surface: #10151a; --hud-surface-soft: #10151a; --hud-line: #cbd6df; --hud-muted: #e4ebef; }
+
+/* Adjacent live-match controls must not sit over vitals or ability shortcuts. */
+body:not(.home-attract):not(.menu-blurred):has(#hud.hud-refined:not(.hidden)) #room-chat {
+  bottom: 178px;
+  left: 18px;
+  width: 258px;
+  box-sizing: border-box;
+  border-radius: 5px;
+  background: rgba(17, 21, 25, .78);
+}
+body:not(.mobile-ui):not(.home-attract):not(.menu-blurred):has(#hud.hud-refined:not(.hidden)) #fullscreen-toggle {
+  top: 16px;
+  bottom: auto;
+  left: 18px;
+  background: rgba(17, 21, 25, .84);
+  border-radius: 5px;
+}
+.mobile-ui:has(#hud.hud-refined) #mobile-controls > .mbtn-menu {
+  left: 12px;
+  top: max(12px, env(safe-area-inset-top));
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
+  padding: 4px;
+  gap: 1px;
+  border: 1px solid rgba(226, 238, 243, .3);
+  border-radius: 6px;
+  background: rgba(17, 21, 25, .84);
+}
+.mobile-ui:has(#hud.hud-refined) #mobile-controls > .mbtn-menu svg { width: 26px; height: 26px; }
+.mobile-ui:has(#hud.hud-refined) #mobile-controls > .mbtn-menu span { font: 600 8px/8px 'Match Rajdhani', sans-serif; }
+body.mobile-ui:not(.home-attract):not(.menu-blurred):has(#hud.hud-refined:not(.hidden)) #room-chat {
+  top: 96px;
+  bottom: auto;
+  left: 12px;
+  width: 190px;
+  padding: 5px 8px;
+}
+@media (max-width: 540px) {
+  body.mobile-ui:not(.home-attract):not(.menu-blurred):has(#hud.hud-refined:not(.hidden)) #room-chat { top: 142px; width: min(230px, 65vw); }
+}
+@media (max-height: 500px) and (min-width: 541px) {
+  body:not(.mobile-ui):not(.home-attract):not(.menu-blurred):has(#hud.hud-refined:not(.hidden)) #room-chat { bottom: 160px; left: 10px; width: 220px; }
+}

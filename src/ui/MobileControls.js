@@ -15,7 +15,7 @@ export class MobileControls {
       ${button('menu', 'Open menu')}<div id="m-actions">
       ${button('smoke', 'Throw smoke grenade')}${button('reload', 'Reload')}${button('aim', 'Aim down sights')}
       ${button('grenade', 'Throw frag grenade')}${button('fire', 'Fire')}
-      ${button('swap', 'Switch weapon')}${button('slide', 'Slide while sprinting; hold to crouch')}
+      ${button('swap', 'Switch weapon')}${button('slide', 'Slide while running')}
       ${button('timebomb', 'Plant time bomb (V)')}${button('impulse', 'Knockback blast (E)')}${button('jump', 'Jump / double jump')}${button('ability', 'Use ability')}</div>`;
     document.body.appendChild(this._el);
     this._joyInner = this._el.querySelector('#joy-inner');

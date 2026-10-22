@@ -8,7 +8,7 @@ import {
   setThirdPersonDesired,
   findThirdPersonObstruction,
 } from './ThirdPersonCamera.js';
-import { sprintRequested, crouchRequested, consumeCrouchPress } from '../core/GameplayInput.js';
+import { sprintRequested, crouchRequested, consumeSlidePress } from '../core/GameplayInput.js';
 import { characterSweepSegments } from '../sim/CharacterSweep.js';
 import {
   STAMINA_DRAIN,
@@ -238,9 +238,10 @@ export class Player {
     if (input.isDown('KeyD')) moveX += 1;
 
     const moving = moveX !== 0 || moveZ !== 0;
+    const wantCrouch = crouchRequested(input);
     // On mobile the joystick sets ShiftLeft virtually; also auto-sprint any forward motion
     const wantSprint = sprintRequested(input, moveZ, this.weaponSprintBlocked, moveX);
-    this.isSprinting = moving && wantSprint && moveZ >= 0 && this.stamina > 2 && !this.isSliding && !this.isCrouching;
+    this.isSprinting = moving && wantSprint && !wantCrouch && moveZ >= 0 && this.stamina > 2 && !this.isSliding && !this.isCrouching;
 
     // smooth sprint blend for camera roll
     this._sprintT += ((this.isSprinting ? 1 : 0) - this._sprintT) * Math.min(1, dt * 9);
@@ -279,17 +280,16 @@ export class Player {
 
     // --- crouch / slide ---
     const wasLow = this.isSliding || this.isCrouching;
-    const wantCrouch = crouchRequested(input);
-    const justCrouch = consumeCrouchPress(input);
+    const justSlide = consumeSlidePress(input);
     this._slideCooldown = Math.max(0, this._slideCooldown - dt);
     if (this.isSliding && !this.onGround) {
       this.isSliding = false; this._slideTimer = 0; this._slideCooldown = SLIDE_RECOVERY;
     }
 
     const horizontalSpeed = Math.hypot(this.velocity.x, this.velocity.z);
-    if (canStartSlide(this.velocity.x, this.velocity.z, this.onGround, this.isSliding, this._slideCooldown, justCrouch)) {
+    if (this.isSprinting && canStartSlide(this.velocity.x, this.velocity.z, this.onGround, this.isSliding, this._slideCooldown, justSlide)) {
       // Carry the player's actual travel direction into the burst. This keeps
-      // a diagonal sprint from snapping to camera-forward when crouch is hit.
+      // a diagonal sprint from snapping to camera-forward when C is pressed.
       this.isSliding   = true;
       this._slideTimer = SLIDE_DURATION;
       this._slideFwd.set(this.velocity.x / horizontalSpeed, 0, this.velocity.z / horizontalSpeed);

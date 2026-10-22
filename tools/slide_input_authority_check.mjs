@@ -19,7 +19,7 @@ for(const hz of [10,15]){
     if(next!==packet){
       packet=next;
       const crouchDown=tick>=6&&!pressed;const jump=tick>=10&&!jumpPressed;
-      send({crouch:tick>=6?1:0,crouchDown:!!crouchDown,jump:!!jump});
+      send({crouch:0,crouchDown:!!crouchDown,jump:!!jump});
       if(crouchDown)pressed=true;if(jump)jumpPressed=true;
     }
     room.update();
@@ -47,8 +47,9 @@ for(const hz of [10,15]){
 
 {
   const {room,p,send}=setup();
-  send({crouch:1,crouchDown:1});room.update();
+  send({crouch:0,crouchDown:1});room.update();
   assert.equal(p.state.slide,0,'standing start must not bypass slide speed requirement');
+  assert.equal(p.state.crouch,0,'dedicated C slide must not crouch a stationary player');
   assert.equal(p._heldInput.inp.crouchJust,0);
   for(let i=0;i<3;i++){room.update();assert.equal(p.state.slide,0,'grace replayed the crouch edge');}
   send({jump:1});room.update();const vy=p.state.vy;
