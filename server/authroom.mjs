@@ -93,6 +93,7 @@ export function botPresentationYaw(aimYaw, vx, vz, combat = false) {
 const RESPAWN_TICKS = TICK_HZ * 3;          // 3s
 const SPAWN_PROTECTION_TICKS = Math.ceil(TICK_HZ * 1.5);
 const MAX_INPUT_QUEUE = 8;                  // drop floods; catch-up caps here
+const INPUT_HOLD_GRACE_TICKS = 3;           // at most 150ms between input packets
 const INPUT_LEAD_TICKS = 6;                 // how far ahead of server tick we allow
 const HISTORY_TICKS = 20;                   // 1s of position history for lag-comp
 const START_HEALTH = 100, START_SHIELD = 0;
@@ -343,7 +344,7 @@ export class AuthRoom {
       this._resultsUntil = this._postMatchUntil;
       this._roundWaiting = true;
       for (const p of this.players.values()) {
-        p.queue.length = 0; p.fireReq = p.abilityReq = null;
+        p.queue.length = 0; p._heldInput = null; p.fireReq = p.abilityReq = null;
       }
       return false;
     }
@@ -379,6 +380,7 @@ export class AuthRoom {
       const spawn = this._spawn(spawnIndex++, null, false);
       player.state = createState(spawn[0], spawn[1], spawn[2]);
       player.queue.length = 0;
+      player._heldInput = null;
       player.history.length = 0;
       player.health = START_HEALTH;
       player.healthRegenDelay = 0;
@@ -422,7 +424,7 @@ export class AuthRoom {
     this._resultsUntil = 0;
     for (const p of this.players.values()) {
       p.mapReady = p.isBot || !p.readinessProtocol;
-      p.queue.length = 0; p.fireReq = p.abilityReq = null;
+      p.queue.length = 0; p._heldInput = null; p.fireReq = p.abilityReq = null;
       p._animVX = p._animVZ = 0; p._lastSprint = false;
     }
   }
@@ -432,7 +434,7 @@ export class AuthRoom {
     if (!p || msg.matchStart !== this.matchStart || msg.mapId !== this.arena.id) return false;
     if (!p.mapReady) {
       p.mapReady = true;
-      p.queue.length = 0; p.fireReq = p.abilityReq = null;
+      p.queue.length = 0; p._heldInput = null; p.fireReq = p.abilityReq = null;
       p.invulnerableUntil = this.tick + SPAWN_PROTECTION_TICKS;
     }
     return true;
@@ -446,6 +448,7 @@ export class AuthRoom {
     for (const p of this.players.values()) if (p.mapReady !== false) {
       p.invulnerableUntil = this.tick + SPAWN_PROTECTION_TICKS;
       p.queue.length = 0;
+      p._heldInput = null;
     }
   }
 
@@ -457,7 +460,7 @@ export class AuthRoom {
     if (enabled !== true && this.targetPopulation
         && [...this.players.values()].filter(q => !q.isBot && !q.spectating).length >= this.targetPopulation) return;
     p.spectating = enabled === true;
-    p.queue.length = 0; p.fireReq = p.abilityReq = null;
+    p.queue.length = 0; p._heldInput = null; p.fireReq = p.abilityReq = null;
     p.state.vx = p.state.vz = 0;
     this._rebalanceBots();
   }
@@ -516,6 +519,7 @@ export class AuthRoom {
       state: createState(spawn[0], spawn[1], spawn[2]),
       lastInputSeq: 0, ackTick: 0,
       queue: [],
+      _heldInput: null, _heldInputUntilTick: 0,
       health: START_HEALTH, shield: START_SHIELD, maxShield: START_SHIELD,
       healthRegenDelay: 0, shieldRegenDelay: 0,
       alive: true, deadUntil: 0, kills: 0, deaths: 0, score: 0,
@@ -1181,7 +1185,7 @@ export class AuthRoom {
   onInput(id, msg) {
     const p = this.players.get(id);
     if (p && !this._canSimulate(p)) return;
-    if (!p) return;
+    if (!p || !p.alive) return;
     if (typeof msg.seq !== 'number' || msg.seq <= p.lastInputSeq) return;   // replay/stale
     // clamp look to finite numbers; movement to the tri-state set
     const inp = makeInput({
@@ -1194,7 +1198,7 @@ export class AuthRoom {
     });
     const wid = this._canEquipWeapon(p, msg.wid) ? msg.wid : p.wid;
     if (MAIN_WEAPONS.has(wid)) p.mainWid = wid;
-    p.queue.push({ seq: msg.seq, inp, wid, aiming: !!msg.aiming });
+    p.queue.push({ seq: msg.seq, inp, wid, aiming: !!msg.aiming, receivedTick: this.tick });
     p.lastInputSeq = msg.seq;
     if (p.queue.length > MAX_INPUT_QUEUE) p.queue.splice(0, p.queue.length - MAX_INPUT_QUEUE);
   }
@@ -1543,6 +1547,8 @@ export class AuthRoom {
       target.state.py + 0.2, target.state.py - 256);
     target.deathReaction.floorY = Number.isFinite(floor) ? floor : target.state.py;
     target.alive = false;
+    target.queue.length = 0;
+    target._heldInput = null;
     target.health = 0;
     target._lastSprint = false;
     target._lastAim = false;
@@ -1688,7 +1694,7 @@ export class AuthRoom {
     }
 
     for (const p of this.players.values()) {
-      if (!this._canSimulate(p)) { p.queue.length = 0; p.fireReq = p.abilityReq = null; continue; }
+      if (!this._canSimulate(p)) { p.queue.length = 0; p._heldInput = null; p.fireReq = p.abilityReq = null; continue; }
       const equipped = WEAPONS[p.wid] || WEAPONS.m4;
       this._finishReload(p);
       p.fireCooldown = Math.max(
@@ -1715,7 +1721,7 @@ export class AuthRoom {
           p.healthRegenDelay = 0;
           p.reloadUntil = 0; p.reloadWid = null;
           p.invulnerableUntil = this.tick + SPAWN_PROTECTION_TICKS;
-          p.alive = true; p.deathReaction = null; p.queue.length = 0;
+          p.alive = true; p.deathReaction = null; p.queue.length = 0; p._heldInput = null;
           p._lastSprint = false;
           p._animVX = p._animVZ = 0;
           p._lastAim = false;
@@ -1750,9 +1756,19 @@ export class AuthRoom {
         p.shield = Math.min(p.maxShield, p.shield + SHIELD_REGEN_RATE / TICK_HZ);
       }
 
-      // consume the next queued input (or coast with zero-move if starved)
+      // A slow rendering frame can deliver held keys below the 20Hz server
+      // rate. Briefly retain held intent instead of stopping every other tick.
+      // Edges are NEVER repeated, and the deadline is tied to packet receipt,
+      // not renewed by the fallback or by draining an old command backlog.
       let cmd = p.isBot ? this._driveBot(p) : p.queue.shift();
+      if (!p.isBot && cmd) {
+        p._heldInput = {...cmd, inp: {...cmd.inp, jumpJust: 0, crouchJust: 0, teleJust: 0}};
+        p._heldInputUntilTick = (cmd.receivedTick ?? this.tick) + INPUT_HOLD_GRACE_TICKS;
+      } else if (!p.isBot && p._heldInput && this.tick <= p._heldInputUntilTick) {
+        cmd = p._heldInput;
+      }
       if (!cmd) {
+        p._heldInput = null;
         cmd = { seq: p.lastInputSeq, inp: makeInput({ yaw: p._lastYaw ?? 0 }) };
       }
       // reject inputs that claim to be too far in the future (schema guard)
@@ -1787,6 +1803,7 @@ export class AuthRoom {
       if (p.state.recovered) {
         this._kill(p, null, false, 'void');
         p.queue.length = 0;
+        p._heldInput = null;
         this._record(p);
         continue;
       }

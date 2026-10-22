@@ -9,7 +9,7 @@
     "build": "vite build",
     "preview": "vite preview",
     "test:move": "node tools/movesim_fixtures.mjs && node tools/movement_presentation_check.mjs && node tools/double_jump_check.mjs",
-    "test:slide": "node tools/slide_controls_check.mjs && node tools/slide_movement_check.mjs && node tools/slide_presentation_check.mjs",
+    "test:slide": "node tools/slide_controls_check.mjs && node tools/slide_movement_check.mjs && node tools/slide_presentation_check.mjs && node tools/slide_input_authority_check.mjs",
     "test:ev-character": "node tools/ev_character_check.mjs && node tools/gait_transition_check.mjs && node tools/weapon_roles_check.mjs && node tools/ev_review_check.mjs && node tools/forged_default_check.mjs",
     "test:ev-game": "node tools/ev_game_check.mjs",
     "test:economy": "node tools/economy_check.mjs && node tools/economy_combat_check.mjs && node tools/economy_api_check.mjs && node tools/economy_multiplayer_check.mjs",
