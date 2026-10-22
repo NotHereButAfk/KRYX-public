@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "test:achievements": "node tools/achievement_check.mjs && node tools/achievement_browser_check.mjs",
-    "dev": "vite",
+    "dev": "node tools/local-dev.mjs",
     "build": "vite build",
     "preview": "vite preview",
     "test:move": "node tools/movesim_fixtures.mjs && node tools/movement_presentation_check.mjs && node tools/double_jump_check.mjs",
@@ -78,11 +78,13 @@
     "test:zombies": "node tools/zombie_roles_check.mjs && node tools/zombie_roster_visual_check.mjs",
     "simulate:bots": "node tools/bot_navigation_simulation.mjs final 180 && node tools/bot_simulation_check.mjs",
     "bake:bot-navigation": "node tools/bake_bot_navigation.mjs",
-    "test:guest-score": "node tools/guest_score_check.mjs"
+    "test:guest-score": "node tools/guest_score_check.mjs",
+    "start": "node tools/local-dev.mjs",
+    "dev:client": "vite"
   },
   "repository": {
     "type": "git",
-    "url": "http://local_proxy@127.0.0.1:38689/git/NotHereButAfk/Ev.io"
+    "url": "https://github.com/NotHereButAfk/KRYX-public.git"
   },
   "keywords": [],
   "author": "",
