@@ -11,7 +11,7 @@ import { BOT_SKIN } from '../player/skins.js';
 import { BOT_DASH, BOT_RETALIATION_AIM_SCALE, BOT_TACTICS, advanceBotMagazine, advanceBurst, botAimErrorMeters, botTrackingOffset, botArenaDetectionDistance, botLoadoutForId, chooseCombatSteering, choosePlayerLikeBotMove, chooseReachableRoamPoint, isBotDashLaneSafe } from './BotCombat.js';
 import { BOT_DIFFICULTIES, chooseBotCoverPoint, shouldBotTacticalReload, isInsideBotFov } from './BotCombat.js';
 import { BACKWARD_WALK_MULT, BOT_MOVEMENT_SCALE, WALK_SPEED, SPRINT_MULT, STAMINA_MAX, STAMINA_DRAIN, STAMINA_REGEN, STAMINA_REGEN_DELAY } from '../sim/MovementConfig.js';
-import { DEATH_BODY_DURATION, DEATH_IMPACT_TIME, sampleDeathReaction } from '../sim/DeathReaction.js';
+import { DEATH_BODY_DURATION, DEATH_IMPACT_TIME, createDeathReaction, sampleDeathReaction } from '../sim/DeathReaction.js';
 import { PLAYER_WORLD_MODEL_SCALE } from '../player/Proportions.js';
 
 const _STILL = { bob: 0, lean: 0, swing: 0 };
@@ -303,7 +303,7 @@ export class Bot {
     this._muzzleFlash = flash;
   }
 
-  takeDamage(amount, attacker = null) {
+  takeDamage(amount, attacker = null, hit = null) {
     if (!this.alive) return false;
     // Damage immediately refreshes combat memory even if the attacker fired
     // from outside the normal vision cone/range.
@@ -331,13 +331,13 @@ export class Bot {
     this.healthBarFg.scale.x = Math.max(0.001, this.health / this.maxHealth);
     this.healthBarFg.position.x = -((1 - this.healthBarFg.scale.x) * 0.33);
     if (this.health <= 0) {
-      this.die();
+      this.die(attacker, hit);
       return true;
     }
     return false;
   }
 
-  die() {
+  die(attacker = null, hit = null) {
     this.audio?.playAt(this.position, () => this.audio.playDeath?.());
     this._botDeaths = (this._botDeaths || 0) + 1;
     this.alive = false;
@@ -349,9 +349,17 @@ export class Bot {
     this.respawnTimer = RESPAWN_DELAY + 0.72;
     this._deathSide  = Math.random() < 0.5 ? 1 : -1;
     this._deathBaseY = this.mesh.position.y;
-    const floor = this.world.groundHeightAt?.(this.position.x, this.position.z, this._deathBaseY + .2, this._deathBaseY - 256);
-    this._deathReaction = { fallVelocity: Math.min(0, this._velY || 0),
-      groundOffset: Number.isFinite(floor) ? Math.min(0, floor - this._deathBaseY) : 0 };
+    this._deathOrigin = this.position.clone();
+    this._deathOrigin.y = this._deathBaseY;
+    const ray = new THREE.Ray();
+    this._deathReaction = createDeathReaction(hit?.wid ?? attacker?._botGun?.id ?? 'm4',
+      { px: this.position.x, py: this._deathBaseY, pz: this.position.z, vy: this._velY },
+      hit?.source ?? attacker?.position ?? null,
+      this.world.raycastCollisionDistance ? (ox, oy, oz, dx, dy, dz, far) => {
+        ray.origin.set(ox, oy, oz); ray.direction.set(dx, dy, dz);
+        return this.world.raycastCollisionDistance(ray, far);
+      } : undefined,
+      this.world.groundHeightAt?.bind(this.world));
     this._deathYaw = this.mesh.rotation.y;
     this.healthBarGroup.visible = false;
   }
@@ -532,7 +540,7 @@ export class Bot {
 
     // Does it reach the player before that?
     const hitDist = this._rayHitsPlayer(player, range);
-    if (hitDist !== null && hitDist < blockAt) onAttack(this._botGun.damage, this.position);
+    if (hitDist !== null && hitDist < blockAt) onAttack(this._botGun.damage, this.position, this);
   }
 
   /** Distance along _bulletRay at which it strikes the player, or null. */
@@ -556,7 +564,9 @@ export class Bot {
       if (!this.noRespawn) this.respawnTimer = Math.max(0, this.respawnTimer - dt);
       const reaction = sampleDeathReaction(this._deathReaction, this._deathT, this._deathYaw);
       this.mesh.rotation.set(reaction.pitch, this._deathYaw, reaction.roll, 'YXZ');
-      this.mesh.position.y = this._deathBaseY;
+      this.mesh.position.copy(this._deathOrigin);
+      this.mesh.position.x += reaction.x;
+      this.mesh.position.z += reaction.z;
       if (this._isHuman) {
         const ud = this.mesh.userData;
         ud.setLocomotion?.(0, true, false);
@@ -807,7 +817,7 @@ export class Bot {
           this.audio.playSwing?.();
           this.audio.playSwordImpact?.('armor');
         });
-        onAttack(ATTACK_DAMAGE, this.position);
+        onAttack(ATTACK_DAMAGE, this.position, this);
       }
 
       // Reaching the remembered point without reacquiring the player starts a

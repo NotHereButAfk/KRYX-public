@@ -48,6 +48,12 @@ export function groundDeathBody(group, floorY, air = 0, frozenPose = null, useSu
     const height = (group.userData.deathAnchorY ?? (group.userData.standHeight || 1.85) * .54) * group.scale.y;
     const current = anchor ? anchor.getWorldPosition(vertex).y - group.position.y
       : height * Math.cos(group.rotation.x);
+    if (motion.centered && anchor) {
+      // The swept path tracks the pelvis. Rotating around the feet would
+      // otherwise swing the corpse outside its reserved wall clearance.
+      group.position.x -= vertex.x - group.position.x;
+      group.position.z -= vertex.z - group.position.z;
+    }
     // Move the hips on one uninterrupted gravity trajectory. Only contact with
     // the real floor can arrest it; rotating toes cannot lift the whole corpse.
     group.position.y = floorY + height + motion.drop - current;

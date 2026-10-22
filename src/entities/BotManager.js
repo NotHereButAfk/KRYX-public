@@ -133,7 +133,7 @@ export class BotManager {
       const onTargetDamaged = (damage, from) => {
         if (!allowBotCombat) return;
         const wasDead = target.isDead || target.alive === false;
-        if (target === player) onPlayerDamaged(damage, from);
+        if (target === player) onPlayerDamaged(damage, from, bot);
         else target.takeDamage(damage, bot);
         if (!wasDead && (target.isDead || target.alive === false)) {
           bot._botKills = (bot._botKills || 0) + 1;

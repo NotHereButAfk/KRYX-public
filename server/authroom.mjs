@@ -1589,11 +1589,13 @@ export class AuthRoom {
         let hit = rayVsBoxes(this.simWorld, ox, oy, oz, dx, dy, dz, maxT);
         if (!this.simWorld.noBaseFloor && dy < 0 && oy >= 0) hit = Math.min(hit, -oy / dy);
         return hit;
-      });
-    // Solve once per death rather than once per rendered frame on every client.
-    const floor = this.arena.groundHeightAt?.(target.state.px, target.state.pz,
-      target.state.py + 0.2, target.state.py - 256);
-    target.deathReaction.floorY = Number.isFinite(floor) ? floor : target.state.py;
+      }, this.arena.groundHeightAt?.bind(this.arena));
+    target.deathReaction.killer = shooter && shooter !== target ? {
+      id: shooter.id, x: shooter.state.px, y: shooter.state.py, z: shooter.state.pz,
+      yaw: shooter.isBot
+        ? botPresentationYaw(shooter._lastYaw ?? 0, shooter._animVX, shooter._animVZ, shooter._botTargetId != null || (shooter._firingTicks || 0) > 0)
+        : (shooter._lastYaw ?? 0),
+    } : null;
     target.alive = false;
     target.queue.length = 0;
     target._heldInput = null;

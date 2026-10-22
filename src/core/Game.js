@@ -4,9 +4,10 @@ import { SprintEdges } from '../ui/SprintEdges.js';
 import { remainingLoadingMs } from './LoadingTiming.js';
 import { TeleportAim } from './TeleportAim.js';
 import { groundDeathBody } from '../player/DeathBody.js';
-import { sampleDeathReaction, DEATH_IMPACT_TIME, DEATH_BODY_DURATION } from '../sim/DeathReaction.js';
+import { createDeathReaction, sampleDeathReaction, DEATH_IMPACT_TIME, DEATH_BODY_DURATION } from '../sim/DeathReaction.js';
 import { PLAYER_RESPAWN_DELAY } from '../sim/DeathTiming.js';
 import { PlayerSpectatorRig } from './PlayerSpectatorRig.js';
+import { DeathFollowCamera } from './DeathFollowCamera.js';
 import { awaitMatchReady } from '../net/MatchReadiness.js';
 import { RESULTS_SECONDS, SCOREBOARD_SECONDS, postMatchPhase } from '../sim/MatchFlow.js';
 import { retryConnection } from '../net/ConnectionRetry.js';
@@ -185,7 +186,7 @@ export class Game {
     this.nameplates     = new Nameplates();
     // Reused by both active and menu simulation; do not allocate closures or
     // temporary player vectors in the 60Hz loop.
-    this._damageCallback = (dmg, from) => this._onPlayerDamaged(dmg, from);
+    this._damageCallback = (dmg, from, attacker) => this._onPlayerDamaged(dmg, from, attacker);
     this._noopCallback = () => {};
     this._menuDummyPlayer = {
       position: new THREE.Vector3(9999, 9999, 9999),
@@ -819,7 +820,7 @@ export class Game {
         if (d <= radius) {
           const f = THREE.MathUtils.lerp(1, 0.1, THREE.MathUtils.clamp(d / radius, 0, 1));
           const dealt = Math.min(enemy.health, damage * f);
-          const killed = enemy.takeDamage(damage * f);
+          const killed = enemy.takeDamage(damage * f, null, { wid: 'frag', source: point });
           this.matchStats.damageDealt += dealt;
           this.hud.flashHitmarker();
           if (killed) {
@@ -838,7 +839,7 @@ export class Game {
 
     this.weaponSystem.onHitBot = (enemy, dmg, point, meta) => {
       const dealt = Math.min(enemy.health, dmg);
-      const killed = enemy.takeDamage(dmg);
+      const killed = enemy.takeDamage(dmg, null, { wid: this.weaponSystem.currentDef?.id, source: this.player.position });
       // Accuracy is about aimed rounds. Melee swings, thrown knives and rocket
       // splash all reach this callback too, and none of them fires onShoot —
       // counting them made every one of those a free hit with no shot behind it.
@@ -1989,7 +1990,7 @@ export class Game {
 
   // ── Player damage / death ───────────────────────────────────────────────────
 
-  _onPlayerDamaged(dmg, from = null) {
+  _onPlayerDamaged(dmg, from = null, attacker = null) {
     if (this.player.isDead || this._playerDowned) return;
     const died = this.player.takeDamage(dmg);
     this.audio.playHurt();
@@ -2000,7 +2001,7 @@ export class Game {
     // Damage flinch on the third-person body model.
     this._playerBody?.userData?.triggerHit?.(0, 1);
     triggerAction(this._playerBody?.userData?.rig, 'flinch');
-    if (died) this._onPlayerDeath();
+    if (died) this._onPlayerDeath(from, attacker);
   }
 
   /** Wind the off arm up and lob — see Actions.js. */
@@ -2009,7 +2010,7 @@ export class Game {
     triggerAction(this._playerBody?.userData?.rig, 'throw');
   }
 
-  _onPlayerDeath() {
+  _onPlayerDeath(source = null, attacker = null) {
     this._teleportAim?.cancel();
     this.deaths++;
     this.matchStats.currentStreak = 0;
@@ -2029,7 +2030,19 @@ export class Game {
 
     // Watch the collapse, then return to the home overlay while the existing
     // wall-clock respawn continues. Death adds no message or countdown.
-    this._beginDeathAnimation();
+    let reaction = null;
+    if (source) {
+      const p = this.player.position, ray = new THREE.Ray();
+      reaction = createDeathReaction(attacker?._botGun?.id || 'm4',
+        { px: p.x, py: p.y, pz: p.z, vy: this.player.velocity.y }, source,
+        (x,y,z,dx,dy,dz,max) => this.world.raycastCollisionDistance(ray.set(
+          new THREE.Vector3(x,y,z), new THREE.Vector3(dx,dy,dz)), max),
+        this.world.groundHeightAt.bind(this.world));
+      if (attacker) reaction.killer = { id: attacker.id,
+        x: attacker.position.x, y: attacker.position.y, z: attacker.position.z,
+        yaw: attacker.yaw ?? ((attacker.mesh?.rotation.y ?? Math.PI) - Math.PI) };
+    }
+    this._beginDeathAnimation(reaction);
     if (this._isDM) {
       clearTimeout(this._respawnTimer);
       this._respawnRemaining = RESPAWN_DELAY;
@@ -2107,6 +2120,8 @@ export class Game {
     this._deathStartedAt = performance.now();
     this._deathImpactPlayed = false;
     this._deathSupportPose = {};
+    this._deathFollow ||= new DeathFollowCamera();
+    this._deathFollow.begin(reaction?.killer || null);
     this.audio.playDeath?.();
     this.hud.hideRespawn();
     const pos = this.player.position;
@@ -2131,6 +2146,7 @@ export class Game {
       this._deathHomeShown = false;
     }
     this._deathReaction = null;
+    this._deathFollow?.clear();
     this._deathAnimT = 0;
     this._deathImpactPlayed = false;
     this.player.camera.rotation.z = 0;
@@ -2151,8 +2167,8 @@ export class Game {
     const yaw = this._deathCameraYaw;
     // Follow the torso as it tips back, rather than looking over the corpse.
     target.copy(this.player.position);
-    target.x += Math.sin(yaw) * .55 * reaction.fall;
-    target.z += Math.cos(yaw) * .55 * reaction.fall;
+    target.x += reaction.x + Math.sin(yaw) * .55 * reaction.fall;
+    target.z += reaction.z + Math.cos(yaw) * .55 * reaction.fall;
     target.y += 1.1 - .62 * reaction.fall + reaction.air;
     const desired = this._deathViewPosition ||= new THREE.Vector3();
     desired.copy(target).add((this._deathViewOffset ||= new THREE.Vector3()).set(
@@ -2182,6 +2198,18 @@ export class Game {
     if (!this._deathImpactPlayed && t >= (reaction.impactTime ?? DEATH_IMPACT_TIME)) {
       this._deathImpactPlayed = true;
       this.audio.playAt(target, () => this.audio.playBodyImpact?.(1));
+    }
+    // Give the body launch a brief beat, then follow only the actual killer.
+    // A private camera keeps network POV reconciliation from resetting its glide.
+    const deathTargets = this._deathFollow?.active && t >= .8
+      ? (this._authNet ? (this._authNet.renderedRemotes || this._authNet.client.remoteStates())
+        : this.botManager.bots.map(bot => ({ id: bot.id, alive: bot.alive !== false,
+          x: bot.position.x, y: bot.position.y, z: bot.position.z,
+          yaw: bot.yaw ?? ((bot.mesh?.rotation.y ?? Math.PI) - Math.PI) }))) : null;
+    if (deathTargets && this._deathFollow.update(dt, deathTargets,
+      (ray, distance) => this.world.raycastCollisionDistance(ray, distance))) {
+      camera.position.copy(this._deathFollow.camera.position);
+      camera.quaternion.copy(this._deathFollow.camera.quaternion);
     }
     if (t >= DEATH_BODY_DURATION && !this._deathHomeShown) {
       this._deathHomeShown = true;

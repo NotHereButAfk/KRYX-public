@@ -182,6 +182,7 @@ export class Avatar {
         this._dying = true;
         this._deathT = 0;
         this._deathSide *= -1;
+        (this._deathOrigin ||= new THREE.Vector3()).copy(s.position);
         const floor = Number.isFinite(s.deathReaction?.floorY) ? s.deathReaction.floorY : s.deathFloor;
         this._deathReaction = { ...s.deathReaction,
           groundOffset: Number.isFinite(floor) ? Math.min(0, floor - s.position.y) : (s.deathReaction?.groundOffset || 0) };
@@ -207,11 +208,11 @@ export class Avatar {
         ud.mixer?.update(dt);
         ud.armorTick?.(dt);
       }
-      g.position.copy(s.position);
+      g.position.copy(this._deathOrigin);
       g.position.x += reaction.x; g.position.z += reaction.z;
       g.rotation.set(reaction.pitch, this._deathYaw, reaction.roll, 'YXZ');
       g.scale.copy(this._baseScale);
-      groundDeathBody(g, s.position.y, 0,
+      groundDeathBody(g, this._deathOrigin.y, 0,
         reaction.settled ? this._deathSupportPose : null, ud.isEvCharacter === true, reaction);
       g.visible = !reaction.done;
       if (!g.visible) this._dying = false;

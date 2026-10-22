@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { RESULTS_MS } from '../src/sim/MatchFlow.js';
+import { PLAYER_RESPAWN_DELAY } from '../src/sim/DeathTiming.js';
 import { AuthRoom, TICK_HZ } from './authroom.mjs';
 import { IMPORTED_ARENAS } from './rookarena.mjs';
 import { createState } from '../src/sim/MoveSim.js';
@@ -129,7 +130,7 @@ for (const actualArena of IMPORTED_ARENAS) {
   p.state = createState(...spawn); p.state.py = actualArena.killY - 1;
   r.update(); assert.equal(p.alive, false); assert.equal(p.deaths, 1);
   assert(r.events.some(e => e.e === 'kill' && e.wid === 'void'));
-  for (let i = 0; i < TICK_HZ * 3; i++) r.update();
+  for (let i = 0; i < TICK_HZ * PLAYER_RESPAWN_DELAY; i++) r.update();
   assert(p.alive && p.state.py > actualArena.killY);
 }
 console.log('Gameplay regression passed: synchronized readiness/10s cap/late joins, no stale ACKs, protected loaders, self blast/shields/cover, server projectile impacts and real-map void respawns');

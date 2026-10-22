@@ -17,7 +17,7 @@ for(const hz of [30,60,144]) for(const isBot of [false,true]) for(const side of 
  for(let i=0;i<hz;i++)avatar.update(1/hz,state);
  const bones=Object.values(g.userData.bones), before=bones.map(b=>b.quaternion.clone());
  const initialHip=g.userData.bones.Bip001_Pelvis.getWorldPosition(new THREE.Vector3()).y;
- const reaction={...createDeathReaction('m4',{px:2,py:state.position.y,pz:3},null,()=>altitude+.2),floorY:3};
+ const reaction={...createDeathReaction('m4',{px:2,py:state.position.y,pz:3},null,undefined,()=>3),floorY:3};
  let supported=0,worstFloorError=0,previousHip=initialHip,largestRise=0;
  for(let i=1;i<=Math.ceil(1.5*hz);i++) {
   const t=i/hz;avatar.update(1/hz,{...state,alive:false,isBot,deathReaction:reaction});
