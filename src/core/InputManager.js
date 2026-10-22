@@ -49,6 +49,9 @@ export class InputManager {
 
     this._onKeyDown = (e) => {
       if (e.code === 'Escape' && !e.repeat) this.onEscape?.();
+      // Editing a profile or chat must not leave movement keys held afterward.
+      if (e.target?.closest?.('input,textarea,select,[contenteditable="true"]')) return;
+      if (this.pointerLocked && ['Space', 'KeyC', 'ControlLeft', 'ControlRight'].includes(e.code)) e.preventDefault();
       // Tab is the in-game scoreboard — stop it from cycling focus / leaving the page.
       if (e.code === 'Tab') e.preventDefault();
       if (!this.keys.has(e.code)) this.justPressed.add(e.code);

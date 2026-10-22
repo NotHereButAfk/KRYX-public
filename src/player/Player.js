@@ -1,13 +1,14 @@
 import { strafeTilt } from './StrafeTilt.js';
 import { applyMouseLook } from '../core/MouseLook.js';
-import { BACKWARD_WALK_MULT, WALK_SPEED, SPRINT_MULT, SLIDE_LAUNCH_SPEED, JUMP_SPEED, PLAYER_EYE_HEIGHT as EYE_HEIGHT } from '../sim/MovementConfig.js';
+import { BACKWARD_WALK_MULT, WALK_SPEED, SPRINT_MULT, SLIDE_LAUNCH_SPEED, SLIDE_DURATION, SLIDE_RECOVERY, JUMP_SPEED, PLAYER_EYE_HEIGHT as EYE_HEIGHT } from '../sim/MovementConfig.js';
+import { canStartSlide, advanceSlide } from '../sim/SlideMotion.js';
 import * as THREE from 'three';
 import {
   safeThirdPersonObstructionDistance,
   setThirdPersonDesired,
   findThirdPersonObstruction,
 } from './ThirdPersonCamera.js';
-import { sprintRequested } from '../core/GameplayInput.js';
+import { sprintRequested, crouchRequested, consumeCrouchPress } from '../core/GameplayInput.js';
 import { characterSweepSegments } from '../sim/CharacterSweep.js';
 import {
   STAMINA_DRAIN,
@@ -32,9 +33,6 @@ const TELEPORT_RANGE    = 22;
 const TELEPORT_COOLDOWN = 15.0;
 
 const CROUCH_HEIGHT   = 0.85;
-const SLIDE_DURATION  = 0.72;
-const SLIDE_MIN_SPEED = WALK_SPEED * 1.25;
-const SLIDE_BOOST     = SLIDE_LAUNCH_SPEED;  // ~30.5 u/s burst
 const COYOTE_TIME     = 0.14;
 
 export class Player {
@@ -100,6 +98,8 @@ export class Player {
     this.isCrouching   = false;
     this.isSliding     = false;
     this._slideTimer   = 0;
+    this._slideCooldown = 0;
+    this._slideMotion = {};
     this._slideVel     = new THREE.Vector3();
     this._coyoteTimer  = 0;
     this._airJumpUsed = false;
@@ -110,6 +110,7 @@ export class Player {
     this._rightVec   = new THREE.Vector3();
     this._desiredVec = new THREE.Vector3();
     this._slideFwd   = new THREE.Vector3();
+    this._headroomRay = new THREE.Ray(new THREE.Vector3(), new THREE.Vector3(0, 1, 0));
   }
 
   get isDead() {
@@ -155,6 +156,7 @@ export class Player {
     this.isCrouching   = false;
     this.isSliding     = false;
     this._slideTimer   = 0;
+    this._slideCooldown = 0;
     this._slideVel.set(0, 0, 0);
     this._slideFwd.set(0, 0, 0);
     this._coyoteTimer  = 0;
@@ -276,30 +278,36 @@ export class Player {
     desired.multiplyScalar(speed);
 
     // --- crouch / slide ---
-    const wantCrouch   = input.isDown('ControlLeft') || input.isDown('KeyC');
-    const justCrouch   = input.consumeJustPressed('ControlLeft') || input.consumeJustPressed('KeyC');
+    const wasLow = this.isSliding || this.isCrouching;
+    const wantCrouch = crouchRequested(input);
+    const justCrouch = consumeCrouchPress(input);
+    this._slideCooldown = Math.max(0, this._slideCooldown - dt);
+    if (this.isSliding && !this.onGround) {
+      this.isSliding = false; this._slideTimer = 0; this._slideCooldown = SLIDE_RECOVERY;
+    }
 
     const horizontalSpeed = Math.hypot(this.velocity.x, this.velocity.z);
-    if (justCrouch && horizontalSpeed >= SLIDE_MIN_SPEED
-        && this.onGround && !this.isSliding) {
+    if (canStartSlide(this.velocity.x, this.velocity.z, this.onGround, this.isSliding, this._slideCooldown, justCrouch)) {
       // Carry the player's actual travel direction into the burst. This keeps
       // a diagonal sprint from snapping to camera-forward when crouch is hit.
       this.isSliding   = true;
       this._slideTimer = SLIDE_DURATION;
       this._slideFwd.set(this.velocity.x / horizontalSpeed, 0, this.velocity.z / horizontalSpeed);
-      this._slideVel.copy(this._slideFwd).multiplyScalar(SLIDE_BOOST);
+      this._slideVel.copy(this._slideFwd).multiplyScalar(SLIDE_LAUNCH_SPEED);
       this.isSprinting = false;
     }
 
     if (this.isSliding) {
-      this._slideTimer -= dt;
-      const t = Math.max(0, this._slideTimer / SLIDE_DURATION);   // 1→0 over duration
-      const boost = t * t;  // eased deceleration
-      this.velocity.x = this._slideVel.x * boost;
-      this.velocity.z = this._slideVel.z * boost;
+      const motion = advanceSlide(this._slideTimer, this._slideVel.x, this._slideVel.z,
+        desired.x, desired.z, wantCrouch, dt, this._slideMotion);
+      this._slideTimer = motion.time;
+      this._slideVel.set(motion.dx, 0, motion.dz);
+      this.velocity.x = motion.vx;
+      this.velocity.z = motion.vz;
       if (this._slideTimer <= 0) {
         this.isSliding   = false;
         this.isCrouching = wantCrouch;
+        this._slideCooldown = SLIDE_RECOVERY;
       }
     } else if (this.onGround) {
       // Normal ground movement
@@ -312,6 +320,9 @@ export class Player {
       this.velocity.x += (desired.x - this.velocity.x) * Math.min(1, blend);
       this.velocity.z += (desired.z - this.velocity.z) * Math.min(1, blend);
     }
+
+    const blockedStanding = wasLow && this._headroomBlocked(world);
+    if (blockedStanding && !this.isSliding) this.isCrouching = true;
 
     // smooth eye height between stand / crouch / slide
     const targetEye = (this.isSliding || this.isCrouching) ? CROUCH_HEIGHT : EYE_HEIGHT;
@@ -341,6 +352,8 @@ export class Player {
       const fromPos = this.position.clone();
       this.position.copy(destEye);
       this.velocity.set(0, 0, 0);
+      if (this.isSliding) this._slideCooldown = SLIDE_RECOVERY;
+      this.isSliding = false; this._slideTimer = 0;
       this.onGround = false;
       this.teleportCooldown = TELEPORT_COOLDOWN;
       this.onTeleport?.(fromPos, this.position.clone());
@@ -356,13 +369,15 @@ export class Player {
 
     // --- jump ---
     const canJump = this.onGround || this._coyoteTimer > 0;
-    if (input.consumeJustPressed('Space') && (canJump || !this._airJumpUsed) && !this.isSliding) {
+    if (input.consumeJustPressed('Space') && (canJump || !this._airJumpUsed) && !blockedStanding) {
       if (!canJump) this._airJumpUsed = true;
       const jumpBoost = this.isCrouching ? JUMP_SPEED * 1.1 : JUMP_SPEED; // slight boost out of crouch
       this.velocity.y = jumpBoost;
       this.onGround    = false;
       this.isCrouching = false;
+      if (this.isSliding) this._slideCooldown = SLIDE_RECOVERY;
       this.isSliding   = false;
+      this._slideTimer = 0;
       this._coyoteTimer = 0;
       if (this.audio) this.audio.playJump();
     }
@@ -506,5 +521,15 @@ export class Player {
       this.camera.rotation.x = this.pitch + recoilView;
       this.camera.rotation.z = this.reduceMotion ? 0 : this._sprintT * -0.008 + this._strafeTilt; // slight COD-style lean while sprinting
     }
+  }
+
+  _headroomBlocked(world) {
+    if (!world.raycastCollisionDistance) return false;
+    const ray = this._headroomRay;
+    for (const [x, z] of [[0, 0], [0.3, 0], [-0.3, 0], [0, 0.3], [0, -0.3]]) {
+      ray.origin.set(this.position.x + x, this.position.y + 1.01, this.position.z + z);
+      if (world.raycastCollisionDistance(ray, EYE_HEIGHT - 1.0) < EYE_HEIGHT - 1.01) return true;
+    }
+    return false;
   }
 }

@@ -42,7 +42,7 @@ import {
 } from '../weapons/FireControl.js';
 import { countAuthoritativePlayers } from '../core/Population.js';
 import { isNameplateOccluded } from '../ui/NameplateOcclusion.js';
-import { sprintRequested } from '../core/GameplayInput.js';
+import { sprintRequested, crouchRequested, consumeCrouchPress } from '../core/GameplayInput.js';
 import { applyAuthoritativeResources } from './AuthoritativePresentation.js';
 import { PLAYABLE_ARMOR_IDS } from '../player/ArmorTypes.js';
 import { getSkin, BOT_SKIN } from '../player/skins.js';
@@ -102,6 +102,14 @@ export class AuthNetBridge {
     this._nameTarget = new THREE.Vector3();
     this._remoteProject = new THREE.Vector3();
     this._collisionPosition = new THREE.Vector3();
+    this._headroomRay = new THREE.Ray();
+    this.client.raycast = (ox, oy, oz, dx, dy, dz, far) => {
+      const world = this.game.world;
+      if (this.game._authoritativeMapTransitioning || world.currentMapId !== this.client.mapId) return Infinity;
+      this._headroomRay.origin.set(ox, oy, oz);
+      this._headroomRay.direction.set(dx, dy, dz);
+      return world.raycastCollisionDistance(this._headroomRay, far);
+    };
     this._collisionContact = {
       grounded: false, normalY: -1, depth: 0, verticalCorrection: 0,
     };
@@ -281,7 +289,7 @@ export class AuthNetBridge {
 
     // edges collected per frame, consumed on the next tick
     if (canControl && input.consumeJustPressed('Space')) this._edges.jump = true;
-    if (canControl && (input.consumeJustPressed('ControlLeft') || input.consumeJustPressed('KeyC'))) this._edges.crouch = true;
+    if (canControl && consumeCrouchPress(input)) this._edges.crouch = true;
     if (canControl && input.teleportConfirmed) this._edges.tele = true;
 
     // ── fixed-tick input send + prediction ──
@@ -297,7 +305,7 @@ export class AuthNetBridge {
       if (alive) c.sendInput({
         mx, mz, yaw: p.yaw, pitch: p.pitch,
         sprint: canControl && sprintRequested(input, mz, p.weaponSprintBlocked, mx),
-        crouch: canControl && (input.isDown('ControlLeft') || input.isDown('KeyC')),
+        crouch: canControl && crouchRequested(input),
         jumpJust: this._edges.jump, crouchJust: this._edges.crouch, teleJust: this._edges.tele,
         wid: def?.id || 'm4', aiming: canControl && !!input.rightMouseDown,
       });

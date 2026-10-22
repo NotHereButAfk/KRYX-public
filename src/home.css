@@ -46,6 +46,9 @@ body.home-attract #center-play #spectate-btn:hover { color:white!important; }
   .home-arena { bottom:35px; }
   .home-controls { bottom:37px; }
 }
+@media(max-width:900px) {
+  body.home-attract .home-controls { display:none; }
+}
 @media(max-width:600px) {
   body.home-attract #center-play #play-btn { font-size:30px!important; letter-spacing:3px!important; padding:15px 18px!important; }
   body.home-attract .home-match { gap:8px; font-size:11px; letter-spacing:1px; }

@@ -1,4 +1,5 @@
-import { BACKWARD_WALK_MULT, WALK_SPEED, SPRINT_MULT, SLIDE_LAUNCH_SPEED, JUMP_SPEED, PLAYER_EYE_HEIGHT } from './MovementConfig.js';
+import { BACKWARD_WALK_MULT, WALK_SPEED, SPRINT_MULT, SLIDE_LAUNCH_SPEED, SLIDE_DURATION, SLIDE_RECOVERY, JUMP_SPEED, PLAYER_EYE_HEIGHT } from './MovementConfig.js';
+import { canStartSlide, advanceSlide } from './SlideMotion.js';
 // ─────────────────────────────────────────────────────────────────────────────
 // MoveSim — deterministic fixed-20 Hz movement/collision core (Phase 3).
 //
@@ -39,14 +40,12 @@ const RADIUS = 0.45;
 const STAND_H = PLAYER_EYE_HEIGHT;
 const CROUCH_H = 1.0;
 const CROUCH_SPEED = 0.55;
-const SLIDE_DURATION = 0.72;
-const SLIDE_MIN_SPEED = WALK_SPEED * 1.25;
-const SLIDE_BOOST = SLIDE_LAUNCH_SPEED;
 const COYOTE_TIME = 0.14;
 const STEP_UP = 0.55, GRACE = 0.06;      // platform support (matches World)
 const SNAP_DOWN = 0.12;                  // grounded hysteresis (defect fix)
 const TELEPORT_RANGE = 22, TELEPORT_COOLDOWN = 15.0;
 const SAFE_TICKS = 3;                    // grounded ticks before a spot is "safe"
+const HEADROOM_OFFSETS = [[0, 0], [0.3, 0], [-0.3, 0], [0, 0.3], [0, -0.3]];
 
 const Q = 1e6;
 const q = (v) => Math.round(v * Q) / Q;
@@ -57,7 +56,7 @@ export function createState(x = 0, y = 0, z = 0) {
     px: q(x), py: q(y), pz: q(z),
     vx: 0, vy: 0, vz: 0,
     eye: STAND_H,
-    crouch: 0, slide: 0, slideT: 0, slideDx: 0, slideDz: 0,
+    crouch: 0, slide: 0, slideT: 0, slideDx: 0, slideDz: 0, slideCD: 0,
     onGround: 1, nY: 1, nX: 0, nZ: 0,     // support normal (unit, quantized)
     coyote: 0, airJumpUsed: 0, stamina: STAMINA_MAX, stamDelay: 0,
     teleCD: 0, padCD: 0,
@@ -151,6 +150,15 @@ function headroomBlocked(world, x, y, z) {
     if (dx * dx + dz * dz < RADIUS * RADIUS &&
         b.min[1] < y + STAND_H && b.max[1] > y + CROUCH_H) return true;
   }
+  // Imported maps expose their shared mesh collision through a scalar ray
+  // callback instead of boxes. Probe the part of the capsule that would rise
+  // when standing, including its shoulders, on both prediction and authority.
+  if (world.raycast) {
+    const clearance = STAND_H - CROUCH_H;
+    for (const [ox, oz] of HEADROOM_OFFSETS) {
+      if (world.raycast(x + ox, y + CROUCH_H + 0.01, z + oz, 0, 1, 0, clearance) < clearance - 0.01) return true;
+    }
+  }
   return false;
 }
 
@@ -201,6 +209,7 @@ export function step(s, input, world, tuning = {}) {
   // timers
   n.teleCD = q(Math.max(0, s.teleCD - DT));
   n.padCD = q(Math.max(0, s.padCD - DT));
+  n.slideCD = q(Math.max(0, (s.slideCD || 0) - DT));
 
   // wish direction from yaw (matches legacy forward = -Z at yaw 0 … same math)
   const sinY = Math.sin(input.yaw), cosY = Math.cos(input.yaw);
@@ -226,19 +235,20 @@ export function step(s, input, world, tuning = {}) {
   // slide / ground / air movement
   const speed = WALK_SPEED * (sprinting ? SPRINT_MULT : (s.crouch ? CROUCH_SPEED : 1)) * (tuning.speedScale ?? 1) * (input.mz < 0 ? BACKWARD_WALK_MULT : 1);
   const horizontalSpeed = Math.hypot(s.vx, s.vz);
-  if (input.crouchJust && horizontalSpeed >= SLIDE_MIN_SPEED && s.onGround && !s.slide) {
+  if (n.slide && !s.onGround) {
+    n.slide = 0; n.slideT = 0; n.slideCD = SLIDE_RECOVERY;
+  }
+  if (canStartSlide(s.vx, s.vz, s.onGround, s.slide, n.slideCD, input.crouchJust)) {
     n.slide = 1;
     n.slideT = SLIDE_DURATION;
-    n.slideDx = q((s.vx / horizontalSpeed) * SLIDE_BOOST);
-    n.slideDz = q((s.vz / horizontalSpeed) * SLIDE_BOOST);
+    n.slideDx = q((s.vx / horizontalSpeed) * SLIDE_LAUNCH_SPEED);
+    n.slideDz = q((s.vz / horizontalSpeed) * SLIDE_LAUNCH_SPEED);
   }
   if (n.slide) {
-    n.slideT = q(Math.max(0, (n.slideT || s.slideT) - DT));
-    const t = n.slideT / SLIDE_DURATION;
-    const boost = t * t;
-    n.vx = q((n.slideDx || s.slideDx) * boost);
-    n.vz = q((n.slideDz || s.slideDz) * boost);
-    if (n.slideT <= 0) { n.slide = 0; n.crouch = input.crouch; }
+    const motion = advanceSlide(n.slideT, n.slideDx, n.slideDz, wx, wz, input.crouch, DT);
+    n.slideT = q(motion.time); n.slideDx = q(motion.dx); n.slideDz = q(motion.dz);
+    n.vx = q(motion.vx); n.vz = q(motion.vz);
+    if (n.slideT <= 0) { n.slide = 0; n.crouch = input.crouch; n.slideCD = SLIDE_RECOVERY; }
   } else if (s.onGround) {
     n.vx = q(wx * speed);
     n.vz = q(wz * speed);
@@ -251,7 +261,7 @@ export function step(s, input, world, tuning = {}) {
   }
 
   // crouch tunnel seal: cannot stand while headroom is blocked
-  if (!n.crouch && (s.crouch || s.slide) &&
+  if (!n.slide && !n.crouch && (s.crouch || s.slide) &&
       headroomBlocked(world, s.px, s.py, s.pz)) {
     n.crouch = 1;
   }
@@ -272,6 +282,8 @@ export function step(s, input, world, tuning = {}) {
     n.pz = q(s.pz + dz * dist);
     n.py = q(Math.max(0, eyeY + dy * dist - STAND_H));
     n.vx = 0; n.vy = 0; n.vz = 0;
+    if (n.slide) n.slideCD = SLIDE_RECOVERY;
+    n.slide = 0; n.slideT = 0;
     n.onGround = 0;
     n.teleCD = TELEPORT_COOLDOWN;
   }
@@ -280,12 +292,13 @@ export function step(s, input, world, tuning = {}) {
   n.coyote = s.onGround ? COYOTE_TIME : q(Math.max(0, s.coyote - DT));
   n.airJumpUsed = s.onGround ? 0 : (s.airJumpUsed || 0);
   const groundJump = s.onGround || n.coyote > 0;
-  if (input.jumpJust && (groundJump || !n.airJumpUsed) && !n.slide) {
+  if (input.jumpJust && (groundJump || !n.airJumpUsed) && !headroomBlocked(world, s.px, s.py, s.pz)) {
     if (!groundJump) n.airJumpUsed = 1;
     n.vy = q(n.crouch ? JUMP_SPEED * 1.1 : JUMP_SPEED);
     n.onGround = 0;
     n.crouch = 0;
-    n.slide = 0;
+    if (n.slide) n.slideCD = SLIDE_RECOVERY;
+    n.slide = 0; n.slideT = 0;
     n.coyote = 0;
   }
 

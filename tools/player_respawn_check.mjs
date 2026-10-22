@@ -36,6 +36,7 @@ function dirtyMovementState(player, seed) {
   player.isCrouching = true;
   player.isSliding = true;
   player._slideTimer = 0.37;
+  player._slideCooldown = 0.28;
   player._slideVel.set(14, 0, -7);
   player._slideFwd.set(0.5, 0, -0.5);
   player._coyoteTimer = 0.12;
@@ -111,7 +112,7 @@ check(player._staminaRegenDelay === 0 && player._shieldRegenDelay === 0,
 check(player.onGround && player._wasOnGround, 'respawn did not enter a grounded state');
 check(!player.isSprinting && player._sprintT === 0, 'sprint pose survived respawn');
 check(!player.isCrouching && player._eyeHeight === 1.8, 'crouch camera pose survived respawn');
-check(!player.isSliding && player._slideTimer === 0, 'slide state survived respawn');
+check(!player.isSliding && player._slideTimer === 0 && player._slideCooldown === 0, 'slide state survived respawn');
 check(isZeroVector(player._slideVel) && isZeroVector(player._slideFwd),
   'slide momentum survived respawn');
 check(player._coyoteTimer === 0, 'coyote timer survived respawn');

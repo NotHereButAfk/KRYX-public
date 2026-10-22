@@ -1942,6 +1942,7 @@ export class AuthRoom {
                eye: p.state.eye,
                onGround: p.state.onGround, crouch: p.state.crouch,
                slide: p.state.slide, slideT: p.state.slideT,
+               slideCD: p.state.slideCD,
                slideDx: p.state.slideDx, slideDz: p.state.slideDz,
                stamina: p.state.stamina, stamDelay: p.state.stamDelay,
                coyote: p.state.coyote, airJumpUsed: p.state.airJumpUsed, teleCD: p.state.teleCD, padCD: p.state.padCD,

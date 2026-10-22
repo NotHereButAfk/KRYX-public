@@ -18,7 +18,11 @@ export const SPRINT_MULT = 11.2 / WALK_SPEED;
 export const PLAYER_EYE_HEIGHT = 1.8;
 // KYX jump tuning: 20% more ballistic height at unchanged gravity.
 export const JUMP_SPEED = 13.8 * Math.sqrt(1.2);
-export const SLIDE_LAUNCH_SPEED = WALK_SPEED * SPRINT_MULT * 1.65;
+export const SLIDE_LAUNCH_SPEED = WALK_SPEED * SPRINT_MULT * 1.15;
+export const SLIDE_DURATION = 0.9;
+export const SLIDE_RECOVERY = 0.35;
+export const SLIDE_MIN_SPEED = WALK_SPEED * 1.25;
+export const SLIDE_STEER_RATE = Math.PI / 8;
 
 // Firearm trigger recovery keeps sprint from restarting between shots.
 export const FIRE_SPRINT_RECOVERY = 0.4;

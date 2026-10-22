@@ -157,7 +157,7 @@
       <p class="home-only home-invite">Your next match starts here.</p>
       <button id="spectate-btn" class="spectate-hint">[ SPECTATE ]</button>
       <div class="home-only home-arena"><span class="home-caption">ARENA OVERVIEW</span><strong id="home-map">THE ARENA</strong><span id="home-capacity">Up to 8 players</span></div>
-      <div class="home-only home-controls" aria-label="Basic controls"><span><kbd>W A S D</kbd> Move</span><span><kbd>MOUSE</kbd> Aim &amp; fire</span><span><kbd>SHIFT</kbd> Sprint</span></div>
+      <div class="home-only home-controls" aria-label="Basic controls"><span><kbd>W A S D</kbd> Move</span><span><kbd>MOUSE</kbd> Aim &amp; fire</span><span><kbd>SHIFT</kbd> Sprint</span><span><kbd>SHIFT + C</kbd> Slide</span></div>
     </div>
 
     <div id="spectator-controls" class="hidden"><button id="spectator-prev" aria-label="Previous player">◀</button><span id="spectator-name">Waiting for players</span><button id="spectator-next" aria-label="Next player">▶</button><small>← / → Switch player · ESC Menu / Join</small></div>
@@ -229,6 +229,16 @@
       </div>
 
       <div class="settings-section">CONTROLS</div>
+
+      <dl class="control-guide" aria-label="Movement controls">
+        <div><dt>Move</dt><dd><kbd>W A S D</kbd></dd></div>
+        <div><dt>Sprint</dt><dd><kbd>Shift</kbd> + move</dd></div>
+        <div><dt>Slide</dt><dd><kbd>C</kbd> / <kbd>Ctrl</kbd> while sprinting</dd></div>
+        <div><dt>Crouch</dt><dd>Hold <kbd>C</kbd> / <kbd>Ctrl</kbd> at low speed</dd></div>
+        <div><dt>Jump / exit slide</dt><dd><kbd>Space</kbd></dd></div>
+        <div><dt>Double jump</dt><dd><kbd>Space</kbd> again in the air</dd></div>
+      </dl>
+      <p class="control-guide-note">Slide carries your momentum. Steer gently with movement keys, or jump to exit. On mobile, move the stick forward and tap SLIDE.</p>
 
       <label class="field-label">Mouse Sensitivity</label>
       <div class="setting-row">

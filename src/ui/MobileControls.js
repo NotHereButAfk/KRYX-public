@@ -6,7 +6,7 @@ export class MobileControls {
     this.onMenu = callbacks.onMenu;
     this._touches = new Map();
     this._joyActive = false;
-    const captions = {smoke:'SMOKE',menu:'MENU',reload:'RELOAD',aim:'AIM',grenade:'GRENADE',fire:'FIRE',swap:'WEAPON',slide:'CROUCH',timebomb:'BOMB',impulse:'BLAST',jump:'JUMP',ability:'TELEPORT'};
+    const captions = {smoke:'SMOKE',menu:'MENU',reload:'RELOAD',aim:'AIM',grenade:'GRENADE',fire:'FIRE',swap:'WEAPON',slide:'SLIDE',timebomb:'BOMB',impulse:'BLAST',jump:'JUMP',ability:'TELEPORT'};
     const button = (role, label) => `<button type="button" class="mbtn mbtn-${role}" data-role="${role}" aria-label="${label}">${mobileIcon(role)}<span>${captions[role]}</span></button>`;
     this._el = document.createElement('div');
     this._el.id = 'mobile-controls';
@@ -15,7 +15,7 @@ export class MobileControls {
       ${button('menu', 'Open menu')}<div id="m-actions">
       ${button('smoke', 'Throw smoke grenade')}${button('reload', 'Reload')}${button('aim', 'Aim down sights')}
       ${button('grenade', 'Throw frag grenade')}${button('fire', 'Fire')}
-      ${button('swap', 'Switch weapon')}${button('slide', 'Crouch or slide')}
+      ${button('swap', 'Switch weapon')}${button('slide', 'Slide while sprinting; hold to crouch')}
       ${button('timebomb', 'Plant time bomb (V)')}${button('impulse', 'Knockback blast (E)')}${button('jump', 'Jump / double jump')}${button('ability', 'Use ability')}</div>`;
     document.body.appendChild(this._el);
     this._joyInner = this._el.querySelector('#joy-inner');
@@ -55,7 +55,7 @@ export class MobileControls {
         case 'joy': this._joyActive = true; this._el.classList.add('moving'); this._updateJoy(t.clientX, t.clientY); break;
         case 'fire': inp.mouseDown = true; inp.justPressed.add('MobileFire'); break;
         case 'aim': inp.rightMouseDown = true; break;
-        case 'slide': inp.setVirtualKey('KeyC', true); inp.justPressed.add('KeyC'); break;
+        case 'slide': inp.setVirtualKey('KeyC', true); break;
         case 'jump': inp.justPressed.add('Space'); break;
         case 'swap': inp.justPressed.add('WeaponNext'); break;
         case 'reload': inp.justPressed.add('KeyR'); break;

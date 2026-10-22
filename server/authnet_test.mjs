@@ -74,9 +74,8 @@ ok('snapshot: real authoritative sprint is published',
    sprintSnaps.some((s) => ownPublic(sprintProbe, s)?.sprint === true));
 
 sprintSnaps = await drive(sprintProbe, 4, { mx: 1, mz: 0, yaw: 0, sprint: true });
-ok('snapshot: strafe cannot spoof sprint animation',
-   sprintSnaps.length > 0
-   && sprintSnaps.every((s) => ownPublic(sprintProbe, s)?.sprint === false));
+ok('snapshot: real sideways sprint is published',
+   sprintSnaps.some((s) => ownPublic(sprintProbe, s)?.sprint === true));
 
 const sprintPlayer = room.players.get(sprintProbe.welcome.you);
 sprintPlayer.state.stamina = 0;

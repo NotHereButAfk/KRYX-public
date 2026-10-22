@@ -193,8 +193,17 @@ export function buildEvCharacter(skin = null, armorSkin = null) {
   const jumpJets = createJumpJets(group, bones);
   let thrustRemaining = 0;
   let runLean = 0;
+  let slideBlend = 0;
   const pelvis = bones.Bip001_Pelvis;
   const chest = bones.Bip001_Spine1;
+  const slideFeet = ['L', 'R'].map(side => ({
+    side,
+    rotation: bones[`Bip001_${side}_Foot`].getWorldQuaternion(new THREE.Quaternion()),
+    position: new THREE.Vector3(), target: new THREE.Vector3(), pole: new THREE.Vector3(),
+    before: new THREE.Quaternion(), desired: new THREE.Quaternion(),
+  }));
+  const slidePosition = new THREE.Vector3(), slideFrame = new THREE.Quaternion();
+  const slideAxis = new THREE.Vector3(), slideRotation = new THREE.Quaternion(), slideLean = new THREE.Quaternion();
   const rifle = model.getObjectByName('Auto_Rifle_-_root');
   const cosmetics = setupEvCosmetics(group, model, bones);
   const muzzle = model.getObjectByName('BIND_BULLET');
@@ -266,7 +275,7 @@ export function buildEvCharacter(skin = null, armorSkin = null) {
         bone.position.copy(pose.position); bone.quaternion.copy(pose.quaternion); bone.scale.copy(pose.scale);
       }
       fireHold = flashTime = shot = transition = landing = actionTime = 0;
-      thrustRemaining = 0; jumpJets.update(0, 0);
+      thrustRemaining = slideBlend = 0; jumpJets.update(0, 0);
       pitch = yaw = smoothPitch = smoothYaw = travelYaw = 0; backpedalling = false;
       bodyDynamics.reset();
       fallSpeed = previousJumpVy = previousAirJump = 0;
@@ -360,7 +369,9 @@ export function buildEvCharacter(skin = null, armorSkin = null) {
       state.speed = travelSpeed;
       state.travelDistance = 0;
     }
-    const crouched = state.crouch > 0.5 || state.slide > 0.5;
+    slideBlend = ease(slideBlend, state.slide && state.grounded ? 1 : 0, dt, 12);
+    const slidePose = slideBlend > 0.001;
+    const crouched = state.crouch > 0.5 || slidePose;
     const moving = state.speed > 0.35;
     const firing = !melee && state.reload <= 0 && (state.firing > 0 || fireHold > 0);
     const airPose = jumpAirPose(state.grounded, state.vy);
@@ -378,10 +389,12 @@ export function buildEvCharacter(skin = null, armorSkin = null) {
     }
     if (crouched !== wasCrouched && !moving) transition = 0.40;
     wasCrouched = crouched; wasGrounded = state.grounded;
-    let target = crouched ? (moving ? (firing ? 10 : 9) : (firing ? 8 : 7))
+    // A slide has a stable low silhouette, never a fast crouch-walking cycle.
+    let target = slidePose ? (firing ? 8 : 7)
+      : crouched ? (moving ? (firing ? 10 : 9) : (firing ? 8 : 7))
       : moving ? (firing ? 5 : 2)
         : firing ? 3 : 0;
-    if (transition > 0 && !moving) target = crouched ? 6 : 11;
+    if (transition > 0 && !moving && !slidePose) target = crouched ? 6 : 11;
     if (!state.grounded || landing > 0) target = 12;
     const previous = actions[current];
     if (target !== current) {
@@ -415,13 +428,14 @@ export function buildEvCharacter(skin = null, armorSkin = null) {
       gaitPhase + dt * cadence * cycles(base) / template.clips[base].duration * (backwards ? -1 : 1), 2);
     for (let i = 0; i < actions.length; i++) {
       const a = actions[i];
-      const weight = ease(a.getEffectiveWeight(), i === target ? 1 : 0, dt, 18);
+      const weight = ease(a.getEffectiveWeight(), i === target ? 1 : 0, dt, slidePose ? 10 : 18);
       a.enabled = i === target || weight > 0.0001;
       a.setEffectiveWeight(a.enabled ? weight : 0);
       const locomotion = template.speeds[i] > 0;
       a.setEffectiveTimeScale(1);
-      a.paused = locomotion || [6, 11, 12].includes(i);
+      a.paused = locomotion || [6, 11, 12].includes(i) || (slidePose && [7, 8].includes(i));
       if (locomotion) a.time = (gaitPhase % cycles(i)) * a.getClip().duration / cycles(i);
+      if (slidePose && [7, 8].includes(i)) a.time = 0.35;
     }
     if (target === 6 || target === 11) actions[target].time = (1 - transition / 0.40) * 0.75;
     if (target === 12) actions[12].time = !state.grounded
@@ -463,7 +477,7 @@ export function buildEvCharacter(skin = null, armorSkin = null) {
       }
     }
     // Distance-matched clips retain world anchors through grounded stance.
-    footPlanting.update(state.grounded && moving && !backwards && !state.slide && reference > 0, template.footFloors[base]);
+    footPlanting.update(state.grounded && moving && !backwards && !slidePose && reference > 0, template.footFloors[base]);
     // Keep a soft knee through running stance; never force the calf into a
     // straight line just to reach an overextended step. Preserve ankle height.
     if (state.grounded && moving && !crouched && !backwards) for (const side of ['L', 'R']) {
@@ -478,6 +492,44 @@ export function buildEvCharacter(skin = null, armorSkin = null) {
         const footQ = foot.getWorldQuaternion(new THREE.Quaternion());
         solveChain(thigh, calf, foot, ankle);
         foot.parent.getWorldQuaternion(Q[3]).invert();foot.quaternion.copy(Q[3].multiply(footQ));
+      }
+    }
+    if (slidePose) {
+      // Lower the hips, extend the lead leg and fold the trailing knee. Targets
+      // live in travel space, so a sideways slide does not twist either leg.
+      // Apply before weapon carry: the existing wrist IK follows the lowered
+      // shoulders and keeps both palms on the same gun contacts.
+      // Preserve the clip's foot height before lowering the pelvis; blending
+      // from its translated feet would briefly push the boots underground.
+      for (const footPose of slideFeet) {
+        const foot = bones[`Bip001_${footPose.side}_Foot`];
+        foot.getWorldPosition(footPose.position); foot.getWorldQuaternion(footPose.before);
+      }
+      group.worldToLocal(pelvis.getWorldPosition(slidePosition));
+      slidePosition.y += (0.43 - slidePosition.y) * slideBlend;
+      pelvis.position.copy(pelvis.parent.worldToLocal(group.localToWorld(slidePosition)));
+      pelvis.updateWorldMatrix(false, true);
+      slideFrame.setFromAxisAngle(Y, travelYaw);
+      group.getWorldQuaternion(slideRotation);
+      slideAxis.copy(X).applyQuaternion(slideRotation);
+      rotateWorld(chest, slideLean.setFromAxisAngle(slideAxis, 0.18 * slideBlend));
+      for (const footPose of slideFeet) {
+        const lead = footPose.side === 'R';
+        const foot = bones[`Bip001_${footPose.side}_Foot`];
+        footPose.target.set(lead ? 0.17 : -0.22, 0.16, lead ? -0.76 : 0.14).applyQuaternion(slideFrame);
+        footPose.pole.set(lead ? 0.20 : -0.38, lead ? 0.45 : 0.18, -0.38).applyQuaternion(slideFrame);
+        group.localToWorld(footPose.target); group.localToWorld(footPose.pole);
+        footPose.target.lerpVectors(footPose.position, footPose.target, slideBlend);
+        group.worldToLocal(footPose.target);
+        // A rolling walk-foot needs toe clearance while its sole settles flat.
+        footPose.target.y = Math.max(footPose.target.y, 0.16 + 0.10 * (1 - slideBlend));
+        group.localToWorld(footPose.target);
+        solveChain(bones[`Bip001_${footPose.side}_Thigh`], bones[`Bip001_${footPose.side}_Calf`], foot, footPose.target, footPose.pole);
+        footPose.desired.copy(slideRotation).multiply(slideFrame).multiply(footPose.rotation);
+        footPose.before.slerp(footPose.desired, slideBlend);
+        foot.parent.getWorldQuaternion(footPose.desired).invert();
+        foot.quaternion.copy(footPose.desired.multiply(footPose.before));
+        foot.updateWorldMatrix(false, true);
       }
     }
     const actionPulse = actionTime > 0 ? Math.sin(actionTime / 0.5 * Math.PI) : 0;
@@ -602,7 +654,8 @@ export function buildEvCharacter(skin = null, armorSkin = null) {
       rifle.visible = false;
       flashTime = 0;
     }
-    ud.activeAnimation = template.clips[target].name;
+    ud.activeAnimation = state.slide && slideBlend > 0.5 ? 'Slide' : template.clips[target].name;
+    ud.slideBlend = slideBlend;
     jumpJets.update(dt, thrustRemaining);
     ud.animationCadence = cadence; ud.strideScale = stride;
     ud.headshotY = group.worldToLocal(bones.Bip001_Head.getWorldPosition(V[9])).y - 0.02;

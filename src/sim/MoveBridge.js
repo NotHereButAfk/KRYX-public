@@ -12,7 +12,7 @@ import { applyMouseLook } from '../core/MouseLook.js';
 // did (position, velocity, onGround, isCrouching, stamina, teleportCooldown).
 
 import * as THREE from 'three';
-import { sprintRequested } from '../core/GameplayInput.js';
+import { sprintRequested, crouchRequested, consumeCrouchPress } from '../core/GameplayInput.js';
 import { createState, step, makeInput, isSprinting, worldAdapter, hashState, DT } from './MoveSim.js';
 
 const SHIELD_REGEN = 6, SHIELD_REGEN_DELAY = 3.0;
@@ -28,7 +28,8 @@ export class MoveBridge {
   constructor(player, world) {
     this.player = player;
     this.worldRef = world;
-    this.simWorld = worldAdapter(world);
+    this._headroomRay = new THREE.Ray();
+    this.simWorld = this._adaptWorld(world);
     const p = player.position;
     this.state = createState(p.x, p.y, p.z);
     this.prev = this.state;
@@ -40,6 +41,16 @@ export class MoveBridge {
   }
 
   currentHash() { return hashState(this.state); }
+
+  _adaptWorld(world) {
+    const adapted = worldAdapter(world);
+    if (world.raycastCollisionDistance) adapted.raycast = (ox, oy, oz, dx, dy, dz, far) => {
+      this._headroomRay.origin.set(ox, oy, oz);
+      this._headroomRay.direction.set(dx, dy, dz);
+      return world.raycastCollisionDistance(this._headroomRay, far);
+    };
+    return adapted;
+  }
 
   _resyncIfMoved() {
     // Respawns / pad teleports / external code moved the player — restart the
@@ -59,7 +70,7 @@ export class MoveBridge {
     this.recoveredThisFrame = false;
     if (world !== this.worldRef) {           // map changed — rebuild adapter
       this.worldRef = world;
-      this.simWorld = worldAdapter(world);
+      this.simWorld = this._adaptWorld(world);
     }
     this._resyncIfMoved();
 
@@ -81,7 +92,7 @@ export class MoveBridge {
 
     // ── collect edge inputs every frame, consume on the next tick ──
     if (input.consumeJustPressed('Space')) this._edges.jump = true;
-    if (input.consumeJustPressed('ControlLeft') || input.consumeJustPressed('KeyC')) this._edges.crouch = true;
+    if (consumeCrouchPress(input)) this._edges.crouch = true;
     if (input.teleportConfirmed) this._edges.tele = true;
 
     // ── fixed-tick stepping ──
@@ -94,7 +105,7 @@ export class MoveBridge {
         mx, mz,
         yaw: p.yaw, pitch: p.pitch,
         sprint: sprintRequested(input, mz, p.weaponSprintBlocked, mx),
-        crouch: input.isDown('ControlLeft') || input.isDown('KeyC'),
+        crouch: crouchRequested(input),
         jumpJust: this._edges.jump,
         crouchJust: this._edges.crouch,
         teleJust: this._edges.tele,

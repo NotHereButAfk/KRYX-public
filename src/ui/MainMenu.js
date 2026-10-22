@@ -1,5 +1,6 @@
 import './battlepass.css';
 import './career.css';
+import './controls.css';
 import { openTournamentPanel, openCommunityProfile } from './TournamentPanel.js';
 import { setMarketPreview, skinArtwork } from './MarketPreview.js';
 import { isCrazyGames } from '../core/CrazyGamesAccount.js';

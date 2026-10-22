@@ -1,0 +1,10 @@
+#panel-settings .control-guide {
+  display:grid; grid-template-columns:1fr 1fr; gap:0 24px; margin:8px 0 12px;
+  font:500 16px/1.5 'Match Rajdhani',sans-serif;
+}
+#panel-settings .control-guide > div { display:flex; justify-content:space-between; gap:12px; align-items:baseline; padding:9px 0; border-bottom:1px solid #ffffff24; }
+#panel-settings .control-guide dt { color:#fff; font-weight:600; }
+#panel-settings .control-guide dd { margin:0; color:#dae8ed; text-align:right; }
+#panel-settings .control-guide kbd { font:inherit; color:#a4f2e7; white-space:nowrap; }
+#panel-settings .control-guide-note { margin:0 0 22px; color:#c5d5dc; font:500 15px/1.5 'Match Rajdhani',sans-serif; max-width:70ch; }
+@media(max-width:850px) { #panel-settings .control-guide { grid-template-columns:1fr; } }

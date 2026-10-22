@@ -144,6 +144,7 @@ export class AuthClient {
           half: m.arena.half, killY: m.arena.killY ?? -25,
           noBaseFloor: !!m.arena.noBaseFloor,
           platforms: m.arena.platforms, boxes: m.arena.boxes,
+          raycast: this.raycast,
           gravLifts: [], teleporters: [],
         };
         this.sim = createState(0, 0, 0);
@@ -204,6 +205,7 @@ export class AuthClient {
         noBaseFloor: !!snap.arena.noBaseFloor,
         platforms: snap.arena.platforms,
         boxes: snap.arena.boxes,
+        raycast: this.raycast,
         gravLifts: [],
         teleporters: [],
       };
@@ -262,6 +264,7 @@ export class AuthClient {
       crouch: y.crouch ?? this.sim.crouch,
       slide: y.slide ?? this.sim.slide,
       slideT: y.slideT ?? this.sim.slideT,
+      slideCD: y.slideCD ?? this.sim.slideCD ?? 0,
       slideDx: y.slideDx ?? this.sim.slideDx,
       slideDz: y.slideDz ?? this.sim.slideDz,
       stamina: y.stamina ?? this.sim.stamina,
