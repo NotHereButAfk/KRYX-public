@@ -51,7 +51,7 @@ for (const hz of [30,60,144]) {
   const reaction=createDeathReaction('levershotgun',{px:0,py:0,pz:0},{x:0,z:3});
   for(let i=0;i<hz;i++)avatar.update(1/hz,{position,yaw:0,alive:false,deathReaction:reaction});
   assert(calf.quaternion.angleTo(folded)<.02,'shotgun knockback reduced the leg death pose');
-  assert(avatar.group.position.z < -2,'whole death body did not follow impact');
+  assert.equal(avatar.group.position.z,position.z,'dead body drifted from its death location');
   avatar.dispose();
 }
 let cases=0,worst=0;
@@ -90,3 +90,4 @@ for(const rate of [30,60,144])for(const speed of [1.2,4,WALK_SPEED,WALK_SPEED*SP
   disposeModel(body);cases++;
 }
 console.log(`Bot presentation passed: gray default body; ${cases} walk/run/direction cases at 30/60/144Hz, median contact slip <= ${worst.toFixed(4)}m/s.`);
+
