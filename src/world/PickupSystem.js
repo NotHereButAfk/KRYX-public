@@ -14,6 +14,8 @@ const COLLECT_RADIUS = 1.6;
 const LOOT_RESPAWN = 35;  // loot pads come back slowly — worth fighting over
 const WEAPON_COLLECT_RADIUS = 2.0;
 const WEAPON_COLLECT_HEIGHT = 2.2;
+const LOOT_FLOAT_HEIGHT = 0.72;
+const PICKUP_MODEL_LENGTH = { uzi: 1.15, levershotgun: 1.5, concussion: 1.45, rpg: 1.65 };
 
 // Used only by maps with no authored weapon markers.
 const FALLBACK_LOOT_POINTS = [
@@ -148,33 +150,40 @@ export class PickupSystem {
         type: 'loot', lootType: spec.lootType, gunId: spec.gunId,
         def: gun, name: gun?.name || 'Shield Stack', padId: spec.padId,
         color: spec.color, mesh, active: spec.active !== false,
-        respawnTimer: 0, baseY: 0.85, _animT: this._pickups.length * 1.37,
+        respawnTimer: 0, baseY: spec.lootType === 'shield' ? 0.9 : LOOT_FLOAT_HEIGHT, _animT: this._pickups.length * 1.37,
         _requestCooldown: 0,
         _spin: mesh.getObjectByName('wpnSpin'),
+        _rim: mesh.getObjectByName('pickupRim'),
+        _highlight: 0,
       });
     }
   }
 
-  // A marked loot spawn: a beam of light + a glowing base ring with either the
-  // floating weapon model or a proper shield crest inside.
+  // A low display pad leaves the weapon silhouette readable against the map.
+  // These meshes are visual only; the server's collection origin stays fixed.
   _buildLootMesh(spec, gun) {
     const group = new THREE.Group();
     group.userData.noHit = true;
     const col = spec.color;
 
-    // Light beam column (translucent, visible from across the map).
-    const beamMat = new THREE.MeshBasicMaterial({
-      color: col, transparent: true, opacity: 0.16, side: THREE.DoubleSide, depthWrite: false,
+    const pad = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.88, 0.94, 0.06, 12),
+      new THREE.MeshStandardMaterial({ color: 0x28333a, metalness: 0.38, roughness: 0.75 }),
+    );
+    pad.name = 'pickupPad'; pad.position.y = 0.035; pad.userData.noHit = true;
+    group.add(pad);
+    // A thin inset rim indicates availability without tall transparent effects.
+    const ringMat = new THREE.MeshBasicMaterial({
+      color: col, transparent: true, opacity: 0.38, depthWrite: false,
     });
-    const beam = new THREE.Mesh(new THREE.CylinderGeometry(0.7, 0.9, 6, 16, 1, true), beamMat);
-    beam.position.y = 3.0; beam.userData.noHit = true; group.add(beam);
-    // Base ring + pad.
-    const ringMat = new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 0.85 });
-    const ring = new THREE.Mesh(new THREE.TorusGeometry(1.2, 0.08, 8, 28), ringMat);
-    ring.rotation.x = Math.PI / 2; ring.position.y = 0.12; ring.userData.noHit = true; group.add(ring);
+    const ring = new THREE.Mesh(new THREE.RingGeometry(0.79, 0.825, 36), ringMat);
+    ring.name = 'pickupRim'; ring.rotation.x = -Math.PI / 2;
+    ring.position.y = 0.069; ring.userData.noHit = true; group.add(ring);
 
     // Floating model shares the held weapon asset, scaled to fit the pad.
-    const spin = new THREE.Group(); spin.name = 'wpnSpin'; spin.position.y = 0.85;
+    const spin = new THREE.Group(); spin.name = 'wpnSpin';
+    spin.position.y = spec.lootType === 'shield' ? 0.9 : LOOT_FLOAT_HEIGHT;
+    spin.rotation.y = gun ? Math.PI / 2 - 0.28 : 0;
     const built = gun ? buildWeaponModel(gun) : null;
     const wm = built?.group;
     if (wm && spec.lootType === 'weapon') {
@@ -182,9 +191,10 @@ export class PickupSystem {
       const box = new THREE.Box3().setFromObject(wm);
       const size = box.getSize(new THREE.Vector3());
       const maxd = Math.max(size.x, size.y, size.z) || 1;
-      wm.scale.setScalar(1.4 / maxd);
-      const c = box.getCenter(new THREE.Vector3()).multiplyScalar(1.4 / maxd);
-      wm.position.sub(c);
+      const scale = (PICKUP_MODEL_LENGTH[gun.id] || 1.4) / maxd;
+      const c = box.getCenter(new THREE.Vector3());
+      wm.scale.multiplyScalar(scale);
+      wm.position.sub(c).multiplyScalar(scale);
       spin.add(wm);
     } else if (spec.lootType === 'shield') {
       const shape = new THREE.Shape();
@@ -290,8 +300,10 @@ export class PickupSystem {
       color: next.color,
       mesh,
       active: next.active !== false,
-      baseY: 0.85,
+      baseY: next.lootType === 'shield' ? 0.9 : LOOT_FLOAT_HEIGHT,
       _spin: mesh.getObjectByName('wpnSpin'),
+      _rim: mesh.getObjectByName('pickupRim'),
+      _highlight: 0,
       _requestCooldown: 0,
     });
   }
@@ -353,22 +365,31 @@ export class PickupSystem {
         continue;
       }
 
-      // Float + spin animation — use frame time instead of Date.now() (avoids 20 syscalls/frame)
-      p._animT += dt * 2.0;
+      const dx = pPos.x - p.mesh.position.x;
+      const dy = pPos.y - p.mesh.position.y;
+      const dz = pPos.z - p.mesh.position.z;
+      const distanceSq = dx * dx + dz * dz;
+      // Animate child visuals only, with no per-frame geometry or lights.
+      p._animT += dt * (p.type === 'loot' ? 1.25 : 2.0);
       if (p.type === 'loot') {
-        // Spin only the floating weapon; the beam/ring stay put.
-        if (p._spin) { p._spin.rotation.y += dt * 1.1; p._spin.position.y = p.baseY + Math.sin(p._animT) * 0.10; }
+        if (p._spin) {
+          p._spin.rotation.y += dt * 0.18;
+          p._spin.position.y = p.baseY + Math.sin(p._animT) * 0.035;
+        }
+        if (p._rim) {
+          const target = !player.isDead && Math.abs(dy) < 3
+            ? THREE.MathUtils.clamp((36 - distanceSq) / 27, 0, 1) : 0;
+          p._highlight += (target - p._highlight) * (1 - Math.exp(-dt * 8));
+          p._rim.material.opacity = 0.38 + p._highlight * 0.5;
+        }
       } else {
         p.mesh.position.y  = p.baseY + Math.sin(p._animT) * 0.12;
         p.mesh.rotation.y += dt * 1.4;
       }
 
       // Proximity collect
-      const dx = pPos.x - p.mesh.position.x;
-      const dy = pPos.y - p.mesh.position.y;
-      const dz = pPos.z - p.mesh.position.z;
       const radius = p.type === 'loot' ? WEAPON_COLLECT_RADIUS : COLLECT_RADIUS;
-      const closeEnough = Math.sqrt(dx * dx + dz * dz) < radius
+      const closeEnough = distanceSq < radius * radius
         && (p.type !== 'loot' || Math.abs(dy) < WEAPON_COLLECT_HEIGHT);
       if (closeEnough && !player.isDead) {
         // Only collect if it does something useful.
