@@ -63,7 +63,7 @@ let _generating = false;
 let _hudGenerating = false;
 const _readyCallbacks = new Set();
 
-export function getWeaponThumb(id) { return _cache.get(id) ?? null; }
+export function getWeaponThumb(id) { return WEAPONS.some(w => w.id === id) ? '/assets/default-weapon-cards/' + id + '.png' : null; }
 
 // The match HUD is available before the optional 3D inventory renderer has
 // warmed its WebGL thumbnails.  Returning null here used to omit the image
@@ -151,6 +151,7 @@ function _ensureLive() {
 }
 
 export function renderWeaponSkinned(weaponDef, skin) {
+  if (!skin && WEAPONS.some(w => w.id === weaponDef?.id)) return '/assets/default-weapon-cards/' + weaponDef.id + '.png';
   if (skin?.thumbnail) return skin.thumbnail + (skin.model ? '?v=20261004-material-fit' : '');
   let built;
   try { built = buildWeaponModel(weaponDef); } catch { built = null; }
