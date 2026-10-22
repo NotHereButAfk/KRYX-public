@@ -4,8 +4,8 @@ import * as THREE from 'three';
 // A fixed camera-local convergence point keeps its projected bore aimed at the
 // reticle without changing the hold when a look ray crosses a wall or ceiling.
 export const PRESENTATION_AIM_DEPTH = 8;
-// Lower scoped presentation by 12% of the viewport height.
-export const ADS_SIGHT_SCREEN_Y = -0.24;
+// Lower scoped presentation by 15.6% of the viewport height.
+export const ADS_SIGHT_SCREEN_Y = -0.312;
 
 // Weapons use -Z for their normalized bore. Rotate the complete gun/hand rig
 // around its muzzle so correcting aim preserves the muzzle and hand contacts.

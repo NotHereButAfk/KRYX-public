@@ -1152,7 +1152,8 @@ for (const fps of rates) {
   advanceSeconds(1.2, fps, (dt) => {
     input.mouseDX = 600 * dt;
     input.mouseDY = -300 * dt;
-    if (system.scopeT > 0.995) mountY.push(system.weaponMount.position.y);
+    // Measure settled ADS, excluding the tail of the longer lowering transition.
+    if (system.scopeT > 0.9995) mountY.push(system.weaponMount.position.y);
   });
   adsStability.push({
     fps,
