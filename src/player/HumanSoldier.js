@@ -564,6 +564,7 @@ export function buildHumanSoldier(skin = null, armorTypeId = 'assault', armorSki
   const setDeathState = (progress = 0, side = 1, elapsed = null) => {
     if (_deathP <= 0 && progress > 0) {
       _deathStart.clear();
+      group.userData.deathAnchorY = group.worldToLocal(B.hips.getWorldPosition(new THREE.Vector3())).y;
       for (const {bone} of _deathRest) _deathStart.set(bone, {
         position: bone.position.clone(), quaternion: bone.quaternion.clone(), scale: bone.scale.clone() });
     }
@@ -618,7 +619,7 @@ export function buildHumanSoldier(skin = null, armorTypeId = 'assault', armorSki
     let bodyDrop = 0;
     root.position.y = _rootBaseY;
     if (_deathP > 0) {
-      const release = _clamp(_deathTime / 0.30, 0, 1);
+      const release = _clamp(_deathTime / 0.18, 0, 1);
       const blend = release * release * (3 - 2 * release);
       for (const pose of _deathRest) {
         const start = _deathStart.get(pose.bone) || pose;
@@ -1038,6 +1039,7 @@ export function buildHumanSoldier(skin = null, armorTypeId = 'assault', armorSki
 
   group.userData = {
     isHuman: true,
+    deathAnchor: B.hips,
     mixer,
     actions,
     setMotion,

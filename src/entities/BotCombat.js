@@ -145,11 +145,11 @@ export const BOT_DIFFICULTIES = Object.freeze({
     movementSpeed: 0.86, roamSprintChance: 0.12, combatSprintDistance: 28,
   }),
   normal: Object.freeze({
-    reactionMin: 0.28, reactionMax: 0.52,
-    aimErrorScale: 1.2, detectionDistance: 42, fovDegrees: 112,
+    reactionMin: 0.28, reactionMax: 0.48,
+    aimErrorScale: 1.1, detectionDistance: 42, fovDegrees: 112,
     scanInterval: 0.35, decisionInterval: 0.45, losInterval: 0.15,
     searchDuration: 3.25, focusDuration: 10.0, targetSwitchRatio: 0.78,
-    aimTurnSpeed: 9.0, strafeChance: 0.62, jumpChance: 0.045,
+    aimTurnSpeed: 9.5, strafeChance: 0.62, jumpChance: 0.045,
     movementSpeed: 1.0, roamSprintChance: 0.24, combatSprintDistance: 22,
   }),
   hard: Object.freeze({

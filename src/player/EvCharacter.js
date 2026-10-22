@@ -250,7 +250,7 @@ export function buildEvCharacter(skin = null, armorSkin = null) {
   const ud = group.userData = {
     isHuman: true, isEvCharacter: true, armorTypeId: 'vanguard',
     standHeight: STATURE, feetY: 0, centerX: 0, centerZ: 0, headshotY: 1.56,
-    bones, animationMixer: native, animationActions: actions, measuredSpeeds: template.speeds,
+    bones, deathAnchor: pelvis, animationMixer: native, animationActions: actions, measuredSpeeds: template.speeds,
     primaryMat: cosmetics.primary, bodyMats: cosmetics.materials, applyFinish: cosmetics.apply,
     setLocomotion(speed, grounded = true, sprint = false, strafe = 0, dirF = 1, dirR = 0, travelDistance = null) {
       Object.assign(state, { speed: Math.max(0, speed), grounded, sprint, dirF, dirR, travelDistance });
@@ -292,6 +292,7 @@ export function buildEvCharacter(skin = null, armorSkin = null) {
     setDeathState(value, side = 1, elapsed = null) {
       if (death <= 0 && value > 0) {
         deathStartPose.clear();
+        ud.deathAnchorY = group.worldToLocal(pelvis.getWorldPosition(V[8])).y;
         for (const bone of Object.values(bones)) deathStartPose.set(bone, {
           position: bone.position.clone(), quaternion: bone.quaternion.clone(), scale: bone.scale.clone(),
         });
@@ -328,7 +329,7 @@ export function buildEvCharacter(skin = null, armorSkin = null) {
     if (death > 0) {
       // Start from the exact living pose, release the grip, then settle. The
       // mixer stops owning the limbs on death; no continuing walk or aim IK.
-      const release = clamp(deathTime / 0.30, 0, 1);
+      const release = clamp(deathTime / 0.18, 0, 1);
       const blend = release * release * (3 - 2 * release);
       for (const [bone, pose] of deathBase) {
         const start = deathStartPose.get(bone) || pose;
@@ -355,14 +356,18 @@ export function buildEvCharacter(skin = null, armorSkin = null) {
       // body lands, otherwise its bent leg remains suspended above the corpse.
       // A shallow, asymmetric leg rest keeps connected knees without locking
       // them to the last running frame or stretching the bone chain.
-      const legRelease = clamp((deathTime - 0.25) / 0.85, 0, 1);
+      const legRelease = clamp(deathTime / 0.18, 0, 1);
       const legBlend = legRelease * legRelease * (3 - 2 * legRelease);
+      const buckleIn = clamp(deathTime / .15, 0, 1);
+      const buckleOut = clamp((deathTime - .46) / .22, 0, 1);
+      const buckle = buckleIn * buckleIn * (3 - 2 * buckleIn)
+        * (1 - buckleOut * buckleOut * (3 - 2 * buckleOut));
       for (const side of ['L', 'R']) {
         const sign = side === 'R' ? 1 : -1;
         const foot = bones[`Bip001_${side}_Foot`];
         const calf = bones[`Bip001_${side}_Calf`];
         const target = group.worldToLocal(foot.getWorldPosition(V[8]));
-        target.lerp(V[10].set(sign * .24, .09, side === 'R' ? .18 : .13), legBlend);
+        target.lerp(V[10].set(sign * .24, .09 + .38 * buckle, side === 'R' ? .18 : .13), legBlend);
         group.localToWorld(target);
         const pole = group.worldToLocal(calf.getWorldPosition(V[9]));
         pole.lerp(V[10].set(sign * .25, .55, -.18), legBlend);

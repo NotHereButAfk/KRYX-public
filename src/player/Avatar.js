@@ -182,9 +182,9 @@ export class Avatar {
         this._dying = true;
         this._deathT = 0;
         this._deathSide *= -1;
-        this._deathReaction = s.deathReaction || null;
-        if (Number.isFinite(s.deathReaction?.floorY)) this._deathReaction = {
-          ...s.deathReaction, groundOffset: Math.min(0, s.deathReaction.floorY - s.position.y) };
+        const floor = Number.isFinite(s.deathReaction?.floorY) ? s.deathReaction.floorY : s.deathFloor;
+        this._deathReaction = { ...s.deathReaction,
+          groundOffset: Number.isFinite(floor) ? Math.min(0, floor - s.position.y) : (s.deathReaction?.groundOffset || 0) };
         this._deathYaw = g.rotation.y;
         this._deathSupportPose = {};
         this._firePulseT = 0;
@@ -199,6 +199,7 @@ export class Avatar {
 
       this._deathT += dt;
       const reaction = sampleDeathReaction(this._deathReaction, this._deathT, this._deathYaw);
+      this._deathImpactTime = reaction.impactTime;
       const ud = g.userData;
       if (this.isHuman) {
         ud.setLocomotion?.(0, true, false, 0, 1, 0);
@@ -210,9 +211,8 @@ export class Avatar {
       g.position.x += reaction.x; g.position.z += reaction.z;
       g.rotation.set(reaction.pitch, this._deathYaw, reaction.roll, 'YXZ');
       g.scale.copy(this._baseScale);
-      const floor = Number.isFinite(s.deathFloor) ? s.deathFloor : s.position.y;
-      groundDeathBody(g, this._deathReaction ? s.position.y : floor, reaction.air,
-        reaction.settled ? this._deathSupportPose : null, ud.isEvCharacter === true);
+      groundDeathBody(g, s.position.y, 0,
+        reaction.settled ? this._deathSupportPose : null, ud.isEvCharacter === true, reaction);
       g.visible = !reaction.done;
       if (!g.visible) this._dying = false;
       return;

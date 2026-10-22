@@ -26,7 +26,7 @@ for(const side of [-1,1]) {
  const start=at(0), final=at(DEATH_SETTLE_TIME);
  assert(Object.values(start).every(v=>v===0),'death must start without snapping any limb');
  assert.deepEqual(at(10),final,'settled limbs must stop moving exactly');
- assert.notEqual(at(.72).rForeX,at(.9).rForeX,'elbow should follow through after floor contact');
+ assert.notEqual(at(.44).rForeX,at(.56).rForeX,'elbow should follow through after floor contact');
  assert.notEqual(final.rCalfX,final.lCalfX,'relaxed legs should not look cloned');
  for(let i=1;i<=1200;i++) {
   const pose=at(i/1000), previous=at((i-1)/1000);
@@ -34,3 +34,12 @@ for(const side of [-1,1]) {
  }
 }
 console.log('Relaxed death limbs: continuous start, independent contact follow-through, exact finite rest.');
+
+const airborne={groundOffset:-5};
+const first=sampleDeathReaction(airborne,.1),second=sampleDeathReaction(airborne,.2);
+assert(Math.abs(first.drop+.11)<1e-12);
+assert(Math.abs(second.drop+.44)<1e-12);
+assert(second.impactTime>.7 && second.impactTime<.8,'airborne impact follows its fall distance');
+assert.equal(sampleDeathReaction(airborne,4).air,-5,'camera baseline must stop at real floor');
+assert(sampleDeathReaction(airborne,4).drop < -5,'solver retains freefall below contact for floor clamping');
+assert(sampleDeathReaction({...airborne,fallVelocity:-6},.2).drop < second.drop,'existing downward speed continues');

@@ -40,7 +40,7 @@
     "test:player-model-asset": "node tools/kyx_player_asset_check.mjs",
     "test:gameplay-smoke": "node tools/gameplay_smoke.mjs",
     "test:player-respawn": "node tools/player_respawn_check.mjs",
-    "test:player-death": "node tools/player_death_check.mjs && node tools/death_reaction_check.mjs && node tools/death_support_cache_check.mjs && node tools/death_rig_check.mjs",
+    "test:player-death": "node tools/player_death_check.mjs && node tools/death_reaction_check.mjs && node tools/death_support_cache_check.mjs && node tools/death_rig_check.mjs && node tools/death_timing_check.mjs",
     "test:grenades": "node tools/grenade_contract_check.mjs && node tools/grenade_physics_check.mjs && node tools/launcher_bounce_check.mjs && node tools/grenade_map_check.mjs && node tools/ability_cooldown_check.mjs && node tools/smoke_grenade_check.mjs",
     "test:zombie-death": "node tools/zombie_death_check.mjs",
     "test:viewmodel": "node tools/viewmodel_arm_continuity_check.mjs && node tools/viewmodel_check.mjs && node tools/viewmodel_check.mjs --authored-arms",

@@ -17,8 +17,8 @@ for (const sample of samples) {
   assert.equal(sample.pose.drop, 1.05, `camera drop changed at ${sample.hz}Hz`);
   assert.equal(sample.pose.roll, -0.78, `camera roll changed at ${sample.hz}Hz`);
 }
-const early = deathCameraPose(0.18, 1);
-const late = deathCameraPose(0.54, 1);
+const early = deathCameraPose(DEATH_FALL_DURATION*.25, 1);
+const late = deathCameraPose(DEATH_FALL_DURATION*.75, 1);
 assert.ok(early.fall > 0 && early.fall < late.fall && late.fall < 1, 'death fall is not monotonic');
 assert.ok(late.drop > early.drop && late.roll > early.roll, 'camera does not collapse through the fall');
-console.log('player death fall passed: shared 0.82s avatar/body/camera pose at 30/60/144Hz');
+console.log('player death fall passed: shared gravity fall avatar/body/camera pose at 30/60/144Hz');

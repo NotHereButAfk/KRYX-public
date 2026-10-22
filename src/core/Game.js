@@ -5,6 +5,7 @@ import { remainingLoadingMs } from './LoadingTiming.js';
 import { TeleportAim } from './TeleportAim.js';
 import { groundDeathBody } from '../player/DeathBody.js';
 import { sampleDeathReaction, DEATH_IMPACT_TIME, DEATH_BODY_DURATION } from '../sim/DeathReaction.js';
+import { PLAYER_RESPAWN_DELAY } from '../sim/DeathTiming.js';
 import { PlayerSpectatorRig } from './PlayerSpectatorRig.js';
 import { awaitMatchReady } from '../net/MatchReadiness.js';
 import { RESULTS_SECONDS, SCOREBOARD_SECONDS, postMatchPhase } from '../sim/MatchFlow.js';
@@ -81,7 +82,7 @@ import {
 
 // Seconds between dying and coming back. The respawn is automatic — the menu
 // that opens on death is just something to look at while you wait.
-const RESPAWN_DELAY = 3;
+const RESPAWN_DELAY = PLAYER_RESPAWN_DELAY;
 
 // The arena is an always-on server with a fixed capacity. You take one slot;
 // the rest are filled with bots and simulated remote players (see ServerSim).
@@ -2112,6 +2113,7 @@ export class Game {
     const floor = Number.isFinite(reaction?.floorY) ? reaction.floorY
       : this.world.groundHeightAt(pos.x, pos.z, pos.y + .2, pos.y - 256);
     this._deathReaction = { ...reaction,
+      fallVelocity: Math.min(0, Number.isFinite(reaction?.fallVelocity) ? reaction.fallVelocity : (this.player.velocity.y || 0)),
       groundOffset: Number.isFinite(floor) ? Math.min(0, floor - pos.y) : (reaction?.groundOffset || 0) };
     this._deathAnimT = 0;
     this._deathSide *= -1;
@@ -2177,7 +2179,7 @@ export class Game {
     camera.quaternion.slerpQuaternions(this._deathCameraBaseQuat, rotation, pull);
     camera.fov = THREE.MathUtils.lerp(this._deathCameraBaseFov, this.player.baseFov, pull);
     camera.updateProjectionMatrix();
-    if (!this._deathImpactPlayed && t >= DEATH_IMPACT_TIME) {
+    if (!this._deathImpactPlayed && t >= (reaction.impactTime ?? DEATH_IMPACT_TIME)) {
       this._deathImpactPlayed = true;
       this.audio.playAt(target, () => this.audio.playBodyImpact?.(1));
     }
@@ -2491,7 +2493,7 @@ export class Game {
       );
       this._playerBody.rotation.x = reaction?.pitch ?? 0;
       this._playerBody.rotation.z = reaction?.roll ?? this._deathSide * fall * 1.28;
-      groundDeathBody(this._playerBody, p.position.y, reaction.air, reaction.settled ? this._deathSupportPose : null, !!ud?.isEvCharacter);
+      groundDeathBody(this._playerBody, p.position.y, 0, reaction.settled ? this._deathSupportPose : null, !!ud?.isEvCharacter, reaction);
       // Keep the inside of the helmet out of view during the first few frames
       // of the pullback. Reveal the corpse once the camera has cleared it.
       const head = ud?.bones?.Bip001_Head;

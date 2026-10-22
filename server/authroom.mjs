@@ -1,5 +1,6 @@
 import { BOT_MOVEMENT_SCALE } from '../src/sim/MovementConfig.js';
 import { createDeathReaction } from '../src/sim/DeathReaction.js';
+import { PLAYER_RESPAWN_DELAY } from '../src/sim/DeathTiming.js';
 import { stepGrenade, launcherShouldExplode } from '../src/sim/GrenadePhysics.js';
 import { shotSpread, spreadDirection } from '../src/weapons/ShotSpread.js';
 // Authoritative room (Phase 4 + 5) — fixed-20Hz server-owned simulation.
@@ -92,7 +93,8 @@ export function botPresentationYaw(aimYaw, vx, vz, combat = false) {
   return Math.atan2(-nx, -nz);
 }
 
-const RESPAWN_TICKS = TICK_HZ * 3;          // 3s
+const BOT_RESPAWN_TICKS = TICK_HZ * 3;
+const PLAYER_RESPAWN_TICKS = TICK_HZ * PLAYER_RESPAWN_DELAY;
 const SPAWN_PROTECTION_TICKS = Math.ceil(TICK_HZ * 1.5);
 const MAX_INPUT_QUEUE = 8;                  // drop floods; catch-up caps here
 const INPUT_HOLD_GRACE_TICKS = 3;           // at most 150ms between input packets
@@ -1601,7 +1603,7 @@ export class AuthRoom {
     target._animVX = target._animVZ = 0;
     target._firingTicks = 0;
     this._resetLifeInventory(target);
-    target.deadUntil = this.tick + RESPAWN_TICKS;
+    target.deadUntil = this.tick + (target.isBot ? BOT_RESPAWN_TICKS : PLAYER_RESPAWN_TICKS);
     if (target.isBot) target._botState = BOT_STATES.DEAD;
     const victimStreak = target.killStreak || 0;
     target.killStreak = 0;

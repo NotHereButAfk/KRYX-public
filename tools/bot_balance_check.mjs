@@ -1,24 +1,27 @@
 import assert from 'node:assert/strict';
 import { AuthRoom, TICK_HZ } from '../server/authroom.mjs';
-import { BOT_RETALIATION_AIM_SCALE } from '../src/entities/BotCombat.js';
 
 // Exercise actual authoritative ray shots, rather than treating scatter as
-// a hit probability. Compare identical duels with the previous 1.65x miss radius.
+// a hit probability. Give both versions the same identities, positions and
+// random inputs so a small tuning change is measured against the shipped preset.
 const arena = { id: 'balance', half: 100, killY: -20, noBaseFloor: false,
   spawns: [[0, 0, 0]], platforms: [], boxes: [], gravLifts: [], teleporters: [], pickups: [],
   groundHeightAt: () => 0, raycast: (_x, _y, _z, _dx, _dy, _dz, far) => far };
-function duels(oldScatter = false, moving = false) {
-  let damage = 0, shots = 0, hits = 0;
-  for (let trial = 0; trial < 24; trial++) {
-    const room = new AuthRoom(arena, { botDifficultyOverrides: {
-      aimErrorScale: 1.2 * (oldScatter ? 1.65 / BOT_RETALIATION_AIM_SCALE : 1),
-    } });
+function duels(previous = false, moving = false) {
+  let damage = 0, shots = 0, hits = 0, firstShotTotal = 0;
+  const trials = 48;
+  for (let trial = 0; trial < trials; trial++) {
+    const room = new AuthRoom(arena, { botDifficultyOverrides: previous
+      ? { aimErrorScale: 1.2, reactionMax: .52, aimTurnSpeed: 9 } : null });
     const bot = room.players.get(room.addBot('Opponent'));
     const player = room.players.get(room.add(() => {}, 'Player'));
+    bot.id = trial * 2 + 1; player.id = trial * 2 + 2;
+    room.players = new Map([[bot.id, bot], [player.id, player]]);
     room.tick = trial * 31;
     Object.assign(bot.state, { px: 0, py: 0, pz: 0, onGround: 1 });
     Object.assign(player.state, { px: 0, py: 0, pz: -(8 + trial % 3 * 6), onGround: 1 });
     bot.invulnerableUntil = player.invulnerableUntil = 0;
+    room._resetBotAI(bot);
     bot._botAimYaw = 0;
     room._damage(bot, player, 1, false);
     const start = room.tick;
@@ -35,14 +38,20 @@ function duels(oldScatter = false, moving = false) {
       damage += dealt; hits += Number(dealt > 0);
     }
     assert(firstShot >= .25, 'bot fired before a readable reaction interval');
+    firstShotTotal += firstShot;
   }
-  return { damage, shots, hits, hitRate: hits / shots, damagePerSecond: damage / (24 * 8) };
+  return { damage, shots, hits, hitRate: hits / shots,
+    damagePerSecond: damage / (trials * 8), averageFirstShot: firstShotTotal / trials };
 }
-const previous = duels(true), current = duels(), moving = duels(false, true);
-assert(current.damage > previous.damage * 1.25, 'return fire still fails to pressure exposed players');
+const previous = duels(true), current = duels(), previousMoving = duels(true, true), moving = duels(false, true);
+console.log('Authoritative bot balance (48 matched eight-second duels per scenario):', { previous, current, previousMoving, moving });
+assert(current.damage > previous.damage, 'the small accuracy improvement did not improve exposed-target pressure');
+assert(moving.damage > previousMoving.damage, 'moving-target pressure failed to improve');
+assert(current.damage < previous.damage * 1.25 && moving.damage < previousMoving.damage * 1.25,
+  'a small normal-difficulty adjustment became a large damage increase');
+assert(current.averageFirstShot <= previous.averageFirstShot, 'normal reaction became slower');
 assert(current.hitRate > .04 && current.hitRate < .45, 'normal bots must hit sometimes and miss most shots');
 assert(current.damagePerSecond < 20 && moving.damagePerSecond < 20, 'casual bots became too punishing');
-console.log('Authoritative bot balance (24 eight-second duels per scenario):', { previous, current, moving });
 
 // A real untouched player must be killable, not just receive cosmetic damage.
 const room = new AuthRoom(arena);

@@ -143,14 +143,14 @@ export function sampleHumanDeathPose(progress = 0, side = 1, out = createHumanDe
   const t = Math.max(0, Math.min(DEATH_SETTLE_TIME,
     Number.isFinite(elapsed) ? elapsed : clamp01(progress) * DEATH_SETTLE_TIME));
   const s = side < 0 ? -1 : 1;
-  const release = smooth(t / 0.30);
-  const collapse = smooth((t - 0.08) / 0.60);
-  const settle = smooth((t - 0.68) / 0.52);
+  const release = smooth(t / 0.18);
+  const collapse = smooth((t - 0.02) / 0.32);
+  const settle = smooth((t - 0.38) / 0.30);
   // A single damped limb follow-through after contact, then an exact resting
   // pose. Different phases keep arms, knees and wrists from moving as one slab.
-  const contact = Math.max(0, t - 0.68);
-  const flop = Math.sin(contact * 16) * Math.exp(-7 * contact) * (1 - settle);
-  const legFlop = Math.sin(contact * 13) * Math.exp(-8 * contact) * (1 - settle);
+  const contact = Math.max(0, t - 0.38);
+  const flop = Math.sin(contact * 20) * Math.exp(-10 * contact) * (1 - settle);
+  const legFlop = Math.sin(contact * 17) * Math.exp(-11 * contact) * (1 - settle);
 
   out.hipsX = 0.06 * collapse;
   out.hipsZ = 0.07 * s * collapse;

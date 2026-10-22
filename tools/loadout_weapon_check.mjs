@@ -8,7 +8,8 @@ import {
 } from '../src/weapons/weaponDefs.js';
 import { AUTHORED_WEAPON_BY_KIND, randomLootSpecs } from '../src/world/PickupLayout.js';
 import { MAX_PICKUP_SHIELD, SHIELD_PER_STACK } from '../src/core/ShieldConfig.js';
-import { AuthRoom } from '../server/authroom.mjs';
+import { AuthRoom, TICK_HZ } from '../server/authroom.mjs';
+import { PLAYER_RESPAWN_DELAY } from '../src/sim/DeathTiming.js';
 import { WeaponSystem } from '../src/weapons/WeaponSystem.js';
 import { WEAPONS } from '../src/weapons/weaponDefs.js';
 import { HUD } from '../src/ui/HUD.js';
@@ -134,7 +135,8 @@ assert.equal(player.maxShield, MAX_PICKUP_SHIELD);
 
 player.invulnerableUntil = 0;
 room._kill(player);
-for (let i = 0; i < 60; i++) room.update();
+for (let i = 0; i < PLAYER_RESPAWN_DELAY * TICK_HZ; i++) room.update();
+assert.equal(player.alive, true, 'loadout check must reach the actual human respawn');
 assert.equal(player.wid, 'battlerifle', 'respawn must retain the chosen main gun');
 assert.equal(player.matchWeapons.size, 0, 'respawn must clear server pickup grants');
 assert.equal(player.shield, 0, 'respawn must clear stacked shield pickups');

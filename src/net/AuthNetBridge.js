@@ -603,7 +603,7 @@ export class AuthNetBridge {
         this.game.audio?.playAt(a.pos, () => this.game.audio.playDeath?.());
       }
       if (r.alive === false && a._deathImpactPlayed === false
-          && a.avatar._deathT >= DEATH_IMPACT_TIME) {
+          && a.avatar._deathT >= (a.avatar._deathImpactTime ?? DEATH_IMPACT_TIME)) {
         a._deathImpactPlayed = true;
         this.game.audio?.playAt(a.avatar.group.position, () => this.game.audio.playBodyImpact?.(1));
       }

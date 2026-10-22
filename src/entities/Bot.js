@@ -9,7 +9,7 @@ import { applyMeleeCarry } from '../player/Actions.js';
 import { directionToBodyYaw, turnBodyYaw } from '../player/Facing.js';
 import { BOT_SKIN } from '../player/skins.js';
 import { BOT_DASH, BOT_RETALIATION_AIM_SCALE, BOT_TACTICS, advanceBotMagazine, advanceBurst, botAimErrorMeters, botTrackingOffset, botArenaDetectionDistance, botLoadoutForId, chooseCombatSteering, choosePlayerLikeBotMove, chooseReachableRoamPoint, isBotDashLaneSafe } from './BotCombat.js';
-import { chooseBotCoverPoint, shouldBotTacticalReload, isInsideBotFov } from './BotCombat.js';
+import { BOT_DIFFICULTIES, chooseBotCoverPoint, shouldBotTacticalReload, isInsideBotFov } from './BotCombat.js';
 import { BACKWARD_WALK_MULT, BOT_MOVEMENT_SCALE, WALK_SPEED, SPRINT_MULT, STAMINA_MAX, STAMINA_DRAIN, STAMINA_REGEN, STAMINA_REGEN_DELAY } from '../sim/MovementConfig.js';
 import { DEATH_BODY_DURATION, DEATH_IMPACT_TIME, sampleDeathReaction } from '../sim/DeathReaction.js';
 import { PLAYER_WORLD_MODEL_SCALE } from '../player/Proportions.js';
@@ -40,10 +40,10 @@ const PROVOKE_DURATION = BOT_TACTICS.memoryDuration;
 // can't turn into a perfect marksman at point-blank, which a fixed angular cone
 // does (a 3° cone at 5m physically cannot miss a torso).
 // Cover and player strafing still matter because these remain real ray shots.
-const AIM_SKILL_MIN = 0.80;    // per-bot multiplier — lower is a better shot
-const AIM_SKILL_MAX = 1.15;
-const REACTION_MIN  = 0.28;    // seconds between acquiring a target and firing
-const REACTION_MAX  = 0.52;
+const AIM_SKILL_MIN = 0.74;    // per-bot multiplier — lower is a better shot
+const AIM_SKILL_MAX = 1.06;
+const REACTION_MIN  = BOT_DIFFICULTIES.normal.reactionMin;
+const REACTION_MAX  = BOT_DIFFICULTIES.normal.reactionMax;
 // Player hitboxes, relative to their feet: a torso sphere and a head.
 const PLAYER_BODY_Y = 1.05, PLAYER_BODY_R = 0.42;
 const PLAYER_HEAD_Y = 1.60, PLAYER_HEAD_R = 0.24;
@@ -349,6 +349,9 @@ export class Bot {
     this.respawnTimer = RESPAWN_DELAY + 0.72;
     this._deathSide  = Math.random() < 0.5 ? 1 : -1;
     this._deathBaseY = this.mesh.position.y;
+    const floor = this.world.groundHeightAt?.(this.position.x, this.position.z, this._deathBaseY + .2, this._deathBaseY - 256);
+    this._deathReaction = { fallVelocity: Math.min(0, this._velY || 0),
+      groundOffset: Number.isFinite(floor) ? Math.min(0, floor - this._deathBaseY) : 0 };
     this._deathYaw = this.mesh.rotation.y;
     this.healthBarGroup.visible = false;
   }
@@ -551,7 +554,7 @@ export class Bot {
     if (this._dying) {
       this._deathT += dt;
       if (!this.noRespawn) this.respawnTimer = Math.max(0, this.respawnTimer - dt);
-      const reaction = sampleDeathReaction(null, this._deathT, this._deathYaw);
+      const reaction = sampleDeathReaction(this._deathReaction, this._deathT, this._deathYaw);
       this.mesh.rotation.set(reaction.pitch, this._deathYaw, reaction.roll, 'YXZ');
       this.mesh.position.y = this._deathBaseY;
       if (this._isHuman) {
@@ -561,8 +564,8 @@ export class Bot {
         ud.mixer?.update(dt);
         ud.armorTick?.(dt);
       }
-      groundDeathBody(this.mesh, this._deathBaseY, 0, reaction.settled ? this._deathSupportPose : null, this.mesh.userData.isEvCharacter === true);
-      if (!this._deathImpactPlayed && this._deathT >= DEATH_IMPACT_TIME) {
+      groundDeathBody(this.mesh, this._deathBaseY, 0, reaction.settled ? this._deathSupportPose : null, this.mesh.userData.isEvCharacter === true, reaction);
+      if (!this._deathImpactPlayed && this._deathT >= (reaction.impactTime ?? DEATH_IMPACT_TIME)) {
         this._deathImpactPlayed = true;
         this.audio?.playAt(this.mesh.position, () => this.audio.playBodyImpact?.(1));
       }

@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import {makeInput} from '../src/sim/MoveSim.js';
+import {PLAYER_RESPAWN_DELAY} from '../src/sim/DeathTiming.js';
 // Phase 4 + 5 authority/abuse proof. Boots the real AuthRoom over an in-proc
 // WebSocket server and drives raw clients to prove the exit criteria:
 //   Phase 4: join, sequenced input, ack/snapshot, prediction reconciliation,
@@ -10,7 +11,7 @@ import {makeInput} from '../src/sim/MoveSim.js';
 
 import { WebSocket } from 'ws';
 import { makeAuthServer } from './authserver.mjs';
-import { AuthRoom, botPresentationYaw } from './authroom.mjs';
+import { AuthRoom, TICK_HZ, botPresentationYaw } from './authroom.mjs';
 
 const PORT = 8799;
 const { close, room } = makeAuthServer({ port: PORT });
@@ -129,14 +130,14 @@ ok('respawn: transient firing/sprint/aim presentation is cleared',
    resetPlayer.alive && resetPlayer._firingTicks === 0
    && !resetPlayer._lastSprint && !resetPlayer._lastAim);
 
-resetPlayer.alive = false;
-resetPlayer.health = 0;
-resetPlayer.deadUntil = room.tick + 60; // 3 seconds at the authoritative 20 Hz tick
-for (let i = 0; i < 59; i++) room.update();
+room._kill(resetPlayer);
+const humanRespawnTicks = PLAYER_RESPAWN_DELAY * TICK_HZ;
+const assignedFullDelay = resetPlayer.deadUntil - room.tick === humanRespawnTicks;
+for (let i = 0; i < humanRespawnTicks - 1; i++) room.update();
 const heldDeadForFullDelay = !resetPlayer.alive && resetPlayer.health === 0;
 room.update();
-ok('respawn: player remains dead for the full authoritative three seconds',
-   heldDeadForFullDelay && resetPlayer.alive && resetPlayer.health > 0);
+ok('respawn: player remains dead for the full authoritative six seconds',
+   assignedFullDelay && heldDeadForFullDelay && resetPlayer.alive && resetPlayer.health > 0);
 resetPlayer.mainWid = resetPlayer.wid = 'magnum';
 resetPlayer.state.stamina = 100; resetPlayer.state.crouch = 0; resetPlayer.state.slide = 0;
 resetPlayer._firingTicks = 8;

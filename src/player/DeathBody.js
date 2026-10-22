@@ -40,8 +40,19 @@ export function prepareDeathBody(group) {
 }
 // Frozen bot poses only need skinning once per death. Keep exact support
 // vertices in body-local space so tumbling still rests on the real mesh.
-export function groundDeathBody(group, floorY, air = 0, frozenPose = null, useSupportHull = false) {
+export function groundDeathBody(group, floorY, air = 0, frozenPose = null, useSupportHull = false, motion = null) {
   group.updateMatrixWorld(true);
+  const falling = Number.isFinite(motion?.drop);
+  if (falling) {
+    const anchor = group.userData.deathAnchor;
+    const height = (group.userData.deathAnchorY ?? (group.userData.standHeight || 1.85) * .54) * group.scale.y;
+    const current = anchor ? anchor.getWorldPosition(vertex).y - group.position.y
+      : height * Math.cos(group.rotation.x);
+    // Move the hips on one uninterrupted gravity trajectory. Only contact with
+    // the real floor can arrest it; rotating toes cannot lift the whole corpse.
+    group.position.y = floorY + height + motion.drop - current;
+    group.updateMatrixWorld(true);
+  }
   let bottom = Infinity;
   let cached = frozenPose && frozenBodies.get(group);
   if (frozenPose && (cached?.key !== frozenPose || cached?.useSupportHull !== useSupportHull)) {
@@ -82,6 +93,13 @@ export function groundDeathBody(group, floorY, air = 0, frozenPose = null, useSu
   }
   // A half-centimetre skin margin covers the tiny interpolation between
   // selected silhouette vertices; settled poses cache that same support.
-  if (Number.isFinite(bottom)) group.position.y += floorY + air - bottom
-    + (useSupportHull ? .005 : 0);
+  if (Number.isFinite(bottom)) {
+    const supportY = floorY + (falling ? motion.floorOffset : air) + (useSupportHull ? .005 : 0);
+    const correction = supportY - bottom;
+    // In flight a body keeps falling under gravity. Never pull it down onto a
+    // changing artificial plane, and never raise it before real penetration.
+    group.position.y += falling ? Math.max(0, correction) : correction;
+    return correction >= -.01;
+  }
+  return false;
 }
