@@ -1087,6 +1087,7 @@ export class Game {
   }
 
   _startGame(name, skinId, modeId = 'deathmatch', armorTypeId) {
+    if (modeId === 'survival') return; // Temporarily disabled.
     if (!canPlayWithAds()) return;
     this.canvas.style.opacity = '1';
     this._clearMenuBots();

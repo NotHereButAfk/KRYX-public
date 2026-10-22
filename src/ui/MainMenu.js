@@ -86,7 +86,7 @@ export class MenuUI {
 
     this.selectedSkinId   = getSkin().id;   // catalog is empty; falls back to the built-in default
     this.selectedArmorId  = loadArmorType();
-    this.selectedModeId   = new URLSearchParams(location.search).get('mode') === 'survival' ? 'survival' : 'deathmatch';
+    this.selectedModeId   = 'deathmatch';
     this._currentUser     = null;
     this._preview         = null;
     this._armorPreview    = null;
@@ -180,7 +180,7 @@ export class MenuUI {
 
     const startGame = (modeId) => {
       const name = this.nameInput.value.trim() || 'Recruit';
-      if (modeId) this.selectedModeId = modeId;
+      if (modeId) this.selectedModeId = modeId === 'survival' ? 'deathmatch' : modeId;
       this._closeAllPanels();
       this._closeAllDropdowns();
       closeMobileNav();
@@ -408,7 +408,7 @@ export class MenuUI {
 
   _buildModeCards() {
     const container = document.getElementById('mode-cards');
-    GAME_MODES.forEach((mode) => {
+    GAME_MODES.filter(mode => mode.id !== 'survival').forEach((mode) => {
       const card = document.createElement('div');
       card.className = 'mode-card' + (mode.id === this.selectedModeId ? ' selected' : '');
       card.style.setProperty('--mode-color', mode.color);

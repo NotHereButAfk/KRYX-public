@@ -175,6 +175,7 @@ function sanitizeName(n, usedNames = new Set()) {
 }
 
 export function makeAuthServer({ server, port, staticRoot, targetPopulation = 0, mode = process.env.GAME_MODE || 'deathmatch', accountService = undefined } = {}) {
+  if (mode === 'survival') mode = 'deathmatch'; // Temporary maintenance pause.
   if(!['deathmatch','survival'].includes(mode))throw new Error('No authoritative implementation for this mode');
   const Room=mode==='survival'?SurvivalRoom:AuthRoom;
   const room = new Room(undefined, { targetPopulation });
@@ -203,7 +204,7 @@ export function makeAuthServer({ server, port, staticRoot, targetPopulation = 0,
   // Bounded invitation rooms stay together across rounds and expire when empty.
   const selectRoom = (url, create = false) => {
     const kind = url.searchParams.get('mode') || mode;
-    if (!rooms.has(kind)) return null;
+    if (kind === 'survival' || !rooms.has(kind)) return null;
     const code = url.searchParams.get('cgroom');
     if (!code) return rooms.get(kind);
     if (!/^cg-[a-f0-9-]{36}$/.test(code)) return null;
