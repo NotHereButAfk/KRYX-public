@@ -49,7 +49,9 @@ export class ViewmodelAim {
       for (let pass = 0; pass < 8; pass++) {
         this.sight.copy(model.sight).applyMatrix4(model.group.matrixWorld);
         camera.worldToLocal(this.sight);
-        mount.position.x -= this.sight.x * THREE.MathUtils.clamp(adsWeight, 0, 1);
+        // Keep the compact SMG in a right-shoulder hold instead of edge-on under the eye.
+        const sightX = model.group.userData.weaponId === 'uzi' ? .20 * -this.sight.z * Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)) * camera.aspect : 0;
+        mount.position.x += (sightX - this.sight.x) * THREE.MathUtils.clamp(adsWeight, 0, 1);
         const sightY = ADS_SIGHT_SCREEN_Y * -this.sight.z * Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
         mount.position.y += (sightY - this.sight.y) * THREE.MathUtils.clamp(adsWeight, 0, 1);
         this._rotate(camera, mount, model, 1);
@@ -161,3 +163,4 @@ export class ViewmodelAim {
     return nearest;
   }
 }
+

@@ -6,7 +6,7 @@ import { PRESENTATION_AIM_DEPTH } from './ViewmodelAim.js';
 const FITS = Object.freeze({
   m4:            { depth: .90, x: .12, y: -.28, runDepth: .55 },
   magnum:        { depth: 1.05, x: .16, y: -.36, runDepth: 1.25 },
-  uzi:           { depth: 1.30, x: .12, y: -.28, runDepth: .85 },
+  uzi:           { depth: 1.10, x: .30, y: -.38, runDepth: .85 },
   levershotgun:  { depth: .90, x: .14, y: -.28, runDepth: .55 },
   battlerifle:   { depth: .92, x: .14, y: -.30, runDepth: .60 },
   plasmarifle:   { depth: .98, x: .14, y: -.32, runDepth: .62 },
@@ -76,4 +76,5 @@ export class ViewmodelFraming {
     return true;
   }
 }
+
 
