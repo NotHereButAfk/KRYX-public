@@ -1,10 +1,35 @@
-# KRYX public source
+# KRYX
 
-Public source copy of the KRYX browser game. Play the hosted game at https://kryx.live/.
+**A browser-based arena shooter built with Three.js and an authoritative Node.js multiplayer server.**
 
-## Play locally
+[Play KRYX](https://kryx.live/) · [Report an issue](https://github.com/NotHereButAfk/KRYX-public/issues) · [Server documentation](server/README.md)
 
-Install Node.js 22.12 or newer (including npm), then run:
+![KRYX gameplay](docs/images/gameplay-current.png)
+
+## The game
+
+Jump into free-for-all deathmatch with first-person combat, weapon pickups, and AI opponents. Customize your character and loadout through the in-game inventory.
+
+- **Arena combat:** ranged weapons, melee, grenades, and movement abilities.
+- **Multiplayer with bots:** the server handles movement and combat authority.
+- **Character customization:** skin artwork, equipment previews, and loadouts.
+- **Local guest play:** run the frontend and game server without production credentials.
+
+Survival is temporarily disabled. Features that depend on hosted accounts or payments are not enabled in the local guest demo.
+
+### Current skin and weapon artwork
+
+<img src="public/assets/anime-skin-cards/default-reforged-v2.png" alt="Default Reforged character artwork" width="280"> <img src="public/assets/default-weapon-cards/plasmarifle.png" alt="Default laser rifle artwork" width="280">
+
+*Gameplay screenshot captured from this public build running locally on October 21, 2026; artwork is from the current game assets. Advertising and QA controls are excluded from the gameplay capture. The hosted release may differ while deployment is in progress.*
+
+## Run locally
+
+### Requirements
+
+- Node.js **22.12 or newer**, with npm
+- Git
+- A modern browser with WebGL enabled
 
 ```sh
 git clone https://github.com/NotHereButAfk/KRYX-public.git
@@ -14,16 +39,40 @@ npm ci --prefix server
 npm start
 ```
 
-Open the local URL printed in the terminal (normally http://127.0.0.1:5173), then click to play. Keep the terminal open. Press Ctrl+C to stop.
+Open the URL printed in the terminal, normally **http://127.0.0.1:5173**, and click to play. Keep the terminal running; press **Ctrl+C** to stop both services.
 
-`npm start` (or `npm run dev`) starts both the frontend and a local authoritative multiplayer server with bots. Deathmatch and survival are available. No database, environment file, Discord token or wallet credentials are needed. This is guest play: production accounts, saved progression, purchases, tournament services and payouts are not connected. Multiple browser tabs can join the local server. The server listens only on your computer.
+The launcher starts Vite and a local multiplayer server with bots. It selects a free backend port automatically and binds to your computer's loopback interface. Multiple browser tabs can join the same local server.
 
-If port 5173 is already used, Vite prints a different port; use that printed URL. The game server selects a free port automatically. If dependencies are missing, run both `npm ci` commands again.
+No database, wallet, Discord token, or environment file is required. Production accounts, saved progression, purchases, tournament services, and payouts are not connected to this local demo.
 
-## Development
+## Development commands
 
-`npm run build` builds the frontend into `dist`. `npm run dev:client` starts only Vite and does not start the local game server. Optional account services require your own configuration; see `server/README.md` and the blank examples. Never commit credentials.
+| Command | Purpose |
+| --- | --- |
+| `npm start` | Start the local frontend and game server |
+| `npm run dev` | Alias for the combined local launcher |
+| `npm run dev:client` | Start only the Vite frontend |
+| `npm run build` | Build the frontend into `dist/` |
+| `npm run test:viewmodel` | Check first-person weapon positioning and aim |
+| `npm run test:player-respawn` | Check player state reset after respawning |
 
-Development and production deployment are maintained in a separate private repository. This copy has a new history and excludes production credentials, private configuration, internal deployment workflows and operator documents. Updates to the private repository do not automatically publish here.
+A frontend build alone does not start the multiplayer server. See the [server documentation](server/README.md) for optional backend configuration.
 
-Public visibility is not a license grant for third-party assets. Existing asset notices and provenance remain applicable.
+## Troubleshooting
+
+- **Port already in use:** use the alternate URL Vite prints in the terminal.
+- **Missing dependencies:** run both installation commands again, including `npm ci --prefix server`.
+- **Blank or unsupported graphics:** confirm that browser hardware acceleration and WebGL are available.
+- **Account services unavailable locally:** this is expected in guest mode; hosted credentials are intentionally excluded.
+
+## Repository scope
+
+This is the public source copy. Production development and deployment are maintained in a separate private repository; changes are published here separately. This repository does not include production secrets, private configuration, or deployment credentials.
+
+When reporting a bug, include your browser, reproduction steps, and a screenshot or short recording. Do not include passwords, tokens, wallet recovery phrases, or other private data.
+
+## Asset rights
+
+Public repository access does not grant additional rights to third-party assets. Consult the existing asset notices and provenance documentation before redistributing models, artwork, or other bundled content.
+
+
