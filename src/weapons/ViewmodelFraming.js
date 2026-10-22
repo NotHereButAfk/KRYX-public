@@ -6,7 +6,7 @@ import { PRESENTATION_AIM_DEPTH } from './ViewmodelAim.js';
 const FITS = Object.freeze({
   m4:            { depth: .90, x: .12, y: -.28, runDepth: .55 },
   magnum:        { depth: 1.05, x: .16, y: -.36, runDepth: 1.25 },
-  uzi:           { depth: .90, x: .14, y: -.32, runDepth: .58 },
+  uzi:           { depth: 1.30, x: .12, y: -.28, runDepth: .85 },
   levershotgun:  { depth: .90, x: .14, y: -.28, runDepth: .55 },
   battlerifle:   { depth: .92, x: .14, y: -.30, runDepth: .60 },
   plasmarifle:   { depth: .98, x: .14, y: -.32, runDepth: .62 },
@@ -16,7 +16,9 @@ const FITS = Object.freeze({
 });
 
 export function firearmPresentationScale(def) {
-  return (def.id === 'rpg' ? 1 / 2.3 : 1) * 2.4;
+  // Compact weapons retain their smaller silhouette in hip fire and ADS.
+  const size = def.id === 'uzi' ? .75 : 1;
+  return (def.id === 'rpg' ? 1 / 2.3 : 1) * 2.4 * size;
 }
 
 export class ViewmodelFraming {
@@ -74,3 +76,4 @@ export class ViewmodelFraming {
     return true;
   }
 }
+
