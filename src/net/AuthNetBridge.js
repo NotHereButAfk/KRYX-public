@@ -28,6 +28,7 @@ import { MovementAudio } from '../core/MovementAudio.js';
 import { PLAYER_EYE_HEIGHT } from '../sim/MovementConfig.js';
 import { characterSweepSegments } from '../sim/CharacterSweep.js';
 import { Avatar } from '../player/Avatar.js';
+import { DEATH_IMPACT_TIME } from '../sim/DeathReaction.js';
 import { ZombieAvatar } from '../entities/ZombieAvatar.js';
 import {
   nextThirdPersonDistance,
@@ -595,6 +596,19 @@ export class AuthNetBridge {
         reload: r.reload || 0, swing: r.swing == null ? 1 : r.swing,
         viewDistanceSq: avatarDistanceSq,
       });
+      // Snapshot transitions drive one release and one ground-contact sound.
+      // Joining a match with an existing corpse must not replay its death.
+      if (r.alive === false && a._soundAlive === true) {
+        a._deathImpactPlayed = false;
+        this.game.audio?.playAt(a.pos, () => this.game.audio.playDeath?.());
+      }
+      if (r.alive === false && a._deathImpactPlayed === false
+          && a.avatar._deathT >= DEATH_IMPACT_TIME) {
+        a._deathImpactPlayed = true;
+        this.game.audio?.playAt(a.avatar.group.position, () => this.game.audio.playBodyImpact?.(1));
+      }
+      if (r.alive !== false) a._deathImpactPlayed = true;
+      a._soundAlive = r.alive !== false;
       // Keep semantic plate state current even while it is off-screen or
       // occluded, so the first visible frame never flashes an empty bar/name.
       renderNameCosmetics(a.nameText,r.name,r.nameCosmetics);
@@ -643,6 +657,7 @@ export class AuthNetBridge {
       if (e.e === 'hit') {
         if (e.by === me && e.id !== me) {
           this.game.hud?.flashHitmarker?.(e.head);
+          if (this.game.hud?.hitSound !== false) this.game.audio?.playHit?.();
           const position = [e.x, e.y, e.z].every(Number.isFinite)
             ? new THREE.Vector3(e.x, e.y, e.z)
             : this.remotes.get(e.id)?.avatar?.group?.position?.clone().add(new THREE.Vector3(0, 1.5, 0));
@@ -653,11 +668,18 @@ export class AuthNetBridge {
           const point = e.id === me ? this.player.position : this.remotes.get(e.id)?.avatar?.group?.position;
           if (point) this.game.audio?.playAt(point, () => this.game.audio.playSwordImpact?.('armor'));
         }
-        if (e.id === me) this.game._playerBody?.userData?.triggerHit?.(0.7, 0.8);
+        if (e.id === me) {
+          if (!e.killed) this.game.audio?.playHurt?.();
+          this.game.hud?.flashDamage?.();
+          const attacker = this.remotes.get(e.by)?.avatar?.group?.position;
+          if (attacker) this.game.hud?.showDamageFrom?.(attacker, this.player.position, this.player.yaw);
+          this.game._playerBody?.userData?.triggerHit?.(0.7, 0.8);
+        }
         else this.remotes.get(e.id)?.avatar?.group?.userData?.triggerHit?.(0.7, 0.8);
       }
       else if (e.e === 'kill') {
-        if (e.by === me) {
+        if (e.by === me && e.id !== me) {
+          if (this.game.hud?.hitSound !== false) this.game.audio?.playKill?.();
           this.game.hud?.flashHitmarker?.(e.head);
           this.game.hud?.showKillConfirm?.(e.head, e.score ?? 100);
           const skin = this.game.weaponSystem?.showLegendaryKill?.(e.wid);
@@ -666,7 +688,7 @@ export class AuthNetBridge {
           if (e.head) this.game.hud?.showHeadshotFlair?.();
         }
         const tag = e.head ? ' 🎯' : '';
-        this.game.hud?.addKillFeed?.(`${e.byName} eliminated ${e.victimName}${tag}`);
+        if (e.id !== me) this.game.hud?.addKillFeed?.(`${e.byName} eliminated ${e.victimName}${tag}`);
       }
       else if (e.e === 'ability' && e.kind === 'smoke') {
         this.game.grenadeSystem?.showAuthoritativeSmoke?.(new THREE.Vector3(e.x, e.y, e.z));

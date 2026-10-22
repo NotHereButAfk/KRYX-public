@@ -1,3 +1,4 @@
+import { prepareDeathBody } from './DeathBody.js';
 import {createBodyDynamics} from './BodyDynamics.js';
 import { isCrazyGames } from '../core/CrazyGamesAccount.js';
 import { createFootPlanting } from './FootPlanting.js';
@@ -229,8 +230,8 @@ export function buildEvCharacter(skin = null, armorSkin = null) {
   let transition = 0, landing = 0, fireHold = 0, flashTime = 0;
   let pitch = 0, yaw = 0, smoothPitch = 0, smoothYaw = 0, travelYaw = 0, backpedalling = false;
   let externalWeapon = null, externalMuzzle = null, melee = false, shot = 0, actionTime = 0, actionKind = '';
-  let death = 0, deathSide = 1, rigidDeath = false;
-  const rigidDeathPose = new Map();
+  let death = 0, deathSide = 1, deathTime = 0;
+  const deathStartPose = new Map();
   const bodyDynamics = createBodyDynamics();
   let previousJumpVy = 0, previousAirJump = 0;
   const carryRotation = new THREE.Quaternion();
@@ -275,7 +276,7 @@ export function buildEvCharacter(skin = null, armorSkin = null) {
         bone.position.copy(pose.position); bone.quaternion.copy(pose.quaternion); bone.scale.copy(pose.scale);
       }
       fireHold = flashTime = shot = transition = landing = actionTime = 0;
-      thrustRemaining = slideBlend = 0; jumpJets.update(0, 0);
+      thrustRemaining = slideBlend = runLean = 0; jumpJets.update(0, 0);
       pitch = yaw = smoothPitch = smoothYaw = travelYaw = 0; backpedalling = false;
       bodyDynamics.reset();
       fallSpeed = previousJumpVy = previousAirJump = 0;
@@ -288,17 +289,17 @@ export function buildEvCharacter(skin = null, armorSkin = null) {
       flash.visible = false;
       tick(0);
     },
-    setDeathState(value, side = 1, rigid = false) {
-      if (death <= 0 && value > 0 && rigid) {
-        rigidDeathPose.clear();
-        for (const bone of Object.values(bones)) rigidDeathPose.set(bone, {
+    setDeathState(value, side = 1, elapsed = null) {
+      if (death <= 0 && value > 0) {
+        deathStartPose.clear();
+        for (const bone of Object.values(bones)) deathStartPose.set(bone, {
           position: bone.position.clone(), quaternion: bone.quaternion.clone(), scale: bone.scale.clone(),
         });
+        footPlanting.reset();
       }
-      rigidDeath = rigid;
-      if (death <= 0 && value > 0) footPlanting.reset();
       if (death > 0 && value <= 0) ud.triggerTeleport();
       death = clamp(value, 0, 1); deathSide = side;
+      deathTime = Number.isFinite(elapsed) ? elapsed : death * 1.2;
     },
     attachWeapon(weapon, isMelee = false) {
       if (externalWeapon && externalWeapon !== weapon) disposeModel(externalWeapon);
@@ -325,19 +326,17 @@ export function buildEvCharacter(skin = null, armorSkin = null) {
   function tick(dt) {
     dt = clamp(dt, 0, 0.1);
     if (death > 0) {
-      if (rigidDeath) {
-        for (const [bone, pose] of rigidDeathPose) {
-          bone.position.copy(pose.position); bone.quaternion.copy(pose.quaternion); bone.scale.copy(pose.scale);
-        }
-        rifle.visible = weaponSocket.visible = false; flash.visible = false;
-        thrustRemaining = 0; jumpJets.update(dt, 0);
-        ud.activeAnimation = 'Death';
-        return;
-      }
+      // Start from the exact living pose, release the grip, then settle. The
+      // mixer stops owning the limbs on death; no continuing walk or aim IK.
+      const release = clamp(deathTime / 0.30, 0, 1);
+      const blend = release * release * (3 - 2 * release);
       for (const [bone, pose] of deathBase) {
-        bone.position.copy(pose.position); bone.quaternion.copy(pose.quaternion); bone.scale.copy(pose.scale);
+        const start = deathStartPose.get(bone) || pose;
+        bone.position.lerpVectors(start.position, pose.position, blend);
+        bone.quaternion.slerpQuaternions(start.quaternion, pose.quaternion, blend);
+        bone.scale.lerpVectors(start.scale, pose.scale, blend);
       }
-      const pose = sampleHumanDeathPose(death, deathSide, deathPose);
+      const pose = sampleHumanDeathPose(death, deathSide, deathPose, deathTime);
       group.updateWorldMatrix(true, true);
       const frame = group.getWorldQuaternion(new THREE.Quaternion());
       const x = X.clone().applyQuaternion(frame), z = new THREE.Vector3(0, 0, 1).applyQuaternion(frame);
@@ -345,13 +344,32 @@ export function buildEvCharacter(skin = null, armorSkin = null) {
         ['Pelvis', 'hips'], ['Spine', 'spine'], ['Spine1', 'chest'], ['Head', 'head'],
         ['R_UpperArm', 'rArm'], ['L_UpperArm', 'lArm'], ['R_Forearm', 'rFore'], ['L_Forearm', 'lFore'],
         ['R_Thigh', 'rLeg'], ['L_Thigh', 'lLeg'], ['R_Calf', 'rCalf'], ['L_Calf', 'lCalf'],
+        ['R_Foot', 'rFoot'], ['L_Foot', 'lFoot'], ['R_Hand', 'rHand'], ['L_Hand', 'lHand'],
       ];
       for (const [name, key] of parts) {
         const bone = bones[`Bip001_${name}`];
         rotateWorld(bone, Q[0].setFromAxisAngle(x, pose[`${key}X`] || 0));
         rotateWorld(bone, Q[0].setFromAxisAngle(z, pose[`${key}Z`] || 0));
       }
-      rifle.visible = weaponSocket.visible = death < 0.2; flash.visible = false;
+      // The armed idle has one foot far forward. Release that stance as the
+      // body lands, otherwise its bent leg remains suspended above the corpse.
+      // A shallow, asymmetric leg rest keeps connected knees without locking
+      // them to the last running frame or stretching the bone chain.
+      const legRelease = clamp((deathTime - 0.25) / 0.85, 0, 1);
+      const legBlend = legRelease * legRelease * (3 - 2 * legRelease);
+      for (const side of ['L', 'R']) {
+        const sign = side === 'R' ? 1 : -1;
+        const foot = bones[`Bip001_${side}_Foot`];
+        const calf = bones[`Bip001_${side}_Calf`];
+        const target = group.worldToLocal(foot.getWorldPosition(V[8]));
+        target.lerp(V[10].set(sign * .24, .09, side === 'R' ? .18 : .13), legBlend);
+        group.localToWorld(target);
+        const pole = group.worldToLocal(calf.getWorldPosition(V[9]));
+        pole.lerp(V[10].set(sign * .25, .55, -.18), legBlend);
+        group.localToWorld(pole);
+        solveChain(bones[`Bip001_${side}_Thigh`], calf, foot, target, pole);
+      }
+      rifle.visible = weaponSocket.visible = deathTime < 0.12; flash.visible = false;
       fireHold = flashTime = shot = actionTime = 0;
       thrustRemaining = 0; jumpJets.update(dt, 0);
       ud.activeAnimation = 'Death';
@@ -671,5 +689,6 @@ export function buildEvCharacter(skin = null, armorSkin = null) {
     position: bone.position.clone(), quaternion: bone.quaternion.clone(), scale: bone.scale.clone(),
   });
   cosmetics.apply(skin, armorSkin);
+  prepareDeathBody(group);
   return group;
 }

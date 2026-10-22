@@ -469,7 +469,11 @@ export function buildHumanSoldier(skin = null, armorTypeId = 'assault', armorSki
   const _actionPose = createHumanActionPose();
   const _deathPose = createHumanDeathPose();
   let _deathP = 0;
-  let _deathSide = 1;
+  let _deathSide = 1, _deathTime = 0;
+  const _deathRest = [], _deathStart = new Map();
+  mixer.update(0);
+  root.traverse(bone => { if (bone.isBone) _deathRest.push({ bone,
+    position: bone.position.clone(), quaternion: bone.quaternion.clone(), scale: bone.scale.clone() }); });
 
   const setLocomotion = (
     speed, grounded = true, sprinting = false, strafe = 0, dirF = 1, dirR = 0
@@ -557,10 +561,16 @@ export function buildHumanSoldier(skin = null, armorTypeId = 'assault', armorSki
       triggerHit(0.7, 0.8);
     }
   };
-  const setDeathState = (progress = 0, side = 1) => {
+  const setDeathState = (progress = 0, side = 1, elapsed = null) => {
+    if (_deathP <= 0 && progress > 0) {
+      _deathStart.clear();
+      for (const {bone} of _deathRest) _deathStart.set(bone, {
+        position: bone.position.clone(), quaternion: bone.quaternion.clone(), scale: bone.scale.clone() });
+    }
     _deathP = _clamp(progress, 0, 1);
     _deathSide = side < 0 ? -1 : 1;
-    if (_heldWeapon) _heldWeapon.visible = _deathP < 0.48;
+    _deathTime = Number.isFinite(elapsed) ? elapsed : _deathP * 1.2;
+    if (_heldWeapon) _heldWeapon.visible = _deathP <= 0 || _deathTime < 0.12;
   };
 
   // Stance offsets applied after mixer.update overwrites bones (per armor type).
@@ -607,6 +617,40 @@ export function buildHumanSoldier(skin = null, armorTypeId = 'assault', armorSki
     const t = armorT;
     let bodyDrop = 0;
     root.position.y = _rootBaseY;
+    if (_deathP > 0) {
+      const release = _clamp(_deathTime / 0.30, 0, 1);
+      const blend = release * release * (3 - 2 * release);
+      for (const pose of _deathRest) {
+        const start = _deathStart.get(pose.bone) || pose;
+        pose.bone.position.lerpVectors(start.position, pose.position, blend);
+        pose.bone.quaternion.slerpQuaternions(start.quaternion, pose.quaternion, blend);
+        pose.bone.scale.lerpVectors(start.scale, pose.scale, blend);
+      }
+      const applyDeathEuler = (bone, x, y, z) => {
+        if (!bone) return;
+        _actionEuler.set(x, y, z);
+        bone.quaternion.multiply(_actionQuat.setFromEuler(_actionEuler));
+      };
+      sampleHumanDeathPose(_deathP, _deathSide, _deathPose, _deathTime);
+      applyDeathEuler(B.hips,  _deathPose.hipsX,  0, _deathPose.hipsZ);
+      applyDeathEuler(B.spine, _deathPose.spineX, 0, _deathPose.spineZ);
+      applyDeathEuler(B.s1,    _deathPose.chestX, 0, _deathPose.chestZ);
+      applyDeathEuler(B.head,  _deathPose.headX,  0, _deathPose.headZ);
+      applyDeathEuler(B.rArm,  _deathPose.rArmX,  0, _deathPose.rArmZ);
+      applyDeathEuler(B.rFore, _deathPose.rForeX, 0, 0);
+      applyDeathEuler(B.lArm,  _deathPose.lArmX,  0, _deathPose.lArmZ);
+      applyDeathEuler(B.lFore, _deathPose.lForeX, 0, 0);
+      applyDeathEuler(B.rLeg,  _deathPose.rLegX,  0, _deathPose.rLegZ);
+      applyDeathEuler(B.rCalf, _deathPose.rCalfX, 0, 0);
+      applyDeathEuler(B.lLeg,  _deathPose.lLegX,  0, _deathPose.lLegZ);
+      applyDeathEuler(B.lCalf, _deathPose.lCalfX, 0, 0);
+      applyDeathEuler(B.rHand, _deathPose.rHandX, 0, 0);
+      applyDeathEuler(B.lHand, _deathPose.lHandX, 0, 0);
+      applyDeathEuler(B.rFoot, _deathPose.rFootX, 0, 0);
+      applyDeathEuler(B.lFoot, _deathPose.lFootX, 0, 0);
+      _thrusterFx.visible = false;
+      return;
+    }
     _currentTimeScale = dampHumanTimeScale(_currentTimeScale, _targetTimeScale, dt);
     mixer.timeScale = 1;
     actions.idle?.setEffectiveTimeScale(baseTS);
@@ -931,24 +975,6 @@ export function buildHumanSoldier(skin = null, armorTypeId = 'assault', armorSki
         recoil: _fireRecoil,
         pitch: _sAimPitch,
       });
-    }
-
-    // Death is a whole-skeleton crumple, not a rigid root rotation. Apply it
-    // last so it cleanly takes ownership from locomotion, aim, and rifle IK.
-    if (_deathP > 0) {
-      sampleHumanDeathPose(_deathP, _deathSide, _deathPose);
-      applyActionEuler(B.hips,  _deathPose.hipsX,  0, _deathPose.hipsZ);
-      applyActionEuler(B.spine, _deathPose.spineX, 0, _deathPose.spineZ);
-      applyActionEuler(B.s1,    _deathPose.chestX, 0, _deathPose.chestZ);
-      applyActionEuler(B.head,  _deathPose.headX,  0, _deathPose.headZ);
-      applyActionEuler(B.rArm,  _deathPose.rArmX,  0, _deathPose.rArmZ);
-      applyActionEuler(B.rFore, _deathPose.rForeX, 0, 0);
-      applyActionEuler(B.lArm,  _deathPose.lArmX,  0, _deathPose.lArmZ);
-      applyActionEuler(B.lFore, _deathPose.lForeX, 0, 0);
-      applyActionEuler(B.rLeg,  _deathPose.rLegX,  0, _deathPose.rLegZ);
-      applyActionEuler(B.rCalf, _deathPose.rCalfX, 0, 0);
-      applyActionEuler(B.lLeg,  _deathPose.lLegX,  0, _deathPose.lLegZ);
-      applyActionEuler(B.lCalf, _deathPose.lCalfX, 0, 0);
     }
 
     // Fire the boot jets for the entire airborne interval. Re-anchor after the

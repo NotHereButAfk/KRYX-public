@@ -21,4 +21,4 @@ const early = deathCameraPose(0.18, 1);
 const late = deathCameraPose(0.54, 1);
 assert.ok(early.fall > 0 && early.fall < late.fall && late.fall < 1, 'death fall is not monotonic');
 assert.ok(late.drop > early.drop && late.roll > early.roll, 'camera does not collapse through the fall');
-console.log('player death fall passed: shared 0.72s avatar/body/camera pose at 30/60/144Hz');
+console.log('player death fall passed: shared 0.82s avatar/body/camera pose at 30/60/144Hz');

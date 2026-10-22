@@ -1,4 +1,5 @@
 // Concrete sole recordings by Kenney (CC0); see public/audio/footsteps/LICENSE.txt.
+import { playBufferVoice } from './SoundEffects.js';
 const banks = new WeakMap();
 export function preloadFootsteps(ctx) {
   if (banks.has(ctx)) return banks.get(ctx).ready;
@@ -21,14 +22,8 @@ export function playFootstepRecording(audio, sprint = false, landing = false) {
   let index = Math.floor(Math.random() * bank.buffers.length);
   if (index === bank.last && bank.buffers.length > 1) index = (index + 1) % bank.buffers.length;
   bank.last = index;
-  const source = ctx.createBufferSource();
-  source.buffer = bank.buffers[index];
-  source.playbackRate.value = (landing ? .88 : sprint ? 1.03 : .97) + Math.random() * .05;
-  const filter = ctx.createBiquadFilter();
-  filter.type = 'lowpass'; filter.frequency.value = 1900; filter.Q.value = .35;
-  const gain = ctx.createGain();
-  gain.gain.value = landing ? .7 : sprint ? .55 : .4;
-  source.connect(filter).connect(gain).connect(audio.out || audio.master);
-  source.onended = () => { source.disconnect(); filter.disconnect(); gain.disconnect(); };
-  source.start();
+  playBufferVoice(audio, bank.buffers[index], {
+    rate:(landing ? .88 : sprint ? 1.03 : .97) + Math.random() * .05,
+    gain:landing ? .7 : sprint ? .55 : .4, lowpass:1900, priority:0,
+  });
 }

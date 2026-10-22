@@ -95,10 +95,40 @@ export class BotManager {
         bot._separationDir.set(separation.x, 0, separation.z);
         bot._separationStrength = separation.strength;
       }
-      // Bot.update owns sight/reaction checks; arena bots also fight each other.
-      const target = [player, ...this.bots.filter(other => other !== bot && other.alive)]
-        .filter(other => !other.isDead).sort((a, b) =>
-          bot.position.distanceToSquared(a.position) - bot.position.distanceToSquared(b.position))[0] || player;
+      // Commit to an opponent between perception scans. Selecting the nearest
+      // body every frame made aim ping-pong between people and let an unseen
+      // opponent behind a wall steal attention from a visible one.
+      let target = bot._targetEntity;
+      if (target?.isDead || target?.alive === false) target = null;
+      const attacker = bot._retaliationTarget === 'player' ? player : bot._retaliationTarget;
+      bot._retaliationTarget = null;
+      if (attacker && !attacker.isDead && attacker.alive !== false && attacker !== target) {
+        target = attacker;
+        bot._targetScanT = .6;
+        bot._losCache = false; bot._losT = 0; bot._coverPoint = null;
+        bot._lastSeenPos?.copy(attacker.position);
+        bot._lastSeenValid = true;
+      }
+      bot._targetScanT = Math.max(0, (bot._targetScanT || 0) - dt);
+      if (!target || bot._targetScanT <= 0) {
+        bot._targetScanT = .3 + (Math.abs(bot.id || 0) % 4) * .025;
+        if (target && !bot._provoked && bot.canNotice && !bot.canNotice(target, world || this.world)) target = null;
+        let best = target, bestDistance = target ? bot.position.distanceToSquared(target.position) * .55 : Infinity;
+        for (const candidate of [player, ...this.bots]) {
+          if (!candidate || candidate === bot || candidate === target || candidate.isDead || candidate.alive === false) continue;
+          const distance = bot.position.distanceToSquared(candidate.position);
+          if (distance >= bestDistance) continue;
+          if (bot.canNotice && !bot.canNotice(candidate, world || this.world)) continue;
+          best = candidate; bestDistance = distance;
+        }
+        if (best && best !== target) {
+          bot._losCache = false; bot._losT = 0;
+          bot._lastSeenValid = false; bot._coverPoint = null;
+          bot._provoked = false; bot._encounterTime = 0;
+        }
+        target = best;
+      }
+      target ||= player;
       bot._targetEntity = target;
       const onTargetDamaged = (damage, from) => {
         if (!allowBotCombat) return;

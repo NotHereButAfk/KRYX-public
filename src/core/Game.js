@@ -4,7 +4,7 @@ import { SprintEdges } from '../ui/SprintEdges.js';
 import { remainingLoadingMs } from './LoadingTiming.js';
 import { TeleportAim } from './TeleportAim.js';
 import { groundDeathBody } from '../player/DeathBody.js';
-import { sampleDeathReaction } from '../sim/DeathReaction.js';
+import { sampleDeathReaction, DEATH_IMPACT_TIME, DEATH_BODY_DURATION } from '../sim/DeathReaction.js';
 import { PlayerSpectatorRig } from './PlayerSpectatorRig.js';
 import { awaitMatchReady } from '../net/MatchReadiness.js';
 import { RESULTS_SECONDS, SCOREBOARD_SECONDS, postMatchPhase } from '../sim/MatchFlow.js';
@@ -73,7 +73,6 @@ import { PickupSystem } from '../world/PickupSystem.js';
 import { getImportedMap, nextImportedMapId } from '../world/MapRegistry.js';
 import { countLocalMatchPlayers } from './Population.js';
 import { consumeThrowable, updateWeaponSprintBlock } from './GameplayInput.js';
-import { deathCameraPose, deathFallProgress } from '../player/DeathAnimation.js';
 import { buildLeaderboardRows, buildMatchRows } from './MatchRows.js';
 import {
   bloomEnabled, lowerRuntimeQuality, postFxPixelRatio, rendererPixelRatio,
@@ -169,7 +168,6 @@ export class Game {
     this._deathAnimT = 0;
     this._deathSide = 1;
     this._deathCameraBasePos = new THREE.Vector3();
-    this._deathCameraBaseRot = new THREE.Euler();
     this._pendingCoins   = 0;   // fractional coin accumulator for survival
     this.input        = new InputManager(canvas);
     this.mobileControls = this.input.isMobile
@@ -2028,15 +2026,10 @@ export class Game {
     // loot guns and every stacked shield are gone before the respawn begins.
     this._dropLifePickups();
 
-    // Deathmatch: keep the live match/camera active during the automatic
-    // respawn. Opening the full navigation GUI here made headless and
-    // backgrounded tabs throttle requestAnimationFrame so heavily that a
-    // three-second gameplay countdown could take more than ten wall seconds.
-    // The dedicated respawn overlay is the death UI; the player may still open
-    // the navigation manually with Escape.
+    // Watch the collapse, then return to the home overlay while the existing
+    // wall-clock respawn continues. Death adds no message or countdown.
     this._beginDeathAnimation();
     if (this._isDM) {
-      this.hud.addKillFeed(`YOU DIED — respawning in ${RESPAWN_DELAY}s`);
       clearTimeout(this._respawnTimer);
       this._respawnRemaining = RESPAWN_DELAY;
       this._respawnDeadline = performance.now() + RESPAWN_DELAY * 1000;
@@ -2079,7 +2072,6 @@ export class Game {
     this._respawnDeadline = 0;
     this._resetDeathAnimation();
     this.hud.hideRespawn();
-    this.hud.addKillFeed('RESPAWNED');
   }
 
   // The authoritative room owns the actual respawn tick. These callbacks only
@@ -2092,16 +2084,7 @@ export class Game {
     this._respawnDeadline = 0;
     this._beginDeathAnimation(self?.deathReaction);
     this._dropLifePickups();
-    // The dedicated overlay is the death UI. Opening the navigation menu here
-    // released pointer lock, obscured the match, and made the authoritative
-    // path disagree with local deathmatch behavior.
-    if (this._isDM) {
-      this.hud.hideRespawn();
-      this.hud.addKillFeed(`YOU DIED — respawning in ${RESPAWN_DELAY}s`);
-    } else {
-      this.hud.hideRespawn();
-      this.hud.addKillFeed('YOU DIED');
-    }
+    this.hud.hideRespawn();
     this.weaponSystem.resetMotionState();
   }
 
@@ -2116,18 +2099,26 @@ export class Game {
     this._resetLoadoutHud();
     this.weaponSystem.resetMotionState();
     this.hud.hideRespawn();
-    this.hud.addKillFeed('RESPAWNED');
   }
 
   _beginDeathAnimation(reaction = null) {
     this._deathHomeShown = false;
     this._deathStartedAt = performance.now();
+    this._deathImpactPlayed = false;
+    this._deathSupportPose = {};
+    this.audio.playDeath?.();
     this.hud.hideRespawn();
-    this._deathReaction = reaction;
+    const pos = this.player.position;
+    const floor = Number.isFinite(reaction?.floorY) ? reaction.floorY
+      : this.world.groundHeightAt(pos.x, pos.z, pos.y + .2, pos.y - 256);
+    this._deathReaction = { ...reaction,
+      groundOffset: Number.isFinite(floor) ? Math.min(0, floor - pos.y) : (reaction?.groundOffset || 0) };
     this._deathAnimT = 0;
     this._deathSide *= -1;
     this._deathCameraBasePos.copy(this.player.camera.position);
-    this._deathCameraBaseRot.copy(this.player.camera.rotation);
+    (this._deathCameraBaseQuat ||= new THREE.Quaternion()).copy(this.player.camera.quaternion);
+    this._deathCameraBaseFov = this.player.camera.fov;
+    this._deathCameraYaw = this.player.yaw;
   }
 
   _resetDeathAnimation() {
@@ -2139,7 +2130,10 @@ export class Game {
     }
     this._deathReaction = null;
     this._deathAnimT = 0;
+    this._deathImpactPlayed = false;
     this.player.camera.rotation.z = 0;
+    this.player.camera.fov = this.player.baseFov;
+    this.player.camera.updateProjectionMatrix();
     if (this._playerBody) {
       this._playerBody.rotation.x = 0;
       this._playerBody.rotation.z = 0;
@@ -2152,20 +2146,42 @@ export class Game {
     const t = this._deathAnimT;
     const reaction = sampleDeathReaction(this._deathReaction, t);
     const target = this._deathLookTarget ||= new THREE.Vector3();
+    const yaw = this._deathCameraYaw;
+    // Follow the torso as it tips back, rather than looking over the corpse.
     target.copy(this.player.position);
-    target.x += reaction?.x || 0; target.z += reaction?.z || 0;
-    target.y += .7 + (reaction?.air || 0);
-    const offset = this._deathViewOffset ||= new THREE.Vector3();
-    const pull = 1 - Math.exp(-t * 5);
-    offset.set(Math.sin(this.player.yaw) * 3.2 * pull, 1.1 + .6 * pull, Math.cos(this.player.yaw) * 3.2 * pull);
-    const length = offset.length();
-    const ray = this._deathViewRay ||= new THREE.Raycaster();
-    ray.set(target, offset.clone().normalize()); ray.far = length;
-    const hit = ray.intersectObjects(this.world.raycastMeshes || [], false)[0];
-    if (hit) offset.multiplyScalar(Math.max(.15, hit.distance - .2) / length);
-    this.player.camera.position.copy(target).add(offset);
-    this.player.camera.lookAt(target);
-    if (t >= 1.3 && !this._deathHomeShown) {
+    target.x += Math.sin(yaw) * .55 * reaction.fall;
+    target.z += Math.cos(yaw) * .55 * reaction.fall;
+    target.y += 1.1 - .62 * reaction.fall + reaction.air;
+    const desired = this._deathViewPosition ||= new THREE.Vector3();
+    desired.copy(target).add((this._deathViewOffset ||= new THREE.Vector3()).set(
+      Math.sin(yaw) * 3.15 + Math.cos(yaw) * .45, 1.8,
+      Math.cos(yaw) * 3.15 - Math.sin(yaw) * .45));
+    const u = Math.min(1, t / .55);
+    const pull = u * u * (3 - 2 * u);
+    const camera = this.player.camera;
+    camera.position.lerpVectors(this._deathCameraBasePos, desired, pull);
+    // Use the collision octree + solid boxes, including invisible walls.
+    const direction = this._deathViewDirection ||= new THREE.Vector3();
+    direction.copy(camera.position).sub(target);
+    const length = direction.length();
+    const ray = this._deathViewRay ||= new THREE.Ray();
+    if (length > .001) {
+      ray.set(target, direction.multiplyScalar(1 / length));
+      const clear = this.world.raycastCollisionDistance(ray, length);
+      if (clear < length) camera.position.copy(target).addScaledVector(direction, Math.max(.05, clear - .2));
+    }
+    const look = this._deathViewMatrix ||= new THREE.Matrix4();
+    const rotation = this._deathViewRotation ||= new THREE.Quaternion();
+    look.lookAt(camera.position, target, camera.up);
+    rotation.setFromRotationMatrix(look);
+    camera.quaternion.slerpQuaternions(this._deathCameraBaseQuat, rotation, pull);
+    camera.fov = THREE.MathUtils.lerp(this._deathCameraBaseFov, this.player.baseFov, pull);
+    camera.updateProjectionMatrix();
+    if (!this._deathImpactPlayed && t >= DEATH_IMPACT_TIME) {
+      this._deathImpactPlayed = true;
+      this.audio.playAt(target, () => this.audio.playBodyImpact?.(1));
+    }
+    if (t >= DEATH_BODY_DURATION && !this._deathHomeShown) {
       this._deathHomeShown = true;
       this.menu.showMain();
       this.menu.centerPlay.style.pointerEvents = 'none';
@@ -2301,8 +2317,7 @@ export class Game {
       } else {
         this._respawnRemaining = Math.max(0, this._respawnRemaining - dt);
       }
-      if (this._isDM) this.hud.hideRespawn();
-      else this.hud.hideRespawn();
+      this.hud.hideRespawn();
       if (!(this._authNet && this._authNet.ready) && this._isDM && this._respawnRemaining <= 0) {
         this._respawnPlayer();
         dead = false;
@@ -2460,11 +2475,12 @@ export class Game {
     const p = this.player;
     const ud = this._playerBody?.userData;
     if (p.isDead && !this._playerDowned) {
+      this._playerBody.visible = true;
       const reaction = sampleDeathReaction(this._deathReaction, this._deathAnimT, this._playerBody.rotation.y);
-      const fall = reaction?.fall ?? deathFallProgress(this._deathAnimT);
+      const fall = reaction.fall;
       if (ud?.isHuman) {
         ud.setLocomotion?.(0, true, false, 0, 1, 0);
-        ud.setDeathState?.(reaction ? fall * .45 : fall, this._deathSide);
+        ud.setDeathState?.(Math.max(.0001, fall), this._deathSide, this._deathAnimT);
         ud.mixer?.update(dt);
         ud.armorTick?.(dt);
       }
@@ -2475,7 +2491,15 @@ export class Game {
       );
       this._playerBody.rotation.x = reaction?.pitch ?? 0;
       this._playerBody.rotation.z = reaction?.roll ?? this._deathSide * fall * 1.28;
-      if (reaction) groundDeathBody(this._playerBody, p.position.y, reaction.air);
+      groundDeathBody(this._playerBody, p.position.y, reaction.air, reaction.settled ? this._deathSupportPose : null, !!ud?.isEvCharacter);
+      // Keep the inside of the helmet out of view during the first few frames
+      // of the pullback. Reveal the corpse once the camera has cleared it.
+      const head = ud?.bones?.Bip001_Head;
+      if (head) {
+        const headPosition = this._deathHeadPosition ||= new THREE.Vector3();
+        head.getWorldPosition(headPosition);
+        this._playerBody.visible = headPosition.distanceToSquared(p.camera.position) >= 1.15 * 1.15;
+      }
       return;
     }
     ud?.setDeathState?.(0, this._deathSide);

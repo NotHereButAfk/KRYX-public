@@ -1,3 +1,4 @@
+import { DEATH_SETTLE_TIME } from './DeathAnimation.js';
 // Additive action poses for the rigged Mixamo soldier.
 //
 // The GLB supplies continuous idle/walk/run motion. These deterministic curves
@@ -23,10 +24,10 @@ export function createHumanDeathPose() {
   return {
     hipsX: 0, hipsZ: 0, spineX: 0, spineZ: 0, chestX: 0, chestZ: 0,
     headX: 0, headZ: 0,
-    rArmX: 0, rArmZ: 0, rForeX: 0,
-    lArmX: 0, lArmZ: 0, lForeX: 0,
-    rLegX: 0, rLegZ: 0, rCalfX: 0,
-    lLegX: 0, lLegZ: 0, lCalfX: 0,
+    rArmX: 0, rArmZ: 0, rForeX: 0, rHandX: 0,
+    lArmX: 0, lArmZ: 0, lForeX: 0, lHandX: 0,
+    rLegX: 0, rLegZ: 0, rCalfX: 0, rFootX: 0,
+    lLegX: 0, lLegZ: 0, lCalfX: 0, lFootX: 0,
   };
 }
 
@@ -138,32 +139,44 @@ export function sampleHumanActionPose(input = {}, out = createHumanActionPose())
  * frame deltas makes the same fall land on the same body shape at every refresh
  * rate. `side` mirrors the asymmetry so repeated eliminations do not look cloned.
  */
-export function sampleHumanDeathPose(progress = 0, side = 1, out = createHumanDeathPose()) {
-  const p = smooth(progress);
+export function sampleHumanDeathPose(progress = 0, side = 1, out = createHumanDeathPose(), elapsed = null) {
+  const t = Math.max(0, Math.min(DEATH_SETTLE_TIME,
+    Number.isFinite(elapsed) ? elapsed : clamp01(progress) * DEATH_SETTLE_TIME));
   const s = side < 0 ? -1 : 1;
-  const impact = Math.sin(Math.min(1, progress / 0.62) * Math.PI) * (1 - p * 0.28);
+  const release = smooth(t / 0.30);
+  const collapse = smooth((t - 0.08) / 0.60);
+  const settle = smooth((t - 0.68) / 0.52);
+  // A single damped limb follow-through after contact, then an exact resting
+  // pose. Different phases keep arms, knees and wrists from moving as one slab.
+  const contact = Math.max(0, t - 0.68);
+  const flop = Math.sin(contact * 16) * Math.exp(-7 * contact) * (1 - settle);
+  const legFlop = Math.sin(contact * 13) * Math.exp(-8 * contact) * (1 - settle);
 
-  out.hipsX = 0.20 * p;
-  out.hipsZ = 0.22 * s * p;
-  out.spineX = 0.52 * p + 0.10 * impact;
-  out.spineZ = 0.34 * s * p;
-  out.chestX = 0.26 * p;
-  out.chestZ = 0.25 * s * p;
-  out.headX = -0.22 * p;
-  out.headZ = -0.30 * s * p;
+  out.hipsX = 0.06 * collapse;
+  out.hipsZ = 0.07 * s * collapse;
+  out.spineX = 0.09 * collapse - 0.03 * flop;
+  out.spineZ = 0.045 * s * collapse;
+  out.chestX = 0.035 * collapse;
+  out.chestZ = -0.035 * s * collapse;
+  out.headX = -0.15 * release + 0.06 * flop;
+  out.headZ = -0.10 * s * collapse;
 
-  out.rArmX = -0.42 * p;
-  out.rArmZ = (0.34 - 0.18 * s) * p;
-  out.rForeX = 0.55 * p;
-  out.lArmX = -0.34 * p;
-  out.lArmZ = (-0.34 - 0.18 * s) * p;
-  out.lForeX = 0.42 * p;
+  out.rArmX = -1.08 * release + 0.18 * flop;
+  out.rArmZ = (0.46 - 0.10 * s) * collapse;
+  out.rForeX = -0.72 * release - 0.16 * settle - 0.15 * flop;
+  out.rHandX = 0.15 * collapse + 0.18 * flop;
+  out.lArmX = -1.02 * release - 0.14 * flop;
+  out.lArmZ = (-0.46 - 0.10 * s) * collapse;
+  out.lForeX = -0.65 * release - 0.17 * settle + 0.12 * flop;
+  out.lHandX = -0.12 * collapse - 0.15 * flop;
 
-  out.rLegX = (-0.26 - 0.12 * s) * p;
-  out.rLegZ = 0.12 * s * p;
-  out.rCalfX = 0.72 * p;
-  out.lLegX = (-0.26 + 0.12 * s) * p;
-  out.lLegZ = -0.12 * s * p;
-  out.lCalfX = 0.50 * p;
+  out.rLegX = (-0.16 - 0.07 * s) * collapse + 0.09 * legFlop;
+  out.rLegZ = (0.10 + 0.035 * s) * collapse;
+  out.rCalfX = 0.40 * collapse - 0.24 * settle - 0.14 * legFlop;
+  out.rFootX = -0.07 * collapse + 0.11 * flop;
+  out.lLegX = (-0.18 + 0.07 * s) * collapse - 0.07 * legFlop;
+  out.lLegZ = (-0.10 + 0.035 * s) * collapse;
+  out.lCalfX = 0.48 * collapse - 0.20 * settle + 0.11 * legFlop;
+  out.lFootX = 0.06 * collapse - 0.09 * flop;
   return out;
 }

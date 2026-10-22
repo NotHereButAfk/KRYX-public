@@ -137,8 +137,10 @@ for (const [name, input, what] of [
   });
   const left = sampleHumanDeathPose(1, -1);
   const right = sampleHumanDeathPose(1, 1);
-  const centralZ = ['hipsZ', 'spineZ', 'chestZ', 'headZ', 'rLegZ', 'lLegZ'];
+  const centralZ = ['hipsZ', 'spineZ', 'chestZ', 'headZ'];
   const mirrored = centralZ.every((key) => Math.abs(left[key] + right[key]) < 1e-12)
+    && Math.abs(left.rLegZ + right.lLegZ) < 1e-12
+    && Math.abs(left.lLegZ + right.rLegZ) < 1e-12
     && Math.abs(left.rArmZ + right.lArmZ) < 1e-12
     && Math.abs(left.lArmZ + right.rArmZ) < 1e-12;
   if (!mirrored) failures++;

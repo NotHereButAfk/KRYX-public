@@ -10,7 +10,6 @@ import { applyWalkCycle, triggerHop } from './Locomotion.js';
 import { applyRifleCarry, restRifleTransform } from './RifleCarry.js';
 import { triggerAction, tickActions, applyMeleeCarry } from './Actions.js';
 import { cameraYawToBodyYaw, movementInBodySpace, turnBodyYaw } from './Facing.js';
-import { DEATH_FALL_DURATION, deathFallProgress } from './DeathAnimation.js';
 import { isEvCharacterReady } from './EvCharacter.js';
 import { PLAYER_WORLD_MODEL_SCALE } from './Proportions.js';
 
@@ -184,6 +183,8 @@ export class Avatar {
         this._deathT = 0;
         this._deathSide *= -1;
         this._deathReaction = s.deathReaction || null;
+        if (Number.isFinite(s.deathReaction?.floorY)) this._deathReaction = {
+          ...s.deathReaction, groundOffset: Math.min(0, s.deathReaction.floorY - s.position.y) };
         this._deathYaw = g.rotation.y;
         this._deathSupportPose = {};
         this._firePulseT = 0;
@@ -197,47 +198,23 @@ export class Avatar {
       if (!this._dying) { g.visible = false; return; }
 
       this._deathT += dt;
-      const p = THREE.MathUtils.clamp(this._deathT / DEATH_FALL_DURATION, 0, 1);
-      if (s.isBot) {
-        const reaction = sampleDeathReaction(this._deathReaction, this._deathT, this._deathYaw);
-        const fall = reaction?.fall ?? deathFallProgress(this._deathT);
-        const ud = g.userData;
-        ud.setDeathState?.(Math.max(.0001, fall), this._deathSide, true);
-        ud.mixer?.update(dt);
-        ud.armorTick?.(dt);
-        g.position.copy(s.position);
-        g.position.x += reaction?.x ?? 0; g.position.z += reaction?.z ?? 0;
-        g.quaternion.setFromEuler(new THREE.Euler(reaction?.pitch ?? fall * Math.PI / 2, this._deathYaw, reaction?.roll ?? 0, 'YXZ'));
-        g.scale.copy(this._baseScale);
-        const floor = Number.isFinite(s.deathFloor) ? s.deathFloor : s.position.y;
-        groundDeathBody(g, reaction ? s.position.y : floor, reaction?.air ?? 0, this._deathSupportPose);
-        g.visible = reaction ? !reaction.done : this._deathT < 1.3;
-        if (!g.visible) this._dying = false;
-        return;
-      }
-      const reaction = sampleDeathReaction(this._deathReaction, this._deathT, g.rotation.y);
-      const fall = reaction?.fall ?? deathFallProgress(this._deathT);
+      const reaction = sampleDeathReaction(this._deathReaction, this._deathT, this._deathYaw);
+      const ud = g.userData;
       if (this.isHuman) {
-        const ud = g.userData;
         ud.setLocomotion?.(0, true, false, 0, 1, 0);
-        ud.setDeathState?.(fall, this._deathSide);
+        ud.setDeathState?.(Math.max(.0001, reaction.fall), this._deathSide, reaction.poseTime);
         ud.mixer?.update(dt);
         ud.armorTick?.(dt);
       }
-      g.visible = true;
-      g.position.set(
-        s.position.x + (reaction?.x ?? this._deathSide * fall * 0.16),
-        s.position.y + (reaction?.y ?? -fall * 0.48),
-        s.position.z + (reaction?.z ?? 0)
-      );
-      g.rotation.x = reaction?.pitch ?? 0;
-      g.rotation.z = reaction?.roll ?? this._deathSide * fall * 1.28;
-      g.scale.copy(this._baseScale).multiplyScalar(1 - fall * 0.04);
-      if (reaction) groundDeathBody(g, s.position.y, reaction.air);
-      if (reaction ? reaction.done : p >= 1) {
-        this._dying = false;
-        g.visible = false;
-      }
+      g.position.copy(s.position);
+      g.position.x += reaction.x; g.position.z += reaction.z;
+      g.rotation.set(reaction.pitch, this._deathYaw, reaction.roll, 'YXZ');
+      g.scale.copy(this._baseScale);
+      const floor = Number.isFinite(s.deathFloor) ? s.deathFloor : s.position.y;
+      groundDeathBody(g, this._deathReaction ? s.position.y : floor, reaction.air,
+        reaction.settled ? this._deathSupportPose : null, ud.isEvCharacter === true);
+      g.visible = !reaction.done;
+      if (!g.visible) this._dying = false;
       return;
     }
 

@@ -1,6 +1,6 @@
 import { preloadFootsteps, playFootstepRecording } from './FootstepAudio.js';
 // Original cached game audio. Positional playback shares the master limiter.
-import { playDesignedSound } from './SoundEffects.js';
+import { playDesignedSound, playBufferVoice } from './SoundEffects.js';
 import { createLegendaryShot } from './LegendaryAudio.js';
 import { playBlastImpact, playBladeSlice, playBladeImpact } from './WeaponSoundDesign.js';
 
@@ -17,17 +17,29 @@ export class AudioManager {
     this.master = this.ctx.createGain();
     this.master.gain.value = this._platformMuted ? 0 : (this._volume ?? 0.5);
 
+    this._connectMasterOutput();
+    this.out = this.master;
+    this._footstepsReady = preloadFootsteps(this.ctx);
+  }
+
+  _connectMasterOutput() {
     this._limiter = this.ctx.createDynamicsCompressor();
     this._limiter.threshold.value = -7;
     this._limiter.knee.value = 8;
     this._limiter.ratio.value = 14;
     this._limiter.attack.value = 0.002;
     this._limiter.release.value = 0.16;
-    this.master.connect(this._limiter).connect(this.ctx.destination);
-
-    this.out = this.master;
-    this._footstepsReady = preloadFootsteps(this.ctx);
-
+    // Compression has an attack time, so coincident gun reports can still clip
+    // for a few samples. A soft output ceiling catches only those brief peaks.
+    this._ceiling = this.ctx.createWaveShaper();
+    const curve = new Float32Array(1025);
+    for (let i = 0; i < curve.length; i++) {
+      const x = i * 2 / (curve.length - 1) - 1, a = Math.abs(x);
+      curve[i] = Math.sign(x) * (a <= .8 ? a : .8 + .18 * (1 - Math.exp(-((a - .8) / .18))));
+    }
+    this._ceiling.curve = curve;
+    this._ceiling.oversample = '2x';
+    this.master.connect(this._limiter).connect(this._ceiling).connect(this.ctx.destination);
   }
 
   /** Point the WebAudio listener at the camera. Call once per frame. */
@@ -68,11 +80,18 @@ export class AudioManager {
     else p.setPosition(pos.x, pos.y, pos.z);
     p.connect(this.master);
 
+    let voices = 0, scheduled = false, disconnected = false;
+    const release = () => {
+      if (!scheduled || voices || disconnected) return;
+      disconnected = true;
+      p.disconnect();
+    };
+    p._retainVoice = () => { voices++; };
+    p._releaseVoice = () => { voices = Math.max(0, voices - 1); release(); };
+
     const prev = this.out;
     this.out = p;
-    try { fn(); } finally { this.out = prev; }
-
-    setTimeout(() => { try { p.disconnect(); } catch {} }, 3000);
+    try { fn(); } finally { this.out = prev; scheduled = true; release(); }
   }
 
   resume() {
@@ -159,12 +178,8 @@ export class AudioManager {
         buffer.copyToChannel(samples, 0);
         this._legendaryBuffers.set(soundId, buffer);
       }
-      const source = this.ctx.createBufferSource();
-      source.buffer = buffer;
-      source.playbackRate.value = .985 + Math.random() * .03;
-      source.connect(this.out || this.master);
-      source.onended = () => source.disconnect();
-      source.start();
+      playBufferVoice(this, buffer, { rate:.985 + Math.random() * .03,
+        priority:this.out === this.master ? 3 : 1 });
       return true;
     }
     switch (soundId) {
@@ -219,6 +234,15 @@ export class AudioManager {
 
   playHurt() {
     playDesignedSound(this, 'hurt');
+  }
+
+  playDeath() {
+    playDesignedSound(this, 'death');
+  }
+
+  playBodyImpact(strength = 1) {
+    const weight = Number.isFinite(strength) ? Math.max(.25, Math.min(1, strength)) : 1;
+    playDesignedSound(this, 'body-impact', 1, { gain:weight });
   }
 
   playEmptyClick() {

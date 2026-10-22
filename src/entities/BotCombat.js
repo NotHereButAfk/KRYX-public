@@ -207,6 +207,53 @@ export function choosePlayerLikeBotMove({
   return { forward: 0, strafe: side, mode: 'sidestep' };
 }
 
+// A short retreat to nearby, actually occluding cover. Called on a decision
+// cadence, never per render frame. A destination must have a clear walking
+// lane and supported floor; a wall behind an enemy is not useful cover.
+export function chooseBotCoverPoint({
+  x, y, z, targetX, targetY, targetZ, preferredSide = 1,
+  groundHeightAt, raycast, killY = -25,
+}) {
+  if (typeof raycast !== 'function' || typeof groundHeightAt !== 'function') return null;
+  const distance = Math.hypot(targetX - x, targetZ - z);
+  if (distance < 2) return null;
+  const fx = (targetX - x) / distance, fz = (targetZ - z) / distance;
+  const side = preferredSide < 0 ? -1 : 1;
+  let best = null, bestScore = -Infinity;
+  for (const [lateral, retreat] of [[side, 0], [-side, 0], [side, .7], [-side, .7], [.5 * side, 1], [-.5 * side, 1]]) {
+    let dx = -fz * lateral - fx * retreat, dz = fx * lateral - fz * retreat;
+    const norm = Math.hypot(dx, dz); dx /= norm; dz /= norm;
+    const travel = retreat > 0 ? 4.2 : 3.4;
+    let floor = y, safe = true;
+    for (let step = 1; step <= 6; step++) {
+      const sx = x + dx * travel * step / 6, sz = z + dz * travel * step / 6;
+      const next = groundHeightAt(sx, sz, floor, floor - .65);
+      if (!Number.isFinite(next) || next <= killY || Math.abs(next - floor) > .65
+        || raycast(sx - dx * travel / 6, Math.max(floor, next) + .85,
+          sz - dz * travel / 6, dx, 0, dz, travel / 6 + .4) < travel / 6 + .3) {
+        safe = false; break;
+      }
+      floor = next;
+    }
+    if (!safe) continue;
+    const cx = x + dx * travel, cz = z + dz * travel;
+    const ex = cx - targetX, ey = floor + 1.1 - (targetY + 1.1), ez = cz - targetZ;
+    const sightDistance = Math.hypot(ex, ey, ez);
+    const blocked = raycast(targetX, targetY + 1.1, targetZ,
+      ex / sightDistance, ey / sightDistance, ez / sightDistance, sightDistance) < sightDistance - .7;
+    if (!blocked) continue;
+    const score = Math.min(3, sightDistance - distance) - travel * .3 + (lateral * side > 0 ? .15 : 0);
+    if (score > bestScore) { bestScore = score; best = { x: cx, y: floor, z: cz }; }
+  }
+  return best;
+}
+
+// Top up during a real break in the fight instead of always waiting for the
+// last round. Never reload a nearly full gun or cancel a useful firing burst.
+export function shouldBotTacticalReload(ammo, capacity, hiddenSeconds) {
+  return capacity > 0 && ammo > 0 && ammo <= capacity * .45 && hiddenSeconds >= .55;
+}
+
 // Steering produces analog vectors, while MoveSim accepts digital -1/0/1.
 // Bitwise truncation turned diagonal avoidance/separation into (0, 0), leaving
 // entire groups stationary. Choose the nearest of eight movement directions.

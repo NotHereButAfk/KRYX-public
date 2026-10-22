@@ -9,8 +9,9 @@ import { applyMeleeCarry } from '../player/Actions.js';
 import { directionToBodyYaw, turnBodyYaw } from '../player/Facing.js';
 import { BOT_SKIN } from '../player/skins.js';
 import { BOT_DASH, BOT_RETALIATION_AIM_SCALE, BOT_TACTICS, advanceBotMagazine, advanceBurst, botAimErrorMeters, botTrackingOffset, botArenaDetectionDistance, botLoadoutForId, chooseCombatSteering, choosePlayerLikeBotMove, chooseReachableRoamPoint, isBotDashLaneSafe } from './BotCombat.js';
+import { chooseBotCoverPoint, shouldBotTacticalReload, isInsideBotFov } from './BotCombat.js';
 import { BACKWARD_WALK_MULT, BOT_MOVEMENT_SCALE, WALK_SPEED, SPRINT_MULT, STAMINA_MAX, STAMINA_DRAIN, STAMINA_REGEN, STAMINA_REGEN_DELAY } from '../sim/MovementConfig.js';
-import { DEATH_FALL_DURATION, deathFallProgress } from '../player/DeathAnimation.js';
+import { DEATH_BODY_DURATION, DEATH_IMPACT_TIME, sampleDeathReaction } from '../sim/DeathReaction.js';
 import { PLAYER_WORLD_MODEL_SCALE } from '../player/Proportions.js';
 
 const _STILL = { bob: 0, lean: 0, swing: 0 };
@@ -41,7 +42,7 @@ const PROVOKE_DURATION = BOT_TACTICS.memoryDuration;
 // Cover and player strafing still matter because these remain real ray shots.
 const AIM_SKILL_MIN = 0.80;    // per-bot multiplier — lower is a better shot
 const AIM_SKILL_MAX = 1.15;
-const REACTION_MIN  = 0.18;    // seconds between acquiring a target and firing
+const REACTION_MIN  = 0.28;    // seconds between acquiring a target and firing
 const REACTION_MAX  = 0.52;
 // Player hitboxes, relative to their feet: a torso sphere and a head.
 const PLAYER_BODY_Y = 1.05, PLAYER_BODY_R = 0.42;
@@ -127,7 +128,7 @@ export class Bot {
     this._provoked     = false;
     this._provokedByPlayer = false;
     this._provokeTimer = 0;
-    this._losT         = Math.random() * 0.12;
+    this._losT         = 0;
     this._losCache     = false;
     this._decisionT    = 0;
     this._strafeSign   = Math.random() < 0.5 ? -1 : 1;
@@ -159,6 +160,10 @@ export class Bot {
     this._separationStrength = 0;
     this._lastSeenPos = spawnPoint.clone();
     this._lastSeenValid = false;
+    this._coverPoint = null;
+    this._coverTimer = 0;
+    this._coverDecisionT = 0;
+    this._unseenTime = 0;
     this._shootFrom   = new THREE.Vector3();
     this._shootTarget = new THREE.Vector3();
     this._shootDir    = new THREE.Vector3();
@@ -307,6 +312,7 @@ export class Bot {
       this._encounterTime = -this._reactT;
     }
     this._provoked = true;
+    this._retaliationTarget = attacker || 'player';
     // A missing attacker is the local player weapon/grenade path. Bot-v-bot
     // damage passes the attacking bot explicitly and must not make this bot
     // hostile toward the human later.
@@ -332,11 +338,15 @@ export class Bot {
   }
 
   die() {
-    if (this.audio) this.audio.playAt(this.position, () => { this.audio.playHurt(); this.audio.playLand(true); });
+    this.audio?.playAt(this.position, () => this.audio.playDeath?.());
     this._botDeaths = (this._botDeaths || 0) + 1;
     this.alive = false;
     this._dying      = true;
     this._deathT     = 0;
+    this._deathImpactPlayed = false;
+    this._deathSupportPose = {};
+    // Keep the existing total offline respawn delay while displaying the fall longer.
+    this.respawnTimer = RESPAWN_DELAY + 0.72;
     this._deathSide  = Math.random() < 0.5 ? 1 : -1;
     this._deathBaseY = this.mesh.position.y;
     this._deathYaw = this.mesh.rotation.y;
@@ -383,12 +393,16 @@ export class Bot {
     this._encounterTime = 0;
     this._provokeTimer = 0;
     this._losCache = false;
+    this._losT = 0;
     this._decisionT = 0;
     this._burstShots = 2 + Math.floor(Math.random() * 3);
     this._magAmmo = this._botGun?.magSize || 0;
     this._reloadTimer = 0;
     this._targetEntity = null;
     this._targetScanT = 0;
+    this._retaliationTarget = null;
+    this._coverPoint = null;
+    this._coverTimer = this._coverDecisionT = this._unseenTime = 0;
     if (this._isHuman) {
       const ud = this.mesh.userData;
       ud.setDeathState?.(0, this._deathSide);
@@ -421,6 +435,12 @@ export class Bot {
   }
 
   /** Clear line of sight from the bot's eye to the player's chest? */
+  canNotice(player, world) {
+    return isInsideBotFov(this.mesh.rotation.y,
+      player.position.x - this.position.x, player.position.z - this.position.z, 112)
+      && this.hasLineOfSight(player, world);
+  }
+
   hasLineOfSight(player, world) {
     this._shootFrom.set(this.position.x, this.position.y + 1.5, this.position.z);
     this._shootTarget.set(player.position.x, player.position.y + PLAYER_BODY_Y, player.position.z);
@@ -530,25 +550,27 @@ export class Bot {
     // ── death animation ──────────────────────────────────────────────────────
     if (this._dying) {
       this._deathT += dt;
-      const p = Math.min(1, this._deathT / DEATH_FALL_DURATION);
-      const eased = deathFallProgress(this._deathT);
-      this.mesh.quaternion.setFromEuler(new THREE.Euler(eased * Math.PI / 2, this._deathYaw, 0, 'YXZ'));
+      if (!this.noRespawn) this.respawnTimer = Math.max(0, this.respawnTimer - dt);
+      const reaction = sampleDeathReaction(null, this._deathT, this._deathYaw);
+      this.mesh.rotation.set(reaction.pitch, this._deathYaw, reaction.roll, 'YXZ');
       this.mesh.position.y = this._deathBaseY;
       if (this._isHuman) {
         const ud = this.mesh.userData;
         ud.setLocomotion?.(0, true, false);
-        ud.setDeathState?.(Math.max(.0001, eased), this._deathSide, true);
+        ud.setDeathState?.(Math.max(.0001, reaction.fall), this._deathSide, reaction.poseTime);
         ud.mixer?.update(dt);
+        ud.armorTick?.(dt);
       }
-      groundDeathBody(this.mesh, this._deathBaseY);
-      if (p > 0.58) {
-        const fade = 1 - (p - 0.58) / 0.42;
-        this.mesh.traverse(o => { if (o.isMesh && o.material && 'opacity' in o.material) {
-          o.material.transparent = true;
-          o.material.opacity = fade;
-        }});
+      groundDeathBody(this.mesh, this._deathBaseY, 0, reaction.settled ? this._deathSupportPose : null, this.mesh.userData.isEvCharacter === true);
+      if (!this._deathImpactPlayed && this._deathT >= DEATH_IMPACT_TIME) {
+        this._deathImpactPlayed = true;
+        this.audio?.playAt(this.mesh.position, () => this.audio.playBodyImpact?.(1));
       }
-      if (p >= 1) {
+      const fade = Math.max(0, Math.min(1, (DEATH_BODY_DURATION - this._deathT) / .25));
+      if (fade < 1) this.mesh.traverse(o => { if (o.isMesh && o.material && 'opacity' in o.material) {
+        o.material.transparent = true; o.material.opacity = fade;
+      }});
+      if (reaction.done) {
         this._dying = false;
         this.mesh.visible = false;
         this.mesh.rotation.set(0, 0, 0);
@@ -556,7 +578,6 @@ export class Bot {
         this.mesh.traverse(o => { if (o.isMesh && o.material && 'opacity' in o.material) {
           o.material.transparent = false; o.material.opacity = 1;
         }});
-        if (!this.noRespawn) this.respawnTimer = RESPAWN_DELAY;
       }
       return;
     }
@@ -633,23 +654,20 @@ export class Bot {
     if (inRange) {
       if (this._losT <= 0) {
         this._losT = 0.12 + Math.random() * 0.1;
-        this._losCache = this.hasLineOfSight(player, world);
+        this._losCache = this._provoked ? this.hasLineOfSight(player, world) : this.canNotice(player, world);
       }
     } else {
       this._losCache = false;
     }
     const hasVisual = inRange && this._losCache;
-    // Arena bots can hear another bot's movement at the expanded acquisition
-    // range. This lets separated opponents converge around cover, while all
-    // shooting below still requires hasVisual and therefore real LOS.
-    const hasArenaAwareness = !!player?.isBot && inRange;
+    this._unseenTime = hasVisual ? 0 : this._unseenTime + dt;
     const canEngageTarget = !!player && player !== this;
     if (player.isDead) {
       this._provoked = false;
       this._provokedByPlayer = false;
       this._provokeTimer = 0;
       this._lastSeenValid = false;
-    } else if ((hasVisual || hasArenaAwareness) && canEngageTarget) {
+    } else if (hasVisual && canEngageTarget) {
       if (!this._provoked) this._reactT = REACTION_MIN + Math.random() * (REACTION_MAX - REACTION_MIN);
       this._provoked = true;
       this._provokeTimer = PROVOKE_DURATION;
@@ -665,13 +683,19 @@ export class Bot {
     }
     if (this._reactT > 0) this._reactT -= dt;
     const engaged = canEngageTarget && this._provoked && !player.isDead && (hasVisual || this._lastSeenValid);
+    if (this._botGun && this._reloadTimer <= 0
+      && shouldBotTacticalReload(this._magAmmo, this._botGun.magSize, this._unseenTime)) {
+      this._reloadTimer = this._botGun.reloadTime;
+    }
+    this._coverTimer = Math.max(0, this._coverTimer - dt);
+    this._coverDecisionT = Math.max(0, this._coverDecisionT - dt);
 
     let moveTarget = null;
     let chasing = false;
     let gaitDirF = 0;
     let gaitDirR = 0;
     if (engaged) {
-      const target = (hasVisual || hasArenaAwareness) ? player.position : this._lastSeenPos;
+      const target = hasVisual ? player.position : this._lastSeenPos;
       this._toTarget.set(target.x - this.position.x, 0, target.z - this.position.z);
       const targetDistance = this._toTarget.length();
       const targetDir = this._combatDir.copy(this._toTarget);
@@ -689,11 +713,37 @@ export class Bot {
       }
 
       this._encounterTime += dt;
-      const maneuver = choosePlayerLikeBotMove({
+      let maneuver = choosePlayerLikeBotMove({
         id: this.id, elapsed: this._encounterTime, distance: targetDistance,
         reacting: this._reactT > 0, hasLineOfSight: hasVisual,
         reloading: this._reloadTimer > 0,
       });
+      const needsCover = !this._isSwordBot && (this._reloadTimer > 0 || this.health < 36);
+      if (!needsCover || this._coverTimer <= 0) this._coverPoint = null;
+      if (needsCover && this._reactT <= 0 && this._coverDecisionT <= 0 && !this._coverPoint) {
+        this._coverDecisionT = 1;
+        this._coverPoint = chooseBotCoverPoint({
+          x: this.position.x, y: this.position.y, z: this.position.z,
+          targetX: target.x, targetY: target.y, targetZ: target.z, preferredSide: this._strafeSign,
+          killY: world?.killY,
+          groundHeightAt: world?.groundHeightAt?.bind(world),
+          raycast: (ox, oy, oz, dx, dy, dz, far) => {
+            this._shootFrom.set(ox, oy, oz); this._shootDir.set(dx, dy, dz);
+            this._bulletRay.set(this._shootFrom, this._shootDir);
+            return world?.raycastCollisionDistance?.(this._bulletRay, far) ?? far;
+          },
+        });
+        this._coverTimer = 2.2;
+      }
+      if (this._coverPoint) {
+        const cx = this._coverPoint.x - this.position.x, cz = this._coverPoint.z - this.position.z;
+        const length = Math.hypot(cx, cz);
+        maneuver = length < .65 ? { forward: 0, strafe: 0, mode: 'cover' } : {
+          forward: (targetDir.x * cx + targetDir.z * cz) / length,
+          strafe: (-targetDir.z * cx + targetDir.x * cz) / length,
+          mode: 'cover',
+        };
+      }
       chasing = !!maneuver.sprint;
       const holdGround = !this._isSwordBot && !maneuver.forward && !maneuver.strafe;
       if (holdGround) {
@@ -735,7 +785,7 @@ export class Bot {
       if (this._botGun && this._reloadTimer <= 0 && hasVisual && this._reactT <= 0
         && aimDelta < 0.28 && distToPlayer < this._botGun.range) {
         this._gunTimer -= dt;
-        if (this._gunTimer <= 0) {
+        if (this._gunTimer <= 0 && this.hasLineOfSight(player, world)) {
           this._shootAt(player, onAttack, world);
           const magazine = advanceBotMagazine(this._magAmmo, this._reloadTimer, 0, this._botGun, true);
           this._magAmmo = magazine.ammo;

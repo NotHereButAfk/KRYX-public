@@ -39,7 +39,7 @@ for(const avatar of avatars){
   avatar.dispose();
 }
 disposeModel(localBot.mesh);
-// Exercise the real avatar wrapper: knockback must not attenuate the knee pose.
+// Exercise the real avatar wrapper: the shared timed death pose must settle identically.
 for (const hz of [30,60,144]) {
   const avatar=new Avatar(scene), position=new THREE.Vector3();
   for(let i=0;i<hz;i++)avatar.update(1/hz,{position,yaw:0,alive:true,speed:9,grounded:true});
@@ -49,8 +49,8 @@ for (const hz of [30,60,144]) {
   avatar.group.userData.triggerTeleport();
   avatar._deathSide=-1;
   const reaction=createDeathReaction('levershotgun',{px:0,py:0,pz:0},{x:0,z:3});
-  for(let i=0;i<hz;i++)avatar.update(1/hz,{position,yaw:0,alive:false,deathReaction:reaction});
-  assert(calf.quaternion.angleTo(folded)<.02,'shotgun knockback reduced the leg death pose');
+  for(let i=0;i<Math.ceil(hz*1.3);i++)avatar.update(1/hz,{position,yaw:0,alive:false,deathReaction:reaction});
+  assert(calf.quaternion.angleTo(folded)<.02,'timed death did not reach its shared resting leg pose');
   assert.equal(avatar.group.position.z,position.z,'dead body drifted from its death location');
   avatar.dispose();
 }

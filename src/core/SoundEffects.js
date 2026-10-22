@@ -8,13 +8,17 @@ export const GUN_TIMBRES = Object.freeze({
   concussion: [.42, 115, 1100, .85],
 });
 const ALIASES = {rifle:'m4',sidearm:'magnum',m16:'battlerifle',lmg:'energyshotgun',smg:'uzi',shotgun:'levershotgun',sniper:'magnum',boltsniper:'magnum',dmr:'battlerifle',needler:'plasmarifle',fuelrod:'rpg'};
-export const EFFECT_NAMES = Object.freeze(['slice','blade-armor','blade-metal','rocket-blast','grenade-blast','reload','hit','kill','hurt','empty','step','run-step','jump','land','hard-land','teleport','switch','casing','magazine','rack','growl','zombie-death','zombie-attack','anime','waifu','laser','fire','fireball','prism','pyro','meow','uwu','bark','sparkle','water','garden','toxic','neko']);
+export const EFFECT_NAMES = Object.freeze(['slice','blade-armor','blade-metal','rocket-blast','grenade-blast','reload','hit','kill','hurt','empty','step','run-step','jump','land','hard-land','teleport','switch','casing','magazine','rack','growl','zombie-death','zombie-attack','anime','waifu','laser','fire','fireball','prism','pyro','meow','uwu','bark','sparkle','water','garden','toxic','neko','death','body-impact']);
+const EFFECT_DURATIONS = Object.freeze({ hit:.10, kill:.27, hurt:.28, empty:.09,
+  step:.24, 'run-step':.24, land:.27, 'hard-land':.27, jump:.31, switch:.18,
+  reload:.23, magazine:.20, rack:.16, casing:.47, death:.43, 'body-impact':.66 });
+export const MAX_EFFECT_VOICES = 32;
 
 export function renderSound(name, sampleRate = 48000, variant = 0, rounds = 3) {
   const id = ALIASES[name] || name;
   const gun = GUN_TIMBRES[id];
   const burst = id === 'battlerifle' ? Math.max(1,Math.min(3,Math.floor(rounds)||1)) : 1;
-  const duration = gun ? gun[0] + (burst-1)*.045 : /blast/.test(id) ? 1.45 : /growl|zombie-death/.test(id) ? .85 : .72;
+  const duration = gun ? gun[0] + (burst-1)*.045 : EFFECT_DURATIONS[id] ?? (/blast/.test(id) ? 1.45 : /growl|zombie-death/.test(id) ? .85 : .72);
   const data = new Float32Array(Math.ceil(duration * sampleRate));
   let seed = (1234567 + variant*7919 + [...id].reduce((h,c)=>h*31+c.charCodeAt(0),0)) | 0;
   const random = () => { seed ^= seed<<13; seed ^= seed>>>17; seed ^= seed<<5; return (seed>>>0)/2147483648-1; };
@@ -95,9 +99,32 @@ export function renderSound(name, sampleRate = 48000, variant = 0, rounds = 3) {
       noise(0,.055,1.2,80,1500,5);tone(0,.075,.25,105,50);
       noise(.02,.13,.85,550,4200,3,.009);
       noise(.085,.19,.38,250,2400,5,.018);break;
-    case 'hit': noise(0,.024,.65,1700,6800,8);tone(0,.075,.24,1350,950,.04,8);break;
-    case 'kill': tone(0,.16,.36,660,660,.03);tone(.065,.23,.30,990,990,.03);noise(0,.04,.3,1200,5200,6);break;
-    case 'hurt': noise(0,.16,1,80,1400,6);tone(0,.2,.48,150,48,.1);noise(.045,.18,.25,800,3200,5);break;
+    case 'hit':
+      // A dry armor tick, short enough to remain readable under automatic fire.
+      noise(0,.028,.72,900,4400,6,.0008);noise(.006,.058,.38,130,1250,5);
+      tone(0,.055,.11,1080,830,.03,7);break;
+    case 'kill':
+      tone(0,.11,.27,660,660,.015);tone(.055,.18,.23,880,880,.015);
+      noise(0,.032,.22,1000,3200,6);break;
+    case 'hurt':
+      noise(0,.15,1.15,35,780,5,.004);tone(0,.16,.26,110,49,.04);
+      noise(.022,.20,.35,190,2200,5,.012);break;
+    case 'death':
+      // Gear loosens as the body loses its balance. Ground contact is a separate
+      // event, so there is no fake landing thump while the body is still upright.
+      noise(0,.24,.62,180,2100,3.4,.018);
+      noise(.045,.26,.33,65,850,3,.025);
+      noise(.09,.17,.21,900,3800,5,.008);
+      tone(.02,.25,.08,115,68,.025,4);break;
+    case 'body-impact':
+      // Soft mass first, then armor plates and a short floor scrape. No scream,
+      // announcer, or long metallic ring on every elimination.
+      noise(0,.25,2.1,22,430,4,.005);
+      tone(0,.21,.38,92,37,.025,6);
+      noise(.016,.18,.66,120,1700,5,.006);
+      noise(.055,.12,.22,650,3500,5,.002);
+      noise(.12,.34,.28,170,1700,4,.035);
+      noise(.28,.18,.12,70,650,5,.022);break;
     case 'empty': latch(0,.32);break;
     case 'switch': noise(0,.12,.55,350,3300,4,.008);latch(.045,.21);break;
     case 'reload': latch();noise(.055,.12,.45,300,3000,4);latch(.16,.3);break;
@@ -123,17 +150,64 @@ export function renderSound(name, sampleRate = 48000, variant = 0, rounds = 3) {
       if(/meow|uwu|anime|waifu/.test(id))tone(.02,.23,.2,850,1400,.4);
     }
   }
-  const level = gun?.[3] ?? (/blast/.test(id)?.94 : /step/.test(id)?(id==='step'?.18:.25) : /land/.test(id)?(id==='land'?.30:.52) : id==='casing'?.09 : id==='hit'?.25 : id==='kill'?.32 : .45);
+  const level = gun?.[3] ?? (/blast/.test(id)?.94 : /step/.test(id)?(id==='step'?.18:.25) : /land/.test(id)?(id==='land'?.30:.52) : id==='casing'?.09 : id==='hit'?.21 : id==='kill'?.27 : id==='death'?.25 : id==='body-impact'?.48 : .45);
   let peak=0;
   for(let i=0;i<data.length;i++){data[i]=Math.tanh(data[i]*1.2);peak=Math.max(peak,Math.abs(data[i]));}
   if(peak)for(let i=0;i<data.length;i++)data[i]*=level/peak;
   return data;
 }
 
-export function playDesignedSound(audio, name, rounds = 3) {
+/** Cached voices share a budget, including recorded footsteps and skin shots.
+ * Quiet Foley yields first so a crowded fight cannot hide the local gun/hits. */
+export function playBufferVoice(audio, buffer, { gain = 1, rate = 1, priority = 1, lowpass = 0 } = {}) {
+  if (!audio.ctx || !buffer) return null;
+  const voices = audio._effectVoices ||= new Set();
+  if (voices.size >= MAX_EFFECT_VOICES) {
+    const oldest = [...voices].find(voice => voice.priority <= priority);
+    if (!oldest) return null;
+    oldest.finish(true);
+  }
+  const source = audio.ctx.createBufferSource();
+  source.buffer = buffer;
+  source.playbackRate.value = rate;
+  const output = audio.out || audio.master;
+  // Reuse the positional bus's lifecycle rather than keeping an HRTF panner
+  // alive for three seconds after a 100ms report has already ended.
+  output?._retainVoice?.();
+  let level = null, filter = null, tail = source;
+  if (lowpass > 0) {
+    filter = audio.ctx.createBiquadFilter(); filter.type = 'lowpass';
+    filter.frequency.value = lowpass; filter.Q.value = .35;
+    tail.connect(filter); tail = filter;
+  }
+  if (gain !== 1) {
+    level = audio.ctx.createGain(); level.gain.value = Math.max(0, Math.min(1, gain));
+    tail.connect(level).connect(output);
+  } else tail.connect(output);
+  let finished = false;
+  const voice = { priority, source, finish(stop = false) {
+    if (finished) return;
+    finished = true;
+    voices.delete(voice);
+    source.onended = null;
+    if (stop) { try { source.stop(); } catch {} }
+    source.disconnect(); filter?.disconnect(); level?.disconnect(); output?._releaseVoice?.();
+  } };
+  voices.add(voice);
+  source.onended = () => voice.finish();
+  source.start();
+  return voice;
+}
+
+export function playDesignedSound(audio, name, rounds = 3, options = {}) {
   if(!audio.ctx)return;
   audio._designedBuffers ||= new Map();
-  const variant=Math.floor(Math.random()*4), key=`${name}:${variant}:${rounds}`;
+  audio._lastSoundVariants ||= new Map();
+  let variant=Math.floor(Math.random()*4);
+  if (variant === audio._lastSoundVariants.get(name)) variant = (variant + 1 + Math.floor(Math.random()*3)) % 4;
+  if (audio._lastSoundVariants.size >= 64 && !audio._lastSoundVariants.has(name)) audio._lastSoundVariants.delete(audio._lastSoundVariants.keys().next().value);
+  audio._lastSoundVariants.set(name,variant);
+  const key=`${name}:${variant}:${rounds}`;
   let buffer=audio._designedBuffers.get(key);
   if(!buffer){
     const samples=renderSound(name,audio.ctx.sampleRate,variant,rounds);
@@ -141,8 +215,8 @@ export function playDesignedSound(audio, name, rounds = 3) {
     if(audio._designedBuffers.size>=96)audio._designedBuffers.delete(audio._designedBuffers.keys().next().value);
     audio._designedBuffers.set(key,buffer);
   }
-  const source=audio.ctx.createBufferSource();source.buffer=buffer;
-  source.playbackRate.value=.985+Math.random()*.03;
-  source.connect(audio.out || audio.master);
-  source.onended=()=>source.disconnect();source.start();
+  const local = !audio.out || audio.out === audio.master;
+  const id = ALIASES[name] || name;
+  const priority = local && (GUN_TIMBRES[id] || /^(hit|hurt|kill|death)$/.test(id)) ? 3 : /casing|step|switch|reload|magazine|rack/.test(id) ? 0 : 1;
+  return playBufferVoice(audio, buffer, { rate:.985+Math.random()*.03, priority, ...options });
 }

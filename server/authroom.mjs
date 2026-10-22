@@ -51,6 +51,8 @@ import {
   botSeparationVector,
   chooseReachableRoamPoint,
   choosePlayerLikeBotMove,
+  chooseBotCoverPoint,
+  shouldBotTacticalReload,
   getBotDifficulty,
   isBotDashLaneSafe,
   isInsideBotFov,
@@ -569,6 +571,9 @@ export class AuthRoom {
     p._botTargetSince = 0;
     p._botLastSeenTick = -Infinity;
     p._botLastSeen = null;
+    p._botCoverPoint = null;
+    p._botCoverUntil = 0;
+    p._botNextCoverTick = 0;
     p._botReactionUntil = 0;
     p._botNextScanTick = this.tick + (p.id % 5);
     p._botNextDecisionTick = this.tick;
@@ -644,6 +649,7 @@ export class AuthRoom {
   }
 
   _botCanSee(p, target, ignoreFov = false) {
+    if (this.tick < (p.blindUntil || 0)) return false;
     if (!target?.alive || this.tick < (target.invulnerableUntil || 0)) return false;
     const cfg = this.botDifficulty;
     const dx = target.state.px - p.state.px;
@@ -656,6 +662,8 @@ export class AuthRoom {
     if (!ignoreFov && !isInsideBotFov(p._botAimYaw ?? p._lastYaw ?? 0, dx, dz, cfg.fovDegrees)) return false;
     const dy = (target.state.py + HEAD_Y) - (p.state.py + HEAD_Y);
     const length = Math.hypot(dx, dy, dz) || 1e-6;
+    if (this._raySmoked(p.state.px, p.state.py + HEAD_Y, p.state.pz,
+      dx / length, dy / length, dz / length, length)) return false;
     return rayVsBoxes(
       this.simWorld, p.state.px, p.state.py + HEAD_Y, p.state.pz,
       dx / length, dy / length, dz / length, length,
@@ -880,9 +888,11 @@ export class AuthRoom {
         p._botHostility.set(best.id,
           this.tick + secondsToTicks(cfg.focusDuration + cfg.searchDuration));
         p._botTargetId = best.id;
+        p._botCoverPoint = null;
         p._botHoldGroundTargetId = null;
         p._botTargetSince = this.tick;
         p._botReactionUntil = this.tick + this._botReactionTicks(p);
+        p._botNextLosTick = this.tick;
         p._botState = BOT_STATES.REACT;
       }
 
@@ -902,25 +912,29 @@ export class AuthRoom {
         target.state.px - p.state.px,
         target.state.pz - p.state.pz,
       );
-      // Imported map octrees are intentionally detailed. Footstep-aware bots
-      // can pursue at long range without spending a raycast every three ticks;
-      // checks tighten once opponents are close enough to exchange fire.
-      const losInterval = target.isBot
-        ? Math.max(cfg.losInterval, targetDistance > 36 ? 0.70 : 0.32)
-        : cfg.losInterval;
+      // Smooth aim needs fresh visual samples during a duel. Distant bot-only
+      // searches can check less often; visible combat checks at 10Hz on the
+      // server without adding raycasts or AI work to each player's browser.
+      const losInterval = target.isBot && targetDistance > 36 ? .32 : Math.min(cfg.losInterval, .1);
       p._botNextLosTick = this.tick + secondsToTicks(losInterval);
+      const previouslyVisible = p._botLosTargetId === target.id && p._botLosCache;
       p._botLosTargetId = target.id;
       p._botLosCache = this._botCanSee(p, target, true);
       if (p._botLosCache) {
+        // Reappearing from cover requires reacquisition, rather than an
+        // immediate perfect shot on the first visible server tick.
+        if (!previouslyVisible && this.tick - p._botLastSeenTick > secondsToTicks(.4)) {
+          p._botReactionUntil = Math.max(p._botReactionUntil, this.tick + this._botReactionTicks(p));
+        }
         p._botLastSeen = { x: target.state.px, y: target.state.py, z: target.state.pz };
         p._botLastSeenTick = this.tick;
         p._botHostility.set(target.id, this.tick + secondsToTicks(cfg.focusDuration + cfg.searchDuration));
       }
     }
-    hasVisual = !!target && p._botLosTargetId === target.id && p._botLosCache;
+    hasVisual = !!target && p._botLosTargetId === target.id && p._botLosCache && this.tick >= (p.blindUntil || 0);
 
     if (target && !hasVisual
-      && this.tick - p._botLastSeenTick > secondsToTicks(0.8)) {
+      && this.tick - p._botLastSeenTick > secondsToTicks(cfg.searchDuration)) {
       p._botIgnoredUntil.set(target.id, this.tick + secondsToTicks(1.5));
       p._botTargetId = null;
       target = null;
@@ -928,6 +942,10 @@ export class AuthRoom {
     }
 
     if (!target) {
+      p._botCoverPoint = null;
+      if (shouldBotTacticalReload(p.mag, WEAPONS[p.wid]?.mag, (this.tick - p._botLastSeenTick) / TICK_HZ)) {
+        this._startReload(p, p.wid);
+      }
       p._botHoldGroundTargetId = null;
       p._botState = BOT_STATES.ROAM;
       if (p._botRoamJumpYaw !== null && !p.state.onGround) {
@@ -1000,13 +1018,18 @@ export class AuthRoom {
         sprint: forward && alignment > 0.96 && Math.hypot(dx,dz) > 1.25, jumpJust: (hop || roamJump) && p.state.onGround }), wid: p.wid, aiming: false, botDash: false };
     }
 
-    const aimPoint = hasVisual ? target.state : p._botLastSeen;
+    // Aim uses the last sight sample. Do not read a hidden opponent's live
+    // coordinates between visibility checks or while searching behind cover.
+    const aimPoint = p._botLastSeen;
+    if (!aimPoint) return { seq, inp: makeInput({ yaw: p._botAimYaw }), wid: p.wid, aiming: false, botDash: false };
     const targetX = aimPoint.px ?? aimPoint.x;
     const targetY = aimPoint.py ?? aimPoint.y;
     const targetZ = aimPoint.pz ?? aimPoint.z;
     const realDx = targetX - p.state.px;
     const realDz = targetZ - p.state.pz;
     const distance = Math.hypot(realDx, realDz);
+    if (shouldBotTacticalReload(p.mag, WEAPONS[p.wid]?.mag,
+      hasVisual ? 0 : (this.tick - p._botLastSeenTick) / TICK_HZ)) this._startReload(p, p.wid);
     const desiredYaw = Math.atan2(-realDx, -realDz);
     const desiredPitch = Math.atan2((targetY + HEAD_Y) - (p.state.py + HEAD_Y), Math.max(0.001, distance));
     p._botAimYaw = smoothBotAim(p._botAimYaw, desiredYaw, cfg.aimTurnSpeed, 1 / TICK_HZ);
@@ -1015,11 +1038,33 @@ export class AuthRoom {
     if (this.tick < p._botReactionUntil) p._botState = BOT_STATES.REACT;
     else p._botState = hasVisual ? BOT_STATES.ENGAGE : BOT_STATES.SEARCH;
 
-    const maneuver = choosePlayerLikeBotMove({
+    let maneuver = choosePlayerLikeBotMove({
       id: p.id, elapsed: (this.tick - p._botReactionUntil) / TICK_HZ,
       reacting: this.tick < p._botReactionUntil, hasLineOfSight: hasVisual,
       distance, reloading: p.mag <= 0 || p.reloadUntil > this.tick,
     });
+    const needsCover = p.reloadUntil > this.tick || p.health + p.shield < 36;
+    if (!needsCover || this.tick >= p._botCoverUntil) p._botCoverPoint = null;
+    if (needsCover && this.tick >= p._botReactionUntil && this.tick >= p._botNextCoverTick && !p._botCoverPoint) {
+      p._botNextCoverTick = this.tick + secondsToTicks(1.0);
+      p._botCoverPoint = chooseBotCoverPoint({
+        x: p.state.px, y: p.state.py, z: p.state.pz,
+        targetX, targetY, targetZ, preferredSide: p._botStrafe,
+        killY: this.arena.killY,
+        groundHeightAt: this.arena.groundHeightAt?.bind(this.arena) || (!this.arena.noBaseFloor ? () => 0 : undefined),
+        raycast: (...args) => rayVsBoxes(this.simWorld, ...args),
+      });
+      p._botCoverUntil = this.tick + secondsToTicks(2.2);
+    }
+    if (p._botCoverPoint) {
+      const cx = p._botCoverPoint.x - p.state.px, cz = p._botCoverPoint.z - p.state.pz;
+      const length = Math.hypot(cx, cz);
+      maneuver = length < .65 ? { forward: 0, strafe: 0, mode: 'cover' } : {
+        forward: (-Math.sin(p._botAimYaw) * cx - Math.cos(p._botAimYaw) * cz) / length,
+        strafe: (Math.cos(p._botAimYaw) * cx - Math.sin(p._botAimYaw) * cz) / length,
+        mode: 'cover',
+      };
+    }
     // Stay on navigable ground and redirect around walls before accepting a
     // sidestep or chase. Pursuit can run and fire while stamina permits.
     const [moveX, moveZ] = this._steerBotMove(p, maneuver.strafe, maneuver.forward, p._botAimYaw);
@@ -1030,7 +1075,8 @@ export class AuthRoom {
     const aimDelta = Math.abs(Math.atan2(Math.sin(desiredYaw - p._botAimYaw), Math.cos(desiredYaw - p._botAimYaw)));
     const canFire = hasVisual && this.tick >= p._botReactionUntil && aimDelta < 0.12
       && distance < cfg.detectionDistance && p.fireCooldown <= 0
-      && p.reloadUntil <= this.tick && p.mag > 0 && this.tick >= p._botNextShotTick;
+      && p.reloadUntil <= this.tick && p.mag > 0 && this.tick >= p._botNextShotTick
+      && this._botCanSee(p, target, true);
     if (canFire) {
       this.onFire(p.id, { seq: p.lastFireSeq + 1, wid: p.wid, yaw: p._botAimYaw, pitch: p._botAimPitch });
       if (p.fireReq) {

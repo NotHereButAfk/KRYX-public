@@ -333,7 +333,7 @@ for (let i = 0; i < 1200; i++) {
 const averageTickMs = (performance.now() - loadStarted) / 1200;
 const autonomousBotKills = [...loadRoom.players.values()].reduce((sum, bot) => sum + bot.kills, 0);
 assert(botShots > 0, 'authoritative bots must fire at each other');
-assert.equal(loadRoom.players.size, 4, 'arena bot cap');
+assert.equal(loadRoom.players.size, 8, 'arena bot cap');
 assert(autonomousBotKills > 0, 'bots should earn kills against each other');
 const [friendlyA, friendlyB] = [...loadRoom.players.values()];
 friendlyB.alive = true; friendlyB.health = 100;
@@ -342,11 +342,11 @@ loadRoom._damage(friendlyB, friendlyA, 1000, false);
 assert.equal(friendlyB.health, 0, 'bot attacks must damage opponents');
 
 assert.ok(averageTickMs < 5,
-  `four-bot decisions exceeded the server budget (${averageTickMs.toFixed(2)}ms/tick)`);
+  `eight-bot decisions exceeded the server budget (${averageTickMs.toFixed(2)}ms/tick)`);
 assert.ok([...loadRoom.players.values()].every((entry) => entry.isBot
   && (!entry.alive || entry._botNextScanTick > loadRoom.tick - 20)),
   'bot scans are not timer-throttled');
-console.log(`ok   four bots throttle scans/LOS/decisions (${averageTickMs.toFixed(3)}ms per 20Hz tick)`);
+console.log(`ok   eight bots throttle scans/LOS/decisions (${averageTickMs.toFixed(3)}ms per 20Hz tick)`);
 console.log(`ok   autonomous server bots fight one another (${autonomousBotKills} kills in one simulated minute)`);
 
 console.log('\nall bot combat checks passed');
