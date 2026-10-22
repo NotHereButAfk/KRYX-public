@@ -369,12 +369,12 @@ export class InventoryPanel {
     const bg = _grad(playerSkin.primary, playerSkin.secondary);
     const card = this._cardBase({
       bg, rarity: null, equipped, onClick,
-      name: 'Default',
+      name: playerSkin.name,
     });
     const fig = document.createElement('div');
     fig.className = 'inv-card-fig';
     const image = document.createElement('img');
-    image.alt = 'Default player character';
+    image.alt = playerSkin.name;
     characterPortrait(playerSkin, this.host.selectedArmorId).then(src => { image.src = src; }).catch(() => { image.alt = 'Character preview unavailable'; });
     image.style.cssText = 'width:100%;height:100%;object-fit:contain'; fig.appendChild(image);
     card.insertBefore(fig, card.firstChild);

@@ -4,7 +4,7 @@
 import { REMADE_CHARACTERS } from '../../server/remadecollection.mjs';
 export const SKINS = [];
 
-const DEFAULT_SKIN = { id: 'default', name: 'Default', primary: 0x596775, secondary: 0x202832 };
+const DEFAULT_SKIN = Object.freeze({ ...REMADE_CHARACTERS.find(s => s.id === 'remake_84'), id: 'default', price: 0 });
 
 export function getSkin(id) {
   return SKINS.find((s) => s.id === id) || DEFAULT_SKIN;

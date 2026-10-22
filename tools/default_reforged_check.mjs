@@ -1,0 +1,20 @@
+import fs from 'node:fs';
+import assert from 'node:assert/strict';
+import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
+import {MeshoptDecoder} from 'three/addons/libs/meshopt_decoder.module.js';
+import {getSkin} from '../src/player/skins.js';
+import {installEvCharacter,buildEvCharacter} from '../src/player/EvCharacter.js';
+import {installAuthoredSkin} from '../src/player/AuthoredSkins.js';
+globalThis.ProgressEvent ??= class {};
+async function load(path) {const b=fs.readFileSync(new URL('../public'+path,import.meta.url));return new GLTFLoader().setMeshoptDecoder(MeshoptDecoder).parseAsync(b.buffer.slice(b.byteOffset,b.byteOffset+b.byteLength),'');}
+const skin=getSkin('default');
+assert.equal(skin.name,'Default Reforged');
+assert.equal(skin.price,0);
+assert.equal(getSkin('unknown'),skin);
+installEvCharacter(await load('/ev-default.glb'));
+installAuthoredSkin(skin.id,await load(skin.model));
+const model=buildEvCharacter(skin,null);
+assert(await model.userData.skinReady);
+assert.equal(model.userData.authoredSkinId,'default');
+assert(model.getObjectByName('Blender authored armor'));
+console.log('Default Reforged is the free default and mounts on the gameplay rig.');

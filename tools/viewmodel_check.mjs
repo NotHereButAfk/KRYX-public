@@ -1546,13 +1546,17 @@ for (const def of WEAPONS.filter(w => w.kind !== 'melee')) {
   }
 }
 // Settled ADS must center both sight axes, including after camera rotation.
-activate(WEAPONS.find(w => w.id === 'm4')); resetMotionState();
-input.rightMouseDown = true;
-advanceSeconds(2, 60);
-const adsModel = system.models.get('m4');
-const adsSight = adsModel.sight.clone().applyMatrix4(adsModel.group.matrixWorld).project(camera);
-assert(Math.abs(adsSight.x) < .001 && Math.abs(adsSight.y) < .001,
-  'Auto Rifle sight must sit on the crosshair in ADS');
+for (const def of WEAPONS.filter(w => w.kind !== 'melee')) {
+  activate(def); resetMotionState();
+  input.rightMouseDown = true;
+  advanceSeconds(2, 60);
+  const adsModel = system.models.get(def.id);
+  const adsSight = adsModel.sight.clone().applyMatrix4(adsModel.group.matrixWorld).project(camera);
+  assert(Math.abs(adsSight.x) < .001 && Math.abs(adsSight.y) < .001,
+    `${def.id} sight must sit on the crosshair in ADS`);
+  assert(system.scopeT > .99 && camera.fov < player.baseFov,
+    `${def.id} must enter zoom, including pickup launchers and shotgun`);
+}
 
 // Every intermediate ADS frame must keep the rendered bore on target.
 for (const def of WEAPONS.filter(w => w.kind !== 'melee')) {

@@ -245,10 +245,35 @@ export function measureWeaponSight(group) {
   const z = hasOptic
     ? _adsPoint.z
     : source.max.z - (source.max.z - source.min.z) * 0.38;
-  // Ammo counters and tall receivers can rise ABOVE the authored sight.
-  // Keep their full silhouette below the reticle, not just the sight marker.
-  return new THREE.Vector3(declaredSight?.x ?? _adsPoint.x,
-    Math.max(declaredSight?.y ?? y, _adsBox.max.y + 0.015), declaredSight?.z ?? z);
+  // Use authored optics exactly, not a bounding-box point above them.
+  if (declaredSight) return declaredSight;
+  // Imported emissive 'special' materials include ammo counters, not just optics.
+  if (hasOptic) return new THREE.Vector3(0, Math.max(y, _adsBox.max.y + .015), z);
+  // Imported guns have no sight nodes. Find the actual top/front sight
+  // surface, excluding the rear ammo counter and buttstock. This anchors
+  // the visible post instead of empty space above the whole weapon.
+  let top = -Infinity, frontZ = z;
+  const frontLimit = _adsBox.min.z + (_adsBox.max.z - _adsBox.min.z) * .45;
+  const transform = new THREE.Matrix4();
+  group.traverse(object => {
+    if (!object.isMesh || !object.geometry?.attributes.position || object.name === 'outline') return;
+    transform.multiplyMatrices(_adsInverse, object.matrixWorld);
+    const positions = object.geometry.attributes.position;
+    for (let i = 0; i < positions.count; i++) {
+      _adsCorner.fromBufferAttribute(positions, i).applyMatrix4(transform);
+      if (_adsCorner.z <= frontLimit && _adsCorner.y > top) {
+        top = _adsCorner.y; frontZ = _adsCorner.z;
+      }
+    }
+  });
+  const muzzle = group.getObjectByName('muzzle') || group.getObjectByName('BIND_BULLET');
+  const axisX = muzzle ? group.worldToLocal(muzzle.getWorldPosition(new THREE.Vector3())).x : 0;
+  // A launcher housing can stand above its barrel. Use its upper rail
+  // rather than placing the target behind the opaque launch tube.
+  if (group.userData.weaponId === 'rpg' || _adsBox.max.y - top > .06) return new THREE.Vector3(axisX, _adsBox.max.y + .015, z);
+  const sight = new THREE.Vector3(axisX, Number.isFinite(top) ? top + .005 : y, frontZ);
+  sight.depthOffset = Math.min(0, frontZ - z);
+  return sight;
 }
 
 export function adsMountForSight(
@@ -259,7 +284,7 @@ export function adsMountForSight(
   return new THREE.Vector3(
     -sight.x * scale,
     -sight.y * scale + ADS_SIGHT_Y,
-    depth - sight.z * scale,
+    depth + (sight.depthOffset || 0) * scale - sight.z * scale,
   );
 }
 
@@ -2552,7 +2577,7 @@ export class WeaponSystem {
         this._adsFramingPosition.set(
           sight ? -sight.x * activeViewmodelScale : 0,
           (sight ? -sight.y * activeViewmodelScale : 0) + ADS_SIGHT_Y,
-          ADS_SIGHT_DEPTH - (sight ? sight.z * activeViewmodelScale : 0),
+          ADS_SIGHT_DEPTH + (sight?.depthOffset || 0) * activeViewmodelScale - (sight ? sight.z * activeViewmodelScale : 0),
         );
         target.position.lerp(this._adsFramingPosition, adsEase);
         target.rotation.multiplyScalar(1 - adsEase);

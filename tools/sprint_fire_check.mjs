@@ -62,3 +62,12 @@ player.isDead = true;
 updateWeaponSprintBlock(player, { mouseDown: true }, 'm4', .016);
 assert.equal(player.weaponSprintBlocked, false, 'death clears firing recovery');
 console.log('Sprint/fire passed: every firearm cancels sprint before movement and still fires; walking, recovery, melee, mobile and packet order verified.');
+
+// Holding aim must lower sprint before simulation for every pickup firearm.
+for (const id of ['m4', 'concussion', 'rpg', 'levershotgun']) {
+  const p = {isSprinting:true,isDead:false};
+  const aim = {mouseDown:false,rightMouseDown:true,isDown:()=>true};
+  updateWeaponSprintBlock(p,aim,id,1/60);
+  assert(p.weaponSprintBlocked && !p.isSprinting, id+' aim must interrupt sprint');
+  assert(!sprintRequested(aim,1,p.weaponSprintBlocked),id+' aim must suppress movement sprint');
+}

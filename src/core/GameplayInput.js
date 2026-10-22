@@ -20,12 +20,12 @@ export function consumeThrowable(input) {
   return null;
 }
 
-// Pulling any gun trigger cancels sprint before movement is simulated.
+// Firing or aiming a firearm cancels sprint before movement is simulated.
 // Keep the weapon shouldered while held and briefly through shot recovery.
 export function updateWeaponSprintBlock(player, input, weaponId, dt) {
   const weapon = getWeapon(weaponId);
   player._weaponSprintRecovery = weapon && weapon.kind !== 'melee' && !player.isDead
-    ? (input.mouseDown ? FIRE_SPRINT_RECOVERY : Math.max(0, (player._weaponSprintRecovery || 0) - dt)) : 0;
+    ? ((input.mouseDown || input.rightMouseDown) ? FIRE_SPRINT_RECOVERY : Math.max(0, (player._weaponSprintRecovery || 0) - dt)) : 0;
   player.weaponSprintBlocked = player._weaponSprintRecovery > 0;
   if (player.weaponSprintBlocked) player.isSprinting = false;
 }

@@ -25,7 +25,7 @@ export class CareerPreview {
   }
   async loadArmor(skin, armor, finish) {
     const revision = ++this.revision;
-    await Promise.all([preloadEvCharacter(), preloadAuthoredSkin(finish)]);
+    await Promise.all([preloadEvCharacter(), preloadAuthoredSkin(finish || skin)]);
     if (revision !== this.revision) return;
     if (this.model) { this.scene.remove(this.model); disposeModel(this.model); }
     const model = buildPreviewCharacter(skin, armor, finish);

@@ -2228,7 +2228,7 @@ export class Game {
     const menuOpen = this._menuOpen || this._roundGateVisible || this._chatOpen;
     const gameplayInput = this._teleportAim.update(this.input,
       !menuOpen && !this.player.isDead && !this._playerDowned, this.player.teleportCooldown);
-    updateWeaponSprintBlock(this.player, {mouseDown: !menuOpen && gameplayInput.mouseDown}, this.weaponSystem.currentDef?.id, dt);
+    updateWeaponSprintBlock(this.player, {mouseDown: !menuOpen && gameplayInput.mouseDown, rightMouseDown: !menuOpen && gameplayInput.rightMouseDown}, this.weaponSystem.currentDef?.id, dt);
 
     // Player input is blocked while the menu overlay is open (no pointer lock),
     // but the match keeps running — this is a multiplayer game.
