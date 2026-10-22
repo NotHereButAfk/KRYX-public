@@ -675,7 +675,7 @@ export class Game {
       this._camWpts.map((w) => w.t.clone()), closed, 'centripetal', 0.5,
     );
     const pathLength = this._camPath.getLength();
-    this._camCycleDuration = this._camDolly ? Math.max(14, pathLength / 2.2) : closed
+    this._camCycleDuration = this._camDolly ? Math.max(10, pathLength / 3) : closed
       ? Math.max(24, pathLength / 5)
       : Math.max(8, pathLength / 3);
   }
@@ -2804,7 +2804,7 @@ export class Game {
     if (this._spectatorLoading || !this.world.currentMap) return;
     const cameraStep = THREE.MathUtils.clamp(cameraDt, 0, 1 / 30);
     this._camTravelTime += cameraStep;
-    const fadeWindow = this._camDolly ? 0.08 : 0.9;
+    const fadeWindow = this._camDolly ? 0.65 : 0.9;
     let cameraOpacity = 1;
     let routeChanged = false;
     if (this._camRoutes.length > 1 || this._camDolly) {
@@ -2842,6 +2842,25 @@ export class Game {
     else this._spectatorRig.update(this._camPos, this._camLook, cameraStep);
   }
 
+  _updateHomePresentation(dt) {
+    // showMain is also used during the death-camera return. Keep its original
+    // treatment, pause, and real player spectating separate from the map tour.
+    const active = this.state === 'menu'
+      && !(this._spectating && !this._spectateMenu)
+      && !this._spectatorLoading && !this.menu._activePanel
+      && !this.menu.centerPlay.classList.contains('hidden');
+    this.menu.setHomeScene(active);
+    if (!active) { this._homeInfoTimer = 0; return; }
+    this._homeInfoTimer = Math.max(0, (this._homeInfoTimer || 0) - dt);
+    if (this._homeInfoTimer > 0) return;
+    this._homeInfoTimer = 0.5;
+    this.menu.setHomeScene(true, {
+      mapName: this.world.currentMap?.definition?.name || 'THE ARENA',
+      modeName: getMode(this.menu.selectedModeId).name,
+      capacity: this._selectedMatch?.capacity || MAX_PLAYERS,
+    });
+  }
+
   _loop() {
     this._rafId = requestAnimationFrame(() => this._loop());
     this._authNet?.earnings?.syncVisibility();
@@ -2875,6 +2894,7 @@ export class Game {
       this._updateMenuScene(dt, rawDt);
     }
 
+    this._updateHomePresentation(dt);
     this.sprintEdges.update(dt, this);
     const camera = this.state === 'playing' ? this.player.camera : this.menuCamera;
     const mount = this.weaponSystem.weaponMount;

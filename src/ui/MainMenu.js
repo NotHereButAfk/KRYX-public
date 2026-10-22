@@ -66,6 +66,9 @@ export class MenuUI {
     this.topNav      = document.getElementById('top-nav');
     this.mobileNavToggle = document.getElementById('nav-mobile-toggle');
     this.centerPlay  = document.getElementById('center-play');
+    this._homeMap = document.getElementById('home-map');
+    this._homeMode = document.getElementById('home-mode');
+    this._homeCapacity = document.getElementById('home-capacity');
 
     // Panels
     this._activePanel = null;
@@ -138,8 +141,11 @@ export class MenuUI {
       <button type="button" data-panel="abilities" aria-label="Abilities">${mobileIcon('abilities')}</button>
       <button type="button" data-panel="loadout" aria-label="Character and loadout">${mobileIcon('profile')}</button>
       <button type="button" data-panel="settings" aria-label="Settings">${mobileIcon('settings')}</button>
-      </div><button type="button" id="mobile-play">TAP TO PLAY</button></div>`;
+      </div><button type="button" id="mobile-play">TAP TO PLAY</button></div>
+      <div class="home-only home-arena"><span class="home-caption">ARENA OVERVIEW</span><strong id="mobile-home-map">THE ARENA</strong><span id="mobile-home-capacity">Up to 8 players</span></div>`;
     document.getElementById('app').appendChild(home);
+    this._mobileHomeMap = home.querySelector('#mobile-home-map');
+    this._mobileHomeCapacity = home.querySelector('#mobile-home-capacity');
     home.querySelector('#mobile-play').addEventListener('click', () => {
       if (this._mobileResume) this.onResume?.();
       else this.playBtn.click();
@@ -162,6 +168,24 @@ export class MenuUI {
     this._mobileHome.querySelector('#mobile-play').textContent = resume ? 'TAP TO RESUME' : 'TAP TO PLAY';
     this._mobileHome.classList.toggle('hidden', !show);
     document.body.classList.toggle('mobile-home-visible', show);
+  }
+
+  setHomeScene(active, details = null) {
+    if (this._homeAttract !== active) {
+      this._homeAttract = active;
+      document.body.classList.toggle('home-attract', active);
+    }
+    if (!active || !details) return;
+    // Only touch the DOM when the rendered arena or selected mode changes.
+    for (const [node, value] of [
+      [this._homeMap, details.mapName],
+      [this._homeMode, details.modeName],
+      [this._homeCapacity, `Up to ${details.capacity} players`],
+      [this._mobileHomeMap, details.mapName],
+      [this._mobileHomeCapacity, `${details.modeName} · Up to ${details.capacity} players`],
+    ]) {
+      if (node && node.textContent !== value) node.textContent = value;
+    }
   }
 
   _wireNav() {

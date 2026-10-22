@@ -9,6 +9,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Michroma&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/src/style.css" />
   <link rel="stylesheet" href="/src/loading.css" />
+  <link rel="stylesheet" href="/src/home.css" />
 </head>
 <body>
   <!-- Colour-blind correction matrices (Phase 8 accessibility). Applied to the
@@ -151,8 +152,12 @@
 
     <!-- ===================== CENTER PLAY ===================== -->
     <div id="center-play" class="hidden">
+      <div class="home-only home-match"><span aria-hidden="true"></span>PUBLIC MATCH <i>/</i> <span id="home-mode">DEATHMATCH</span></div>
       <button id="play-btn" class="click-to-play">CLICK TO PLAY</button>
+      <p class="home-only home-invite">Your next match starts here.</p>
       <button id="spectate-btn" class="spectate-hint">[ SPECTATE ]</button>
+      <div class="home-only home-arena"><span class="home-caption">ARENA OVERVIEW</span><strong id="home-map">THE ARENA</strong><span id="home-capacity">Up to 8 players</span></div>
+      <div class="home-only home-controls" aria-label="Basic controls"><span><kbd>W A S D</kbd> Move</span><span><kbd>MOUSE</kbd> Aim &amp; fire</span><span><kbd>SHIFT</kbd> Sprint</span></div>
     </div>
 
     <div id="spectator-controls" class="hidden"><button id="spectator-prev" aria-label="Previous player">◀</button><span id="spectator-name">Waiting for players</span><button id="spectator-next" aria-label="Next player">▶</button><small>← / → Switch player · ESC Menu / Join</small></div>

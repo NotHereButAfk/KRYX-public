@@ -1,30 +1,89 @@
 import * as THREE from 'three';
 
-/** Independent, level establishing shots: translate through a lane, then cut. */
+/** Elevated establishing shots, with gentle bends only where the whole lens
+ * envelope and a look-ahead beyond the endpoint fit. Planned once per map. */
 export function menuDollyShots(routes, clearSegment) {
   const shots = [];
+  const ranked = [];
+  candidates:
   for (const route of routes) for (const node of route) {
-    if (shots.length >= 12) return shots;
-    const start = node.p.clone();
-    // Stay among the architecture, above player eye height where clearance allows.
-    for (const rise of [3, 2, 1]) {
-      const lifted = node.p.clone().add(new THREE.Vector3(0, rise, 0));
-      if (clearSegment(node.p, lifted)) { start.copy(lifted); break; }
-    }
-    if (shots.some(shot => shot[0].p.distanceTo(start) < 8)) continue;
+    // Inspect viewpoints throughout the map before picking the opener. The
+    // first spawn can be underneath a slab despite having a safe travel lane.
+    if (shots.length >= 32) break candidates;
+    if (shots.some(shot => Math.hypot(shot[0].p.x - node.p.x, shot[0].p.z - node.p.z) < 8)) continue;
     const direction = node.t.clone().sub(node.p).setY(0).normalize();
     if (direction.lengthSq() < 0.5) continue;
-    for (const length of [32, 24, 16, 8]) {
-      const end = start.clone().addScaledVector(direction, length);
-      if (!clearSegment(start, end)) continue;
-      shots.push([0, 1 / 3, 2 / 3, 1].map(u => {
-        const p = start.clone().lerp(end, u);
-        return { p, t: p.clone().addScaledVector(direction, 30) };
-      }));
-      break;
+    const right = new THREE.Vector3(-direction.z, 0, direction.x);
+    let shot = null;
+    for (const rise of [8, 6, 4, 2]) {
+      const start = node.p.clone().add(new THREE.Vector3(0, rise, 0));
+      if (!clearSegment(node.p, start)) continue;
+      for (const length of [40, 28, 18, 10]) {
+        // Keep room beyond the shot. A technically clear endpoint can still
+        // finish against a featureless wall, which feels like a collision.
+        const beyond = start.clone().addScaledVector(direction, length + 6);
+        if (!clearSegment(start, beyond)) continue;
+        for (const bend of [0.08, -0.08, 0]) {
+          const candidate = [0, 1 / 3, 2 / 3, 1].map(u => {
+            const p = start.clone().addScaledVector(direction, length * u)
+              .addScaledVector(right, length * bend * u * u);
+            const heading = direction.clone().addScaledVector(right, 2 * bend * u).normalize();
+            const t = p.clone().addScaledVector(heading, 30);
+            t.y -= Math.min(6, rise * 0.65);
+            return { p, t };
+          });
+          const path = new THREE.CatmullRomCurve3(candidate.map(n => n.p), false, 'centripetal', 0.5);
+          const steps = Math.ceil(path.getLength() / 0.5);
+          let previous = path.getPointAt(0), safe = true;
+          for (let s = 1; s <= steps; s++) {
+            const point = path.getPointAt(s / steps);
+            if (!clearSegment(previous, point)) { safe = false; break; }
+            previous = point;
+          }
+          const last = candidate.at(-1);
+          const exit = last.p.clone().addScaledVector(last.t.clone().sub(last.p).setY(0).normalize(), 6);
+          if (safe && clearSegment(last.p, exit)) { shot = candidate; break; }
+        }
+        if (shot) break;
+      }
+      if (shot) break;
+    }
+    if (shot) {
+      shots.push(shot);
+      ranked.push({ shot, score: establishingShotScore(shot, clearSegment) });
     }
   }
-  return shots;
+  return ranked.sort((a, b) => b.score - a.score).slice(0, 12).map(entry => entry.shot);
+}
+
+/** Prefer a broad, readable view to a safe but visually cramped tunnel. The
+ * five probes cover the centre and corners of a widescreen 60-degree lens.
+ * Two distances distinguish an overlooking balcony from a near solid wall.
+ * This is a one-time composition score, never a render-loop raycast. */
+function establishingShotScore(shot, clearSegment) {
+  const path = new THREE.CatmullRomCurve3(shot.map(node => node.p), false, 'centripetal', 0.5);
+  const look = new THREE.CatmullRomCurve3(shot.map(node => node.t), false, 'centripetal', 0.5);
+  const p = new THREE.Vector3(), target = new THREE.Vector3();
+  const forward = new THREE.Vector3(), right = new THREE.Vector3(), up = new THREE.Vector3();
+  const direction = new THREE.Vector3(), end = new THREE.Vector3();
+  let score = 0;
+  for (const u of [0, 0.5, 1]) {
+    path.getPointAt(u, p); look.getPointAt(u, target);
+    forward.subVectors(target, p).normalize();
+    right.set(-forward.z, 0, forward.x).normalize();
+    up.crossVectors(right, forward).normalize();
+    for (const [x, y] of [[0, 0], [-0.85, 0.45], [0.85, 0.45], [-0.85, -0.45], [0.85, -0.45]]) {
+      direction.copy(forward).addScaledVector(right, x).addScaledVector(up, y).normalize();
+      // A bad opening is especially distracting; later samples keep a shot
+      // from winning merely because its first frame happens to be open.
+      const weight = u === 0 ? 2 : 1;
+      for (const distance of [8, 20]) {
+        end.copy(p).addScaledVector(direction, distance);
+        if (clearSegment(p, end)) score += weight;
+      }
+    }
+  }
+  return score;
 }
 
 /** Lift map viewpoints into a free camera flight, respecting low ceilings. */
@@ -184,17 +243,24 @@ export function spectatorTourCurves(tour, clearSegment) {
 
 export function makeSpectatorClearance(world) {
   const ray = new THREE.Ray(), delta = new THREE.Vector3();
-  const offsets = [[0, 0], [0.3, 0], [-0.3, 0], [0, 0.3], [0, -0.3]];
+  const right = new THREE.Vector3(), up = new THREE.Vector3();
+  const offsets = [[0, 0], [0.65, 0], [-0.65, 0], [0, 0.65], [0, -0.65]];
   return (a, b) => {
     delta.subVectors(b, a);
     const distance = delta.length();
     if (distance < 0.001) return true;
     ray.direction.copy(delta).divideScalar(distance);
+    // Protect both sides of the lens regardless of travel direction. World-X
+    // offsets provided no side clearance at all when flying along the X axis.
+    right.set(-ray.direction.z, 0, ray.direction.x);
+    if (right.lengthSq() < 0.001) right.set(1, 0, 0);
+    else right.normalize();
+    up.crossVectors(ray.direction, right).normalize();
     for (const [x, y] of offsets) {
-      ray.origin.copy(a); ray.origin.x += x; ray.origin.y += y;
+      ray.origin.copy(a).addScaledVector(right, x).addScaledVector(up, y);
       if (world.raycastCollisionDistance(ray, distance) < distance - 0.03) return false;
       // Two-sided testing catches camera exit through one-sided map triangles.
-      ray.origin.copy(b); ray.origin.x += x; ray.origin.y += y;
+      ray.origin.copy(b).addScaledVector(right, x).addScaledVector(up, y);
       ray.direction.negate();
       const blocked = world.raycastCollisionDistance(ray, distance) < distance - 0.03;
       ray.direction.negate();

@@ -19,7 +19,8 @@ export function installRoomChat(game) {
     const next=game._authNet?.client;
     if(client!==next){client=next;lastMessage=null;log.replaceChildren();close();}
     const loading=['connect-screen','map-loading','post-match-ads'].some(id=>{const e=document.getElementById(id);return e&&!e.classList.contains('hidden');});
-    host.hidden=loading||!client?.connected;
+    const home = game.state === 'menu' && !(game._spectating && !game._spectateMenu);
+    host.hidden=loading||home||!client?.connected;
     if(host.hidden&&game._chatOpen)close();
     const messages=client?.chatMessages||[];
     if(messages.at(-1)!==lastMessage){lastMessage=messages.at(-1);log.replaceChildren();for(const m of messages.slice(-5)){const line=document.createElement('div');line.textContent='[room] '+m.name+': '+m.text;log.append(line);}log.scrollTop=log.scrollHeight;}

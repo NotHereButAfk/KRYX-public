@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import * as THREE from 'three';
 import { SpectatorCameraRig } from '../src/core/SpectatorCameraRig.js';
-import { buildSpectatorTour, spectatorTourCurves, safeSpectatorRoutes } from '../src/core/SpectatorTour.js';
+import { buildSpectatorTour, spectatorTourCurves, safeSpectatorRoutes, makeSpectatorClearance } from '../src/core/SpectatorTour.js';
 
 const source = readFileSync(new URL('../src/core/Game.js', import.meta.url), 'utf8');
 assert.match(source, /new THREE\.CatmullRomCurve3\([\s\S]*?closed, 'centripetal'/,
@@ -17,7 +17,7 @@ assert.match(source, /map\.spectatorRoutes[\s\S]*?this\._camRouteIndex = \(this\
   'spectator must float through every authored arena viewpoint');
 assert.match(source, /Math\.max\(24, pathLength \/ 5\)/,
   'fallback orbit must float at a smooth map-touring speed');
-assert.match(source, /const fadeWindow = this\._camDolly \? 0\.08 : 0\.9[\s\S]*?this\.canvas\.style\.opacity = opacityText/,
+assert.match(source, /const fadeWindow = this\._camDolly \? 0\.65 : 0\.9[\s\S]*?this\.canvas\.style\.opacity = opacityText/,
   'spectator must hide safe-lane changes instead of exposing camera cuts');
 assert.match(source, /_updateMenuScene\(dt, cameraDt = dt\)[\s\S]*?this\._camTravelTime \+= cameraStep/,
   'spectator travel must use its own presentation delta');
@@ -142,7 +142,8 @@ for (const hz of [30, 60, 144]) {
 
 // Execute the real menu update with a moving network actor: menu flight must
 // remain independent, while explicit Spectate continues to follow actors.
-const menuBody=source.slice(source.indexOf('  _updateMenuScene('),source.indexOf('  _loop()'));
+const menuTail=source.slice(source.indexOf('  _updateMenuScene('));
+const menuBody=menuTail.slice(0,menuTail.search(/\n  (?:async )?[\w$]+\(/));
 const updateMenu=new Function('THREE', 'return function'+menuBody.slice(menuBody.indexOf('(')).trim())(THREE);
 for(const network of [false,true])for(const menu of [false,true]){
   let followed=0,flown=0,worldTicks=0,networkTicks=0;
@@ -164,6 +165,30 @@ for(const network of [false,true])for(const menu of [false,true]){
   if(menu)assert(Math.abs(game._camTravelTime-1)<1e-9);
 }
 console.log('Menu camera separation passed: independent flight with and without network; explicit Spectate retains follow.');
+
+// Execute the real presentation gate through menu, death, pause, loading,
+// and spectator transitions. showMain alone is not evidence of an attract view.
+const homeTail=source.slice(source.indexOf('  _updateHomePresentation('));
+const homeBody=homeTail.slice(0,homeTail.search(/\n  (?:async )?[\w$]+\(/));
+const updateHome=new Function('getMode','MAX_PLAYERS','return function'+homeBody.slice(homeBody.indexOf('(')).trim())(id=>({name:id.toUpperCase()}),8);
+const sceneUpdates=[];
+const homeGame={state:'menu',_spectating:false,_spectateMenu:false,_spectatorLoading:false,
+  menu:{_activePanel:null,selectedModeId:'deathmatch',centerPlay:{classList:{contains:()=>false}},
+    setHomeScene(active,details){sceneUpdates.push({active,details});}},
+  world:{currentMap:{definition:{name:'Rook'}}}};
+updateHome.call(homeGame,1/60);
+assert.deepEqual(sceneUpdates.at(-1),{active:true,details:{mapName:'Rook',modeName:'DEATHMATCH',capacity:8}});
+for(const override of [{state:'playing'},{state:'leaderboard'},{_spectatorLoading:true},{_spectating:true,_spectateMenu:false}]){
+  sceneUpdates.length=0;
+  updateHome.call({...homeGame,...override},1/60);
+  assert.deepEqual(sceneUpdates,[{active:false,details:undefined}],'home styling leaked into gameplay/loading/spectating');
+}
+sceneUpdates.length=0;
+updateHome.call({...homeGame,menu:{...homeGame.menu,_activePanel:'profile'}},1/60);
+assert.equal(sceneUpdates.at(-1).active,false,'profile must retain its own backdrop');
+updateHome.call({...homeGame,_spectating:true,_spectateMenu:true,_homeInfoTimer:0},1/60);
+assert.equal(sceneUpdates.at(-1).active,true,'spectator menu must return to the independent map tour');
+console.log('Home presentation passed: map metadata, gameplay/death/pause isolation, loading, panels and spectator transitions.');
 
 for (const hz of [30,60,144]) {
   const camera=new THREE.PerspectiveCamera(),rig=new SpectatorCameraRig(camera);
@@ -189,12 +214,44 @@ const { menuDollyShots } = await import('../src/core/SpectatorTour.js');
 const shots = menuDollyShots([safeNodes],()=>true);
 assert(shots.length > 0);
 for (const shot of shots) {
-  const heading=shot[0].t.clone().sub(shot[0].p);
+  const heading=shot[0].t.clone().sub(shot[0].p).normalize();
   for(const node of shot) {
     assert.equal(node.p.y,shot[0].p.y,'dolly must not bob');
-    assert(node.t.clone().sub(node.p).distanceTo(heading)<1e-8,'dolly must keep a steady heading');
+    assert(node.t.clone().sub(node.p).normalize().angleTo(heading)<0.17,'dolly bend must be gentle');
+    assert(node.t.y<node.p.y,'elevated dolly must frame the arena below it');
   }
-  assert(shot[0].p.distanceTo(shot.at(-1).p)>=8,'shot must visibly travel');
+  assert(shot[0].p.distanceTo(shot.at(-1).p)>=10,'shot must visibly travel');
 }
 assert.equal(menuDollyShots([safeNodes],()=>false).length,0,'blocked flight must be rejected');
-console.log('Menu dolly shots passed: level translation, constant heading, collision rejection.');
+const lane = [[{p:new THREE.Vector3(0,2,0),t:new THREE.Vector3(0,2,-30)}]];
+const openShot=menuDollyShots(lane,()=>true)[0];
+assert.equal(openShot[0].p.y,10,'open establishing shot must rise well above players');
+assert(Math.abs(openShot.at(-1).p.x)>1,'open establishing shot should gently bend');
+const lowShot=menuDollyShots(lane,(a,b)=>Math.max(a.y,b.y)<7)[0];
+assert.equal(lowShot[0].p.y,6,'respect the ceiling instead of forcing the high route');
+const corridor=menuDollyShots(lane,(a,b)=>Math.abs(a.x)<.2 && Math.abs(b.x)<.2)[0];
+assert(corridor.every(n=>Math.abs(n.p.x)<1e-8),'narrow corridor must use a straight safe lane');
+const wallShot=menuDollyShots(lane,(a,b)=>Math.min(a.z,b.z)>-23)[0];
+assert(wallShot.at(-1).p.z>=-17,'shot must end with clearance before a wall');
+assert.equal(menuDollyShots(lane,(a,b)=>Math.min(a.z,b.z)>-12).length,0,
+  'a short flight ending nose-to-wall must be rejected');
+const crampedThenOpen = [...lane, [{p:new THREE.Vector3(100,2,0),t:new THREE.Vector3(100,2,-30)}]];
+const rankedShots = menuDollyShots(crampedThenOpen,(a,b)=>a.x>50 || Math.max(a.y,b.y)<5);
+assert.equal(rankedShots.length,2,'safe lower room must remain available as a later shot');
+assert(rankedShots[0][0].p.x>50,'opening shot must favor the clear panorama over the first cramped spawn');
+
+// Geometric side clearance must be identical in both horizontal directions.
+// Previously a parallel wall 0.5m beside an X-directed path was missed entirely.
+for(const travel of ['x','z']) {
+  const side=travel==='x'?'z':'x';
+  const box=new THREE.Box3(new THREE.Vector3(-2,-2,-2),new THREE.Vector3(12,2,12));
+  box.min[side]=.45;box.max[side]=.8;
+  box.min[travel]=4;box.max[travel]=6;
+  const hit=new THREE.Vector3();
+  const clear=makeSpectatorClearance({raycastCollisionDistance(ray,distance){
+    return ray.intersectBox(box,hit)?Math.min(distance,ray.origin.distanceTo(hit)):Infinity;
+  }});
+  const a=new THREE.Vector3(),b=new THREE.Vector3();b[travel]=10;
+  assert.equal(clear(a,b),false,`${travel}-directed route did not protect the side of the camera`);
+}
+console.log('Menu shots passed: elevated bends, ceiling and corridor fallback, endpoint breathing room, orientation-independent wall clearance.');

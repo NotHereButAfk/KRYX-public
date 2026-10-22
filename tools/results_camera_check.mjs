@@ -20,9 +20,9 @@ const pose=[...game.menuCamera.position.toArray(),...game.menuCamera.quaternion.
 for(let i=0;i<120;i++)update.call(game,1/60,1/60,15);
 assert.deepEqual([...game.menuCamera.position.toArray(),...game.menuCamera.quaternion.toArray(),game.menuCamera.fov],pose);
 assert.ok(game._lbTimer<15 && game._lbTimer>12,'countdown still progresses');
-const menu=body('  _updateMenuScene(dt, cameraDt = dt) {','  _tick(');
+const menu=body('  _updateMenuScene(dt, cameraDt = dt) {','  _updateHomePresentation(');
 // The early guard is exercised without any scene dependencies: touching them throws.
-const guard=new Function('dt','cameraDt',menu.slice(0,menu.indexOf('    if (this._spectating')));
+const guard=new Function('dt','cameraDt',menu.slice(0,menu.indexOf('    const networkObserver')));
 guard.call({_authNet:{client:{postMatch:{}}}},1/60,1/60);
 console.log('Results camera passed: final pose/FOV retained, camera frozen while countdown advances, spectator post-match guard.');
 

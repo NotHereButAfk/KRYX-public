@@ -4,6 +4,7 @@ import { installFullscreen } from './ui/Fullscreen.js';
 if (!isCrazyGames()) installFullscreen();
 import './style.css';
 import './loading.css';
+import './home.css';
 import { installRoomChat } from './ui/RoomChat.js';
 import { Game } from './core/Game.js';
 import { UserAccount } from './core/UserAccount.js';
