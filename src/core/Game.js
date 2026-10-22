@@ -1504,13 +1504,7 @@ export class Game {
       ? Math.max(0, Math.ceil(((gate?.resultsRemainingMs || 0) - (performance.now() - (gate?.received || performance.now()))) / 1000))
       : Math.max(0, Math.ceil(this._lbTimer));
     const phase = postMatchPhase(secsLeft);
-    const adPage = document.getElementById('post-match-ads');
-    adPage?.classList.toggle('hidden', !phase.ads);
-    if (phase.ads) {
-      this.hud.hideLeaderboard();
-      const countdown = document.getElementById('post-match-ad-countdown');
-      if (countdown) countdown.textContent = phase.seconds;
-    } else this.hud.updateLeaderboardCountdown(phase.seconds, SCOREBOARD_SECONDS);
+    this.hud.updateLeaderboardCountdown(phase.seconds, SCOREBOARD_SECONDS);
 
     if (this._lbTimer <= 0) {
       this._lbTimer = Infinity; // guard against multiple triggers
