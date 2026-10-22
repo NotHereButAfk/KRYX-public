@@ -2024,7 +2024,7 @@ export class Game {
       clearTimeout(this._respawnTimer);
       this._respawnRemaining = RESPAWN_DELAY;
       this._respawnDeadline = performance.now() + RESPAWN_DELAY * 1000;
-      this.hud.showRespawn(this._respawnRemaining);
+      this.hud.hideRespawn();
       this.weaponSystem.resetMotionState();
       return;
     }
@@ -2080,7 +2080,7 @@ export class Game {
     // released pointer lock, obscured the match, and made the authoritative
     // path disagree with local deathmatch behavior.
     if (this._isDM) {
-      this.hud.showRespawn(this._respawnRemaining);
+      this.hud.hideRespawn();
       this.hud.addKillFeed(`YOU DIED — respawning in ${RESPAWN_DELAY}s`);
     } else {
       this.hud.hideRespawn();
@@ -2104,6 +2104,9 @@ export class Game {
   }
 
   _beginDeathAnimation(reaction = null) {
+    this._deathHomeShown = false;
+    this._deathStartedAt = performance.now();
+    this.hud.hideRespawn();
     this._deathReaction = reaction;
     this._deathAnimT = 0;
     this._deathSide *= -1;
@@ -2112,6 +2115,12 @@ export class Game {
   }
 
   _resetDeathAnimation() {
+    if (this._deathHomeShown) {
+      this.menu.hideMain();
+      this.menu.centerPlay.style.pointerEvents = '';
+      this._menuOpen = false;
+      this._deathHomeShown = false;
+    }
     this._deathReaction = null;
     this._deathAnimT = 0;
     this.player.camera.rotation.z = 0;
@@ -2123,23 +2132,28 @@ export class Game {
   }
 
   _applyDeathCamera(dt) {
-    this._deathAnimT += dt;
-    if (this.player._camDist > 0) return;
-    const pose = deathCameraPose(this._deathAnimT, this._deathSide);
-    this.player.camera.position.copy(this._deathCameraBasePos);
-    const reaction = sampleDeathReaction(this._deathReaction, this._deathAnimT);
-    this.player.camera.position.y -= pose.drop;
-    if (reaction) {
-      this.player.camera.position.x += reaction.x;
-      this.player.camera.position.z += reaction.z;
-      this.player.camera.position.y += reaction.air;
+    this._deathAnimT = Math.max(0, (performance.now() - this._deathStartedAt) / 1000);
+    const t = this._deathAnimT;
+    const reaction = sampleDeathReaction(this._deathReaction, t);
+    const target = this._deathLookTarget ||= new THREE.Vector3();
+    target.copy(this.player.position);
+    target.x += reaction?.x || 0; target.z += reaction?.z || 0;
+    target.y += .7 + (reaction?.air || 0);
+    const offset = this._deathViewOffset ||= new THREE.Vector3();
+    const pull = 1 - Math.exp(-t * 5);
+    offset.set(Math.sin(this.player.yaw) * 3.2 * pull, 1.1 + .6 * pull, Math.cos(this.player.yaw) * 3.2 * pull);
+    const length = offset.length();
+    const ray = this._deathViewRay ||= new THREE.Raycaster();
+    ray.set(target, offset.clone().normalize()); ray.far = length;
+    const hit = ray.intersectObjects(this.world.raycastMeshes || [], false)[0];
+    if (hit) offset.multiplyScalar(Math.max(.15, hit.distance - .2) / length);
+    this.player.camera.position.copy(target).add(offset);
+    this.player.camera.lookAt(target);
+    if (t >= 1.3 && !this._deathHomeShown) {
+      this._deathHomeShown = true;
+      this.menu.showMain();
+      this.menu.centerPlay.style.pointerEvents = 'none';
     }
-    this.player.camera.rotation.set(
-      this._deathCameraBaseRot.x + pose.pitch,
-      this._deathCameraBaseRot.y,
-      pose.roll,
-      'YXZ',
-    );
   }
 
   _endGame(title, subtitle = '') {
@@ -2271,7 +2285,7 @@ export class Game {
       } else {
         this._respawnRemaining = Math.max(0, this._respawnRemaining - dt);
       }
-      if (this._isDM) this.hud.showRespawn(this._respawnRemaining);
+      if (this._isDM) this.hud.hideRespawn();
       else this.hud.hideRespawn();
       if (!(this._authNet && this._authNet.ready) && this._isDM && this._respawnRemaining <= 0) {
         this._respawnPlayer();
@@ -2291,7 +2305,7 @@ export class Game {
     this.player._tpsObstructed = false;
     const inTPS = false;
     if (this._playerBody) {
-      this._playerBody.visible = inTPS;
+      this._playerBody.visible = inTPS || dead;
       this._playerBody.position.copy(this.player.position);
       // Face the way the camera looks, so from behind you see the character's
       // BACK. Note the player's yaw is a CAMERA yaw: three.js cameras look
