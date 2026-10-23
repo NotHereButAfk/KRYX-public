@@ -3,11 +3,16 @@ import { preloadFootsteps, playFootstepRecording } from './FootstepAudio.js';
 import { playDesignedSound, playBufferVoice } from './SoundEffects.js';
 import { createLegendaryShot } from './LegendaryAudio.js';
 import { playBlastImpact, playBladeSlice, playBladeImpact } from './WeaponSoundDesign.js';
+import { Ray, Vector3 } from 'three';
+import { ArenaAmbience } from './ArenaAmbience.js';
 
 export class AudioManager {
   constructor() {
     this.ctx = null;
     this.master = null;
+    this._listenerPosition = new Vector3();
+    this._occlusionRay = new Ray();
+    this._hasListener = false;
   }
 
   ensureContext() {
@@ -44,6 +49,8 @@ export class AudioManager {
 
   /** Point the WebAudio listener at the camera. Call once per frame. */
   setListener(pos, forward, up) {
+    this._listenerPosition.copy(pos);
+    this._hasListener = true;
     const l = this.ctx?.listener;
     if (!l) return;
     if (l.positionX) {
@@ -63,6 +70,29 @@ export class AudioManager {
     }
   }
 
+  setWorld(world) {
+    this._world = world;
+  }
+
+  _soundBehindCover(pos) {
+    const world = this._world;
+    if (!this._hasListener || !world?.raycastCollisionDistance || this._platformMuted || this._volume === 0) return false;
+    const ray = this._occlusionRay;
+    ray.origin.copy(this._listenerPosition);
+    ray.direction.subVectors(pos, ray.origin);
+    const distance = ray.direction.length();
+    if (!Number.isFinite(distance) || distance < .8 || distance > 60) return false;
+    // One octree query per event, capped during unusually crowded bursts.
+    const window = Math.floor((this.ctx.currentTime || 0) * 20);
+    if (window !== this._occlusionWindow) { this._occlusionWindow = window; this._occlusionQueries = 0; }
+    if (this._occlusionQueries++ >= 12) return false;
+    ray.direction.multiplyScalar(1 / distance);
+    ray.origin.addScaledVector(ray.direction, .15);
+    const far = distance - .35;
+    const hit = world.raycastCollisionDistance(ray, far);
+    return Number.isFinite(hit) && hit >= 0 && hit < far - .02;
+  }
+
   /**
    * Play a sound AT a world position: `audio.playAt(p, () => audio.playShot())`.
    * Anything the callback emits routes through an HRTF panner, so you can hear
@@ -78,13 +108,20 @@ export class AudioManager {
     p.rolloffFactor   = 1.6;
     if (p.positionX) { p.positionX.value = pos.x; p.positionY.value = pos.y; p.positionZ.value = pos.z; }
     else p.setPosition(pos.x, pos.y, pos.z);
-    p.connect(this.master);
+    const nodes = [p];
+    if (this._soundBehindCover(pos)) {
+      const filter = this.ctx.createBiquadFilter();
+      filter.type = 'lowpass'; filter.frequency.value = 2600; filter.Q.value = .35;
+      const gain = this.ctx.createGain(); gain.gain.value = .72;
+      p.connect(filter).connect(gain).connect(this.master);
+      nodes.push(filter, gain);
+    } else p.connect(this.master);
 
     let voices = 0, scheduled = false, disconnected = false;
     const release = () => {
       if (!scheduled || voices || disconnected) return;
       disconnected = true;
-      p.disconnect();
+      for (const node of nodes) node.disconnect();
     };
     p._retainVoice = () => { voices++; };
     p._releaseVoice = () => { voices = Math.max(0, voices - 1); release(); };
@@ -108,25 +145,6 @@ export class AudioManager {
   setPlatformMuted(muted) {
     this._platformMuted = muted;
     if (this.master) this.master.gain.value = muted ? 0 : (this._volume ?? 0.5);
-  }
-
-  _noiseBuffer(duration) {
-    const ctx = this.ctx;
-    const buffer = ctx.createBuffer(1, ctx.sampleRate * duration, ctx.sampleRate);
-    const data = buffer.getChannelData(0);
-    let low = 0;
-    for (let i = 0; i < data.length; i++) {
-      const t = i / ctx.sampleRate;
-      low += .016 * (Math.random() * 2 - 1 - low);
-      data[i] = low * (1.2 + .3 * Math.sin(2*Math.PI*t/duration))
-        + .045 * Math.sin(2*Math.PI*55*t) + .02 * Math.sin(2*Math.PI*110*t);
-    }
-    const fade = Math.floor(ctx.sampleRate*.2);
-    for (let i=0;i<fade;i++) {
-      const index=data.length-fade+i, blend=i/(fade-1);
-      data[index]=data[index]*(1-blend)+data[i]*blend;
-    }
-    return buffer;
   }
 
   _envGain(gainValue, attack, decay, startTime) {
@@ -281,30 +299,19 @@ export class AudioManager {
   playZombieAttack() {
     playDesignedSound(this, 'zombie-attack');
   }
-  startAmbientCity() {
-    if (!this.ctx || this._ambientRunning) return;
+  startAmbientCity(mapId) {
+    if (!this.ctx) return;
     this._ambientRunning = true;
-    const noise = this.ctx.createBufferSource();
-    noise.buffer = this._noiseBuffer(6.0);
-    noise.loop = true;
-    noise.loopStart = .2;
-    const lp = this.ctx.createBiquadFilter();
-    lp.type = 'lowpass';
-    lp.frequency.value = 160;
-    const ambGain = this.ctx.createGain();
-    ambGain.gain.value = 0.055;
-    noise.connect(lp).connect(ambGain).connect(this.out);
-    noise.start();
-    this._ambientNoise = noise;
-    this._ambientNodes = [noise, lp, ambGain];
+    this._ambience ||= new ArenaAmbience(this);
+    this._ambience.start(mapId);
+  }
 
+  updateEnvironment(state, dt) {
+    this._ambience?.update(state, dt);
   }
 
   stopAmbientCity() {
     this._ambientRunning = false;
-    for (const node of this._ambientNodes || []) node.disconnect();
-    this._ambientNodes = null;
-    if (this._ambientNoise) { try { this._ambientNoise.stop(); } catch {} this._ambientNoise = null; }
-    if (this._sirenInterval) { clearInterval(this._sirenInterval); this._sirenInterval = null; }
+    this._ambience?.stop();
   }
 }

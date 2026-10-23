@@ -136,6 +136,7 @@ export class Game {
     if (bloomEnabled(_q)) this._buildPostFX();
     this.player       = new Player((this.canvas.parentElement?.clientWidth || window.innerWidth) / (this.canvas.parentElement?.clientHeight || window.innerHeight));
     this.audio        = new AudioManager();
+    this.audio.setWorld(this.world);
     this._listenPos   = new THREE.Vector3();   // scratch for the audio listener
     this._listenFwd   = new THREE.Vector3();
     this._listenUp    = new THREE.Vector3();
@@ -338,6 +339,8 @@ export class Game {
     this._authNet?.disconnect();
     cancelAnimationFrame(this._rafId);
     this.input.dispose();
+    this.audio.stopAmbientCity();
+    this.weaponSystem.disposeImpactEffects?.();
     this._blinkPreview?.dispose();
     this.renderer.dispose();
     this.botManager.clear();
@@ -1239,7 +1242,7 @@ export class Game {
     this.player._camDist = 0;  // always start in FPS on new game
     if (!this._preserveMenuAcrossRound) this.input.requestPointerLock();
     this.mobileControls?.show();
-    this.audio.startAmbientCity();
+    this.audio.startAmbientCity(this.world.currentMapId);
   }
 
   _wireSurvivalCallbacks() {
@@ -1867,6 +1870,7 @@ export class Game {
     this._hideMapLoading();
     this.hud.hideLeaderboard();
     this.audio.stopAmbientCity();
+    this.weaponSystem.clearImpactEffects?.();
     this.serverSim?.stop();
     this._authNet?.disconnect?.();
     this._authNet = undefined;
@@ -1914,6 +1918,7 @@ export class Game {
     try {
       // Yield to the loading card before parsing geometry and collision.
       await new Promise(resolve => setTimeout(resolve, 0));
+      this.weaponSystem.clearImpactEffects?.();
       const map = await this.world.loadMap(mapId);
       this._configureMapCamera(map);
       this._ensureEnvironment();
@@ -2294,13 +2299,20 @@ export class Game {
 
     // Put the WebAudio listener on the camera so every positional sound (bot
     // gunfire, footsteps, deaths) arrives from the direction it happened.
-    const cam = this.player.camera;
+    const cam = this._spectating ? this.menuCamera : this.player.camera;
     cam.getWorldPosition(this._listenPos);
     cam.getWorldDirection(this._listenFwd);
     this._listenUp.set(0, 1, 0).applyQuaternion(cam.quaternion);
     this.audio.setListener(this._listenPos, this._listenFwd, this._listenUp);
 
     const menuOpen = this._menuOpen || this._roundGateVisible || this._chatOpen;
+    this.audio.updateEnvironment({
+      mapId: this.world.currentMapId,
+      speed: Math.hypot(this.player.velocity.x, this.player.velocity.z),
+      sprinting: this.player.isSprinting, sliding: this.player.isSliding,
+      active: !menuOpen && !this.player.isDead && !this._playerDowned
+        && !this._spectating && !this._authoritativeMapTransitioning,
+    }, dt);
     const canTarget = !menuOpen && !this.player.isDead && !this._playerDowned;
     const wasTargeting = this._teleportAim.armed;
     // Measure before consuming confirmation so a blocked destination doesn't

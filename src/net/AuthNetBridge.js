@@ -1,3 +1,4 @@
+import { RemoteFootsteps } from '../core/RemoteFootsteps.js';
 import {networkMotionFeedback} from '../player/NetworkMotionFeedback.js';
 import { applyMouseLook } from '../core/MouseLook.js';
 import {renderNameCosmetics} from '../ui/NameCosmetics.js';
@@ -252,7 +253,7 @@ export class AuthNetBridge {
     bar.appendChild(healthFg);
     nameEl.append(nameRow, bar);
     this._nameLayer.appendChild(nameEl);
-    r = { avatar, nameEl, nameText, healthFg, pos: new THREE.Vector3() };
+    r = { avatar, nameEl, nameText, healthFg, pos: new THREE.Vector3(), footsteps: new RemoteFootsteps() };
     this.remotes.set(id, r);
     return r;
   }
@@ -581,9 +582,16 @@ export class AuthNetBridge {
         a.armorSkin=equippedArmor;a.skinGroup=a.avatar.group;
       }
       a.avatar.group.visible = mapReady && r.ready !== false;
-      if (!mapReady || r.ready === false) { a.nameEl.style.display = 'none'; continue; }
+      if (!mapReady || r.ready === false) { a.nameEl.style.display = 'none'; a.footsteps.ready = false; continue; }
       a.pos.set(r.x, r.y, r.z);
       const avatarDistanceSq = this._nameOrigin.distanceToSquared(a.pos);
+      const footSound = a.footsteps.update(r, dt,
+        avatarDistanceSq < (r.crouch ? 64 : 484) && !this.game._menuOpen
+        && !this.game._roundGateVisible && !this.player.isDead);
+      if (footSound) this.game.audio?.playAt(a.pos, () => {
+        if (footSound === 'land' || footSound === 'hard-land') this.game.audio.playLand(footSound === 'hard-land');
+        else this.game.audio.playFootstep(footSound === 'run');
+      });
       a.avatar.setWeapon(r.wid || 'm4');
       // Derive cadence from rendered interpolation displacement, so a stalled
       // snapshot stream settles to idle rather than running in place.
@@ -710,15 +718,19 @@ export class AuthNetBridge {
           else this.game.audio.playShot(def.sound || def.id, e.rounds);
         });
       }
-      else if (e.e === 'shot' && e.by !== me) {
+      else if (e.e === 'shot') {
         const from = new THREE.Vector3(e.x, e.y, e.z);
         const to = new THREE.Vector3(e.tx, e.ty, e.tz);
+        if (e.by === me) {
+          this.game.weaponSystem?.showAuthoritativeImpact?.(e.wid, from, to, this.game.world);
+          continue;
+        }
         // Visual origins follow the rendered weapon, including its hand pose
         // and interpolation. Keep the server's hit endpoint unchanged.
         const avatar = this.remotes.get(e.by)?.avatar;
         if (avatar?.weaponId !== e.wid || avatar.group.visible === false
           || !avatar.getMuzzleWorldPosition?.(from)) continue;
-        this.game.weaponSystem?.showAuthoritativeTracer?.(e.wid, from, to);
+        this.game.weaponSystem?.showAuthoritativeTracer?.(e.wid, from, to, this.game.world);
       }
       else if (e.e === 'explosion' && e.kind === 'rocket') {
         this.game.weaponSystem?.showAuthoritativeExplosion?.(

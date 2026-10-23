@@ -29,6 +29,7 @@ import {
 import { prepareExplosionLights, disposeExplosion, spawnExplosion, updateExplosion } from '../effects/ExplosionEffect.js';
 import { disposeModel } from '../core/ModelResources.js';
 import { createEnergyBlast } from '../effects/EnergyBlast.js';
+import { BulletImpactEffects } from '../effects/BulletImpactEffects.js';
 import { createLauncherGrenade } from './LauncherGrenadeModel.js';
 import { ViewmodelAim } from './ViewmodelAim.js';
 import { ViewmodelFraming, firearmPresentationScale } from './ViewmodelFraming.js';
@@ -402,6 +403,8 @@ export class WeaponSystem {
     this._shotBloom = 0;                      // sustained-fire accuracy cone
 
     this.tracers = [];
+    this._bulletImpacts = new BulletImpactEffects(scene);
+    this._impactWorld = null;
     this.muzzleSmoke = [];
     this.rockets = [];
     this.explosions = [];
@@ -1391,6 +1394,7 @@ export class WeaponSystem {
       tr.mesh.material.dispose();
     }
     this.tracers.length = 0;
+    this.clearImpactEffects();
     for (const puff of this.muzzleSmoke) {
       this.scene.remove(puff.mesh);
       puff.mesh.geometry.dispose();
@@ -1444,7 +1448,7 @@ export class WeaponSystem {
     mesh.lookAt(to);
     if ((laserBeam || weaponDef?.energyBlast) && weaponDef?.energyColor) mesh.material.color.setHex(weaponDef.energyColor);
     this.scene.add(mesh);
-    this.tracers.push({
+    const tracer = {
       mesh,
       from: from.clone(),
       to: to.clone(),
@@ -1458,13 +1462,32 @@ export class WeaponSystem {
       endAge: 0,
       fresh: true,
       muzzle,
-    });
+    };
+    this.tracers.push(tracer);
+    return tracer;
   }
 
   /** Render a replicated shot without changing local ammo or applying damage. */
-  showAuthoritativeTracer(weaponId, from, to) {
+  showAuthoritativeTracer(weaponId, from, to, world = this._impactWorld) {
     const def = this.allWeapons.find((weapon) => weapon.id === weaponId) || this.currentDef;
-    this._spawnTracer(from, to, def);
+    const tracer = this._spawnTracer(from, to, def);
+    this._bulletImpacts?.queueEndpoint(tracer, world, from, to, this.camera);
+  }
+
+  /** Own server-confirmed shot: its local tracer is already being rendered. */
+  showAuthoritativeImpact(weaponId, from, to, world = this._impactWorld) {
+    const def = this.allWeapons.find((weapon) => weapon.id === weaponId);
+    if (!def || def.kind === 'melee' || def.kind === 'rocket') return;
+    this._bulletImpacts?.showEndpoint(world, from, to, this.camera);
+  }
+
+  clearImpactEffects() {
+    this._bulletImpacts?.clear();
+  }
+
+  disposeImpactEffects() {
+    this._bulletImpacts?.dispose();
+    this._impactWorld = null;
   }
 
   _flash() {
@@ -1738,7 +1761,12 @@ export class WeaponSystem {
         } else if (this.onHitWorld) {
           this.onHitWorld(hit.point);
         }
-        this._spawnTracer(this._muzzleWorld, hit.point, def, this.models.get(def.id).muzzle);
+        const tracer = this._spawnTracer(this._muzzleWorld, hit.point, def, this.models.get(def.id).muzzle);
+        // Multiplayer prediction does not include remote hit bodies; only the
+        // server endpoint may confirm a wall impact in an authoritative match.
+        if (!bot && !this.authoritative) {
+          this._bulletImpacts?.queueEndpoint(tracer, world, this._camPos, hit.point, this.camera);
+        }
       } else {
         this._farVec.copy(this._camPos).addScaledVector(this._pelletDir, def.range);
         this._spawnTracer(this._muzzleWorld, this._farVec, def, this.models.get(def.id).muzzle);
@@ -2655,6 +2683,9 @@ export class WeaponSystem {
 
   // World effects keep advancing while the menu blocks local weapon input.
   updateEffects(dt, world, botManager) {
+    this._impactWorld = world;
+    this._bulletImpacts?.syncWorld(world);
+    this._bulletImpacts?.update(dt, this.camera);
     // muzzle flash decay
     if (this._flashTimer !== undefined && this._flashTimer > 0) {
       // Keep a new flash for its first rendered frame, even when a frame takes
@@ -2690,6 +2721,7 @@ export class WeaponSystem {
           tr.muzzle = null;
         }
         tr.fresh = false;
+        if (tr.laserBeam) this._bulletImpacts?.showQueued(tr, this.camera);
         continue;
       }
       if (tr.laserBeam) {
@@ -2712,7 +2744,10 @@ export class WeaponSystem {
       const visibleLength = Math.max(0.001, head - tail);
       tr.mesh.position.copy(tr.from).addScaledVector(tr.direction, tail);
       tr.mesh.scale.z = visibleLength;
-      if (tr.travelled >= tr.distance) tr.endAge += dt;
+      if (tr.travelled >= tr.distance) {
+        tr.endAge += dt;
+        this._bulletImpacts?.showQueued(tr, this.camera);
+      }
       tr.fade = Math.max(0, 1 - tr.endAge / TRACER_END_FADE);
       tr.mesh.material.opacity = tr.fade * TRACER_OPACITY;
       if (tr.fade <= 0) {
