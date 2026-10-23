@@ -17,3 +17,20 @@ console.log('Teleport aim passed: Q selection, click confirmation, no gunfire/re
 frame(); input.keys.add('MobileFire'); assert(frame().mouseDown, 'short mobile fire tap survives until a frame');
 frame(); frame(true); input.keys.add('MobileFire'); assert(frame().teleportConfirmed, 'short touch confirms teleport');
 assert(!aim.filtered.mouseDown); frame(); assert(!aim.filtered.mouseDown);
+
+frame(true);
+input.mouseDown = true;
+assert(!aim.update(input,true,0,false).teleportConfirmed, 'blocked destination must not consume blink');
+assert(aim.armed && !aim.filtered.mouseDown, 'blocked click keeps targeting without gunfire');
+frame(); assert(frame(false,true).teleportConfirmed, 'a fresh click at a valid destination confirms');
+frame(); frame(true); input.rightMouseDown = true;
+assert(!frame(false,true).mouseDown, 'cancel plus trigger never leaks a shot');
+assert(!aim.armed && !aim.filtered.rightMouseDown, 'right click cancels without scoping');
+frame(); assert(!aim.filtered.rightMouseDown, 'held cancel button remains isolated');
+input.rightMouseDown=false; frame(); input.rightMouseDown=true;
+assert(frame().rightMouseDown, 'a fresh right click scopes normally');
+console.log('Blocked destinations and right-click cancellation passed.');
+input.rightMouseDown=false; frame(); frame(true);
+input.keys.add('PrimaryFire');
+assert(frame().teleportConfirmed, 'desktop down/up between rendered frames still confirms blink');
+assert(!aim.filtered.mouseDown, 'quick desktop blink never fires the gun');

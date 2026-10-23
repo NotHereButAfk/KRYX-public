@@ -1,0 +1,79 @@
+/* Keep the compact match HUD, but make every ability readable at a glance.
+   #app wins over the legacy stylesheet regardless of production bundle order. */
+#app #hud.hud-refined #grenade-wrap {
+  height: 60px !important;
+}
+#app #hud.hud-refined .ability-tile {
+  height: 60px !important;
+  transition: border-color 180ms ease, background-color 180ms ease;
+}
+#app #hud.hud-refined .ability-tile :is(.ability-key, .grenade-label) {
+  top: 4px !important;
+  bottom: auto !important;
+  left: 5px !important;
+  color: #e8f0f4 !important;
+}
+#app #hud.hud-refined .ability-tile :is(.ability-art, .grenade-icon) {
+  width: 26px !important;
+  height: 26px !important;
+  left: 10px !important;
+  top: 15px !important;
+  transition: opacity 180ms ease;
+}
+#app #hud.hud-refined .ability-tile .grenade-icon svg {
+  width: 26px !important;
+  height: 26px !important;
+}
+#app #hud.hud-refined .ability-caption {
+  position: absolute;
+  display: block;
+  left: 0;
+  right: 0;
+  bottom: 6px;
+  color: #c5d3d9;
+  font: 700 8px/9px 'Match Rajdhani', 'Rajdhani', sans-serif;
+  letter-spacing: .25px;
+  text-align: center;
+  white-space: nowrap;
+  z-index: 4;
+}
+#app #hud.hud-refined .ability-countdown {
+  position: absolute;
+  top: 17px;
+  left: 0;
+  right: 0;
+  color: #f4f7f9;
+  font: 700 17px/20px 'Match Rajdhani', 'Rajdhani', sans-serif;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+  z-index: 5;
+}
+#app #hud.hud-refined .ability-tile[data-ability-state='cooldown'] :is(.ability-art, .grenade-icon),
+#app #hud.hud-refined .ability-tile[data-ability-state='empty'] :is(.ability-art, .grenade-icon) {
+  opacity: .2;
+}
+#app #hud.hud-refined .ability-tile[data-ability-state='ready'] {
+  border-color: rgba(127, 211, 221, .42) !important;
+}
+#app #hud.hud-refined .ability-tile[data-ability-state='targeting'] {
+  background: rgba(21, 65, 70, .94) !important;
+  border-color: #9feaf1 !important;
+  box-shadow: inset 0 0 0 1px rgba(159, 234, 241, .25) !important;
+}
+#app #hud.hud-refined .ability-tile[data-ability-state='blocked'] {
+  border-color: #e9ae8c !important;
+  background: rgba(64, 43, 34, .94) !important;
+}
+#app #hud.hud-refined .ability-tile[data-ability-state='empty']::after {
+  width: 0;
+}
+@media (prefers-reduced-motion: reduce) {
+  #app #hud.hud-refined .ability-tile,
+  #app #hud.hud-refined .ability-tile :is(.ability-art, .grenade-icon) {
+    transition: none;
+  }
+}
+:root[data-reduce-motion='1'] #app #hud.hud-refined .ability-tile,
+:root[data-reduce-motion='1'] #app #hud.hud-refined .ability-tile :is(.ability-art, .grenade-icon) {
+  transition: none;
+}

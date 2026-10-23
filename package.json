@@ -4,6 +4,8 @@
   "description": "Browser-based low-poly arena FPS â€” deathmatch and zombie survival.",
   "type": "module",
   "scripts": {
+    "test:abilities": "node tools/teleport_aim_check.mjs && node tools/blink_destination_check.mjs && node tools/ability_hud_check.mjs && node tools/ability_effects_check.mjs",
+    "test:battlepass": "node tools/battlepass_check.mjs && node server/battlepassservice_test.mjs && node server/skin_currency_disabled_test.mjs",
     "test:achievements": "node tools/achievement_check.mjs && node tools/achievement_browser_check.mjs",
     "dev": "node tools/local-dev.mjs",
     "build": "vite build",

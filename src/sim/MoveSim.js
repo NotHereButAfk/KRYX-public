@@ -181,6 +181,12 @@ function ceilingClamp(world, x, y, z, height, vy, previousY) {
 // THREE.Raycaster-vs-meshes path with pure math over the same boxes).
 function rayVsBoxes(world, ox, oy, oz, dx, dy, dz, maxT) {
   let best = maxT;
+  // Imported maps expose their collision mesh through the same scalar ray on
+  // both server and client. Blink must stop at those walls as well as boxes.
+  if (world.raycast) {
+    const meshHit = world.raycast(ox, oy, oz, dx, dy, dz, maxT);
+    if (meshHit >= 0 && meshHit < best) best = meshHit;
+  }
   for (const b of world.boxes) {
     let t0 = 0, t1 = best, hit = true;
     const o = [ox, oy, oz], d = [dx, dy, dz];
@@ -196,9 +202,32 @@ function rayVsBoxes(world, ox, oy, oz, dx, dy, dz, maxT) {
         if (t0 > t1) { hit = false; break; }
       }
     }
-    if (hit && t0 > 0.1 && t0 < best) best = t0;
+    // A close face (or an origin already inside a collider) still blocks the
+    // blink. Ignoring the first ten centimetres could send it through a wall.
+    if (hit && t0 >= 0 && t0 < best) best = t0;
   }
   return best;
+}
+
+// Preview and simulation share one blink solve. The preview reads the same
+// authoritative collider boxes; it must not promise travel through a wall.
+export function blinkDestination(s, yaw, pitch, world, out = {}) {
+  const cp = Math.cos(pitch), sp = Math.sin(pitch);
+  const dx = -Math.sin(yaw) * cp, dy = sp, dz = -Math.cos(yaw) * cp;
+  const eyeY = s.py + STAND_H;
+  const hitT = rayVsBoxes(world, s.px, eyeY, s.pz, dx, dy, dz, TELEPORT_RANGE);
+  const dist = Math.max(0, hitT - (hitT < TELEPORT_RANGE ? 0.9 : 0));
+  // Match the movement solver's arena inset before showing distance/validity.
+  // A preview beyond this boundary would disagree with the confirmed blink.
+  const half = world.half - 1.2;
+  out.x = q(Math.max(-half, Math.min(half, s.px + dx * dist)));
+  out.z = q(Math.max(-half, Math.min(half, s.pz + dz * dist)));
+  out.y = q(Math.max(0, eyeY + dy * dist - STAND_H));
+  // A diagonal ray can clear a wall while the player's capsule still grazes
+  // it. Resolve that same horizontal contact before drawing the destination.
+  if (dist > 0) [out.x, out.z] = circleVsBoxes(world, out.x, out.z, out.y, STAND_H);
+  out.distance = Math.hypot(out.x - s.px, out.y - s.py, out.z - s.pz);
+  return out;
 }
 
 export function step(s, input, world, tuning = {}) {
@@ -273,14 +302,8 @@ export function step(s, input, world, tuning = {}) {
 
   // teleport blink (deterministic ray vs the same collider boxes)
   if (input.teleJust && s.teleCD <= 0) {
-    const cp = Math.cos(input.pitch), sp = Math.sin(input.pitch);
-    const dx = -sinY * cp, dy = sp, dz = -cosY * cp;
-    const eyeY = s.py + STAND_H;
-    const hitT = rayVsBoxes(world, s.px, eyeY, s.pz, dx, dy, dz, TELEPORT_RANGE);
-    const dist = Math.max(0.1, hitT - (hitT < TELEPORT_RANGE ? 0.9 : 0));
-    n.px = q(s.px + dx * dist);
-    n.pz = q(s.pz + dz * dist);
-    n.py = q(Math.max(0, eyeY + dy * dist - STAND_H));
+    const destination = blinkDestination(s, input.yaw, input.pitch, world);
+    n.px = destination.x; n.py = destination.y; n.pz = destination.z;
     n.vx = 0; n.vy = 0; n.vz = 0;
     if (n.slide) n.slideCD = SLIDE_RECOVERY;
     n.slide = 0; n.slideT = 0;

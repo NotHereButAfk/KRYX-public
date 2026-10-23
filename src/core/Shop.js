@@ -22,14 +22,9 @@ export const Shop = {
   },
 
   buy(skinId, price) {
-    if (skinId !== '__bp_premium__') return { ok: false, err: 'Skin purchases with in-game currency are no longer available' };
-    const d = _load();
-    if (d.owned.includes(skinId)) return { ok: false, err: 'Already owned' };
-    if ((d.coins || 0) < price)   return { ok: false, err: 'Not enough coins' };
-    d.coins -= price;
-    d.owned.push(skinId);
-    _save(d);
-    return { ok: true, remaining: d.coins };
+    return { ok: false, err: skinId === '__bp_premium__'
+      ? 'Every battle pass reward is free. Earn XP to unlock it.'
+      : 'Skin purchases with in-game currency are no longer available' };
   },
 
   unlock(skinId) {

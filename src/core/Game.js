@@ -3,6 +3,7 @@ import { canPlayWithAds } from '../ui/SponsorAvailability.js';
 import { SprintEdges } from '../ui/SprintEdges.js';
 import { remainingLoadingMs } from './LoadingTiming.js';
 import { TeleportAim } from './TeleportAim.js';
+import { BlinkPreview } from './BlinkPreview.js';
 import { groundDeathBody } from '../player/DeathBody.js';
 import { createDeathReaction, sampleDeathReaction, DEATH_IMPACT_TIME, DEATH_BODY_DURATION } from '../sim/DeathReaction.js';
 import { PLAYER_RESPAWN_DELAY } from '../sim/DeathTiming.js';
@@ -139,9 +140,10 @@ export class Game {
     this._listenFwd   = new THREE.Vector3();
     this._listenUp    = new THREE.Vector3();
     this.player.audio = this.audio;
-    this.player.onTeleport = () => {
+    this.player.onTeleport = (from, to) => {
       this.audio.playTeleport();
       this.hud.flashTeleport();
+      this._blinkPreview?.flash(to || this.player.position);
       // Blink covers 22m between one frame and the next, and the pads put you
       // down grounded — either way nothing in the gait has cause to react, so
       // the body would just slide to the far end. Play the jump arc over it.
@@ -183,6 +185,7 @@ export class Game {
     teleportMarker.setAttribute('aria-hidden', 'true');
     (document.getElementById('hud') || document.body).appendChild(teleportMarker);
     this._teleportAim = new TeleportAim(teleportMarker);
+    this._blinkPreview = new BlinkPreview(this.world.scene, teleportMarker);
     this.nameplates     = new Nameplates();
     // Reused by both active and menu simulation; do not allocate closures or
     // temporary player vectors in the 60Hz loop.
@@ -335,6 +338,7 @@ export class Game {
     this._authNet?.disconnect();
     cancelAnimationFrame(this._rafId);
     this.input.dispose();
+    this._blinkPreview?.dispose();
     this.renderer.dispose();
     this.botManager.clear();
     this.zombieManager.clear();
@@ -2297,8 +2301,16 @@ export class Game {
     this.audio.setListener(this._listenPos, this._listenFwd, this._listenUp);
 
     const menuOpen = this._menuOpen || this._roundGateVisible || this._chatOpen;
+    const canTarget = !menuOpen && !this.player.isDead && !this._playerDowned;
+    const wasTargeting = this._teleportAim.armed;
+    // Measure before consuming confirmation so a blocked destination doesn't
+    // waste the blink or leak the confirming click into a gunshot.
+    if(canTarget && wasTargeting)
+      this._blinkPreview.measure(this.player,this.world,this._authNet?.ready?this._authNet.client:null);
     const gameplayInput = this._teleportAim.update(this.input,
-      !menuOpen && !this.player.isDead && !this._playerDowned, this.player.teleportCooldown);
+      canTarget, this.player.teleportCooldown, this._blinkPreview.valid);
+    if(this._teleportAim.armed && !wasTargeting)
+      this._blinkPreview.measure(this.player,this.world,this._authNet?.ready?this._authNet.client:null);
     updateWeaponSprintBlock(this.player, {mouseDown: !menuOpen && gameplayInput.mouseDown, rightMouseDown: !menuOpen && gameplayInput.rightMouseDown}, this.weaponSystem.currentDef?.id, dt);
 
     // Player input is blocked while the menu overlay is open (no pointer lock),
@@ -2355,6 +2367,8 @@ export class Game {
       if (dead) this._applyDeathCamera(dt);
     }
     this.player.camera.updateMatrixWorld(true);
+    this._blinkPreview.update(dt,this._teleportAim.armed,canTarget && !dead);
+    this.hud.setAbilityTargeting?.(this._teleportAim.armed,this._blinkPreview.valid);
 
     // Animate the living sci-fi city (flying traffic, pulsing energy).
     this.world.update(dt);
@@ -2452,7 +2466,7 @@ export class Game {
       this.hud.hideScoreboard();
       this._sbShown = false;
     }
-    this.hud.updateTeleport(1 - this.player.teleportCooldown / this.player.teleportMaxCooldown);
+    this.hud.updateTeleport(1 - this.player.teleportCooldown / this.player.teleportMaxCooldown, this.player.teleportCooldown);
 
     // Scope overlay — shown when ADS on a scoped weapon
     if (this._scopeOverlay) {
@@ -2799,6 +2813,7 @@ export class Game {
   }
 
   _updateMenuScene(dt, cameraDt = dt) {
+    this._blinkPreview?.hide();
     if (this._authNet?.client?.postMatch) return;
     const networkObserver = this._spectating && this._authNet;
     const followPlayer = this._spectating && !this._spectateMenu;

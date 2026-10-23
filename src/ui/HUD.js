@@ -2,6 +2,7 @@ import { isCrazyGames } from '../core/CrazyGamesAccount.js';
 import { compareMatchRows } from '../core/MatchRows.js';
 import {renderNameCosmetics} from './NameCosmetics.js';
 import { getWeaponHudThumb, warmWeaponHudThumbs } from './WeaponThumbnails.js';
+import './abilities.css';
 import {
   MAX_PICKUP_SHIELD,
   SHIELD_PER_STACK,
@@ -118,11 +119,7 @@ export class HUD {
     // Population must remain visible even though the redundant score tray is hidden.
     if (this.serverPop) this.root.appendChild(this.serverPop);
     if (this.dmTimer) this.dmTimer.setAttribute('aria-label', 'Time remaining');
-    for (const [id, label] of [['smoke-count', 'Smoke'], ['frag-count', 'Frag'], ['timebomb-count', 'Time bomb'], ['impulse-count', 'Impulse']]) {
-      const tile = document.getElementById(id)?.closest('.grenade-slot');
-      if (tile) tile.setAttribute('aria-label', label);
-    }
-    this._abilityQ?.setAttribute('aria-label', 'Teleport');
+    this._initAbilityPresentation();
     // Split magazine and reserve for hierarchy without changing their source.
     if (this.ammoText) {
       this.ammoText.textContent = '';
@@ -131,6 +128,77 @@ export class HUD {
       this._reserveText = document.createElement('span');
       this._reserveText.className = 'hud-reserve';
       this.ammoText.append(this._magazineText, this._reserveText);
+    }
+  }
+
+  _initAbilityPresentation() {
+    this._grenadeHud = [];
+    for (const [kind, name, caption] of [
+      ['smoke', 'Smoke grenade', 'SMOKE'], ['frag', 'Frag grenade', 'FRAG'],
+      ['timebomb', 'Time bomb', 'BOMB'], ['impulse', 'Impulse blast', 'BLAST'],
+    ]) {
+      const counter = document.getElementById(`${kind}-count`);
+      const tile = counter?.closest('.grenade-slot');
+      if (!tile) continue;
+      const view = this._createAbilityView(tile, name, caption, '.grenade-label');
+      view.kind = kind;
+      view.counter = counter;
+      this._grenadeHud.push(view);
+    }
+    this._teleportHud = this._abilityQ
+      ? this._createAbilityView(this._abilityQ, 'Teleport', 'TELEPORT', '.ability-key') : null;
+    this._abilityTargeting = false;
+    this._abilityTargetValid = true;
+    this._teleportRemaining = 0;
+  }
+
+  _createAbilityView(tile, name, caption, keySelector) {
+    tile.classList.add('ability-tile');
+    // Read the actual displayed binding once; update paths never query the DOM.
+    const key = tile.querySelector(keySelector)?.textContent.trim() || '';
+    let label = tile.querySelector('.ability-caption, .ability-name');
+    if (!label) {
+      label = document.createElement('span');
+      tile.appendChild(label);
+    }
+    label.className = 'ability-caption';
+    setText(label, caption);
+    const timer = document.createElement('span');
+    timer.className = 'ability-countdown';
+    timer.setAttribute('aria-hidden', 'true');
+    tile.appendChild(timer);
+    tile.setAttribute('role', 'img');
+    return { tile, timer, name, key, state: '', seconds: -1, count: -1 };
+  }
+
+  _updateAbilityView(view, remaining, count, targeting = false, valid = true) {
+    if (!view) return;
+    const seconds = Math.ceil(Math.max(0, remaining));
+    const ready = seconds === 0 && count > 0;
+    const state = targeting && ready ? (valid ? 'targeting' : 'blocked')
+      : seconds > 0 ? 'cooldown' : ready ? 'ready' : 'empty';
+    if (state !== view.state) {
+      view.tile.dataset.abilityState = state;
+      toggleClass(view.tile, 'ready', ready);
+      view.state = state;
+    }
+    if (seconds !== view.seconds) {
+      setText(view.timer, seconds > 0 ? `${seconds}s` : '');
+      view.seconds = seconds;
+    }
+    // Screen readers and hover users get the full name, key and ready state.
+    // No live region: a cooldown should not announce every second of gameplay.
+    if (count !== view.count || seconds !== view.a11ySeconds || state !== view.a11yState) {
+      const status = state === 'targeting' ? 'clear destination; click to teleport; Q or right click cancels'
+        : state === 'blocked' ? 'destination blocked; Q or right click cancels'
+        : seconds > 0 ? `ready in ${seconds} ${seconds === 1 ? 'second' : 'seconds'}`
+        : ready ? 'ready' : 'no charges';
+      const description = `${view.name}, ${view.key}, ${count} ${count === 1 ? 'charge' : 'charges'}, ${status}`;
+      view.tile.setAttribute('aria-label', description);
+      view.tile.title = description;
+      view.count = count;
+      view.a11ySeconds = seconds;
+      view.a11yState = state;
     }
   }
 
@@ -367,15 +435,18 @@ export class HUD {
   }
 
   updateGrenades(frags, smokes, cooldowns = {}, charges = {}) {
-    for(const [counter,kind] of [[this.fragCount,'frag'],[this.smokeCount,'smoke'],[document.getElementById('timebomb-count'),'timebomb'],[document.getElementById('impulse-count'),'impulse']]) {
-      if(counter && ['timebomb','impulse'].includes(kind))setText(counter,charges?.[kind] ?? 1);
-      const tile=counter?.closest('.grenade-slot');
-      if(tile)tile.style.setProperty('--ready', `${Math.max(0,Math.min(1,1-(cooldowns[kind]||0)/15))*100}%`);
+    if (!this._grenadeHud) return;
+    for (const view of this._grenadeHud) {
+      const kind = view.kind;
+      const amount = kind === 'frag' ? frags : kind === 'smoke' ? smokes : charges?.[kind] ?? 1;
+      const count = Math.max(0, Math.floor(Number(amount) || 0));
+      const remaining = Math.max(0, Number(cooldowns?.[kind]) || 0);
+      const readyPercent = Math.round(Math.max(0, Math.min(1, 1 - remaining / 15)) * 100);
+      setText(view.counter, count);
+      toggleClass(view.counter, 'grenade-empty', count === 0);
+      setCustomStyle(view.tile, '--ready', `${readyPercent}%`);
+      this._updateAbilityView(view, remaining, count);
     }
-    setText(this.fragCount, frags);
-    setText(this.smokeCount, smokes);
-    toggleClass(this.fragCount, 'grenade-empty', frags === 0);
-    toggleClass(this.smokeCount, 'grenade-empty', smokes === 0);
   }
 
   flashHitmarker(headshot = false) {
@@ -423,11 +494,20 @@ export class HUD {
     this._teleportFlashTimeout = setTimeout(() => this._teleportFlash.classList.remove('show'), 300);
   }
 
-  updateTeleport(ratio) {
+  updateTeleport(ratio, secondsRemaining = (1 - ratio) * 15) {
     if (!this._abilityQ) return;
-    setCustomStyle(this._abilityQ, '--ratio', String(Math.max(0, Math.min(1, ratio))));
-    setCustomStyle(this._abilityQ, '--ready', `${Math.max(0,Math.min(1,ratio))*100}%`);
-    toggleClass(this._abilityQ, 'ready', ratio >= 1);
+    const progress = Math.max(0, Math.min(1, Number(ratio) || 0));
+    this._teleportRemaining = Math.max(0, Number(secondsRemaining) || 0);
+    setCustomStyle(this._abilityQ, '--ratio', String(Math.round(progress * 100) / 100));
+    setCustomStyle(this._abilityQ, '--ready', `${Math.round(progress * 100)}%`);
+    this._updateAbilityView(this._teleportHud, this._teleportRemaining, 1, this._abilityTargeting, this._abilityTargetValid);
+  }
+
+  setAbilityTargeting(active, valid = true) {
+    if (this._abilityTargeting === active && this._abilityTargetValid === valid) return;
+    this._abilityTargeting = active;
+    this._abilityTargetValid = valid;
+    this._updateAbilityView(this._teleportHud, this._teleportRemaining, 1, active, valid);
   }
 
   /**

@@ -15,7 +15,7 @@ import { openAchievementPanel } from './AchievementPanel.js';
 import { Shop } from '../core/Shop.js';
 import { Armory } from '../core/Armory.js';
 import { describePerk } from '../core/RarityPerks.js';
-import { BattlePass, BP_TIERS } from '../core/BattlePass.js';
+import { BattlePass } from '../core/BattlePass.js';
 import { GameSettings, DEFAULTS, CROSSHAIR_COLORS } from '../core/GameSettings.js';
 import { GAME_MODES } from '../core/GameModes.js';
 import { Achievements } from '../core/Achievements.js';
@@ -1157,140 +1157,130 @@ export class MenuUI {
 
   // ── Battle Pass ────────────────────────────────────────────────────────────
 
-  _renderBattlePass() {
-    this._refreshCoins();
-    const tier    = BattlePass.getTier();
-    const xpIn    = BattlePass.getXPInTier();
-    const premium = BattlePass.hasPremium();
-
-    // Header
-    document.getElementById('bp-tier-label').textContent = `Tier ${tier} / ${BattlePass.TOTAL_TIERS}`;
-    const completed = tier === BattlePass.TOTAL_TIERS;
-    const xpPct = completed ? 100 : (xpIn / BattlePass.XP_PER_TIER) * 100;
-    document.getElementById('bp-xp-bar').style.width = `${xpPct}%`;
-    document.getElementById('bp-xp-text').textContent = completed ? 'ALL TIERS REACHED' : `${xpIn} / ${BattlePass.XP_PER_TIER} XP`;
-
-    document.getElementById('bp-summary').textContent = `${BattlePass.getClaimableCount()} rewards ready to claim · ${Number(Shop.getCoins()).toLocaleString()} pass credits`;
-    const premBox = document.getElementById('bp-premium-box');
-    premBox.classList.toggle('bp-premium-owned', premium);
-    if (premium) {
-      premBox.classList.add('bp-premium-owned');
-      document.getElementById('bp-unlock-btn').textContent = 'PREMIUM ACTIVE ✓';
-      document.getElementById('bp-unlock-btn').disabled = true;
-    } else {
-      const unlockBtn = document.getElementById('bp-unlock-btn');
-      unlockBtn.disabled = false;
-      unlockBtn.textContent = `UNLOCK · ${BattlePass.PREMIUM_COST} PASS CREDITS`;
-      unlockBtn.onclick = () => {
-        const res = Shop.buy('__bp_premium__', BattlePass.PREMIUM_COST);
-        if (res.ok) {
-          BattlePass.unlockPremium();
-          this._renderBattlePass();
-          this._refreshCoins();
-        } else {
-          unlockBtn.textContent = res.err.toUpperCase();
-          setTimeout(() => this._renderBattlePass(), 1500);
-        }
-      };
+  _renderBattlePass({ refresh = true } = {}) {
+    if (refresh) {
+      this._bpStatus = '';
+      this._bpError = '';
+      this._bpLoading = BattlePass.usesServer();
+      const revision = this._bpLoadRevision = (this._bpLoadRevision || 0) + 1;
+      if (this._bpLoading) BattlePass.refresh().then(result => {
+        if (this._bpLoadRevision !== revision) return;
+        this._bpLoading = false;
+        this._bpError = result.ok ? '' : result.err;
+        this._renderBattlePass({ refresh: false });
+      });
     }
+    const progress = BattlePass.getProgress();
+    const selected = progress.rewards.find(reward => reward.tier === this._bpSelectedTier) || progress.next;
+    this._bpSelectedTier = selected.tier;
+    const skin = getArmorSkin(selected.id);
+    const busy = !!(this._bpLoading || this._bpClaiming || this._bpError);
+    const element = id => document.getElementById(id);
+    element('bp-tier-label').textContent = 'Tier ' + progress.tier;
+    element('bp-tier-total').textContent = '/ ' + BattlePass.TOTAL_TIERS;
+    const percent = progress.complete ? 100 : progress.xpInTier / BattlePass.XP_PER_TIER * 100;
+    element('bp-xp-bar').style.width = percent + '%';
+    element('bp-xp-meter').setAttribute('aria-valuenow', progress.complete ? BattlePass.XP_PER_TIER : progress.xpInTier);
+    element('bp-xp-text').textContent = progress.complete ? 'All tiers reached' : progress.xpInTier.toLocaleString() + ' / ' + BattlePass.XP_PER_TIER + ' XP';
+    element('bp-next-reward').textContent = progress.claimable
+      ? progress.claimable + (progress.claimable === 1 ? ' skin' : ' skins') + ' ready to collect'
+      : progress.claimed === progress.rewards.length ? 'Collection complete. Every reward is yours.'
+      : Math.max(0, progress.next.xp - progress.xp).toLocaleString() + ' XP to your next skin';
+    element('bp-collected').textContent = progress.claimed + ' / ' + progress.rewards.length;
+    element('bp-summary').textContent = this._bpLoading ? 'Loading your progress…' : progress.claimable + (progress.claimable === 1 ? ' reward' : ' rewards') + ' ready to claim';
+    element('bp-save-note').textContent = BattlePass.usesServer()
+      ? 'Progress and claimed skins are saved to your game account.'
+      : 'Local preview progress is saved in this browser. Live rewards are earned in signed-in matches.';
+    element('bp-status').textContent = this._bpError || this._bpStatus || '';
+    element('bp-status').classList.toggle('is-error', !!this._bpError);
+    element('bp-retry').hidden = !this._bpError;
+    element('bp-retry').onclick = () => this._renderBattlePass();
+    element('bp-claim-all').disabled = busy || !progress.claimable;
+    element('bp-claim-all').textContent = this._bpClaiming ? 'CLAIMING…' : 'CLAIM ALL';
+    element('bp-claim-all').onclick = () => this._claimPassReward();
 
-    // Tier track
-    const track = document.getElementById('bp-track');
-    track.innerHTML = '';
-
-    this._bpPage ??= Math.floor((tier - 1) / 5);
-    const page = this._bpPage;
-    document.getElementById('bp-page-label').textContent = `TIERS ${page * 5 + 1}–${page * 5 + 5} / 30`;
-    for (const [id, delta] of [['bp-prev', -1], ['bp-next', 1]]) {
-      const button = document.getElementById(id);
-      button.disabled = delta < 0 ? page === 0 : page === 5;
-      button.onclick = () => { this._bpPage += delta; this._renderBattlePass(); };
+    const rail = element('bp-season-rail');
+    rail.replaceChildren();
+    for (let tier = 1; tier <= BattlePass.TOTAL_TIERS; tier++) {
+      const step = document.createElement('span');
+      step.className = (tier <= progress.tier ? 'reached ' : '') + (tier % 5 === 0 ? 'milestone' : '');
+      step.title = 'Tier ' + tier + (tier % 5 === 0 ? ' · Skin reward' : '');
+      rail.appendChild(step);
     }
-    document.getElementById('bp-current').onclick = () => { this._bpPage = Math.floor((tier - 1) / 5); this._renderBattlePass(); };
-    const claimAll = document.getElementById('bp-claim-all');
-    claimAll.disabled = BattlePass.getClaimableCount() === 0;
-    claimAll.onclick = () => {
-      for (let t = 1; t <= tier; t++) for (const lane of ['free','premium']) this._claimPassReward(t, lane);
-      this._renderBattlePass();
+    element('bp-feature-tier').textContent = 'TIER ' + selected.tier + ' / CHARACTER SKIN';
+    element('bp-feature-name').textContent = skin.name;
+    element('bp-feature-rarity').textContent = skin.rarity.toUpperCase();
+    element('bp-feature-rarity').style.color = RARITY_COLORS[skin.rarity];
+    const art = element('bp-feature-art');
+    art.src = skinArtwork(skin);
+    art.alt = skin.name;
+    const remaining = Math.max(0, selected.xp - progress.xp);
+    element('bp-feature-detail').textContent = selected.claimed ? 'Added to your inventory'
+      : selected.reached ? (Shop.isOwned(skin.id) ? 'Already in your inventory · collect this milestone' : 'Ready to add to your inventory')
+      : remaining.toLocaleString() + ' XP to unlock · ' + selected.xp.toLocaleString() + ' XP total';
+    const claim = element('bp-claim-selected');
+    claim.disabled = busy || selected.claimed || !selected.reached;
+    claim.textContent = selected.claimed ? 'COLLECTED ✓' : selected.reached ? 'CLAIM SKIN' : 'UNLOCKS AT TIER ' + selected.tier;
+    claim.onclick = () => this._claimPassReward(selected.tier);
+
+    const track = element('bp-track');
+    track.replaceChildren();
+    for (const reward of progress.rewards) track.appendChild(this._bpRewardCard(reward));
+    element('bp-next-milestone').onclick = () => {
+      this._bpSelectedTier = progress.next.tier;
+      this._renderBattlePass({ refresh: false });
+      element('bp-reward-' + this._bpSelectedTier)?.focus({ preventScroll: true });
     };
-    BP_TIERS.slice(page * 5, page * 5 + 5).forEach(({ tier: t, free, premium: prem }) => {
-      const reached   = tier >= t;
-      const col       = document.createElement('div');
-      col.className   = 'bp-tier-col' + (reached ? ' reached' : '') + (t === tier ? ' current' : '');
-
-      const numEl     = document.createElement('div');
-      numEl.className = 'bp-tier-num';
-      numEl.textContent = t;
-      col.appendChild(numEl);
-
-      col.appendChild(this._bpRewardCard(t, 'free',    free,  reached));
-      col.appendChild(this._bpRewardCard(t, 'premium', prem,  reached && premium));
-      track.appendChild(col);
-    });
-
-    // scroll to current tier
-    const curCol = track.querySelector('.current');
-    // Keep page position stable when claiming rewards.
   }
 
-  _bpRewardCard(tier, track, reward, unlocked) {
-    const card = document.createElement('div');
-    card.className = 'bp-reward-card' + (unlocked ? ' unlocked' : ' locked') + (track === 'premium' ? ' prem-track' : '');
-
-    const lane = document.createElement('div'); lane.className = 'bp-lane'; lane.textContent = track === 'free' ? 'FREE' : 'PREMIUM'; card.appendChild(lane);
-    const claimed = BattlePass.isClaimed(tier, track);
-    if (claimed) card.classList.add('claimed');
-
-    if (reward.type === 'skin') {
-      const skin = getArmorSkin(reward.id);
-      if (skin) {
-        card.style.background = `linear-gradient(145deg,#${skin.primary.toString(16).padStart(6,'0')},#${skin.secondary.toString(16).padStart(6,'0')})`;
-        if (skin.emissive) card.style.boxShadow = `0 0 10px #${skin.emissive.toString(16).padStart(6,'0')}88`;
-        const lbl = document.createElement('div');
-        lbl.className = 'bp-reward-label';
-        lbl.textContent = skin.name;
-        card.appendChild(lbl);
-        const rar = document.createElement('div');
-        rar.className = 'bp-reward-rarity';
-        rar.style.color = RARITY_COLORS[skin.rarity];
-        rar.textContent = skin.rarity.toUpperCase();
-        card.appendChild(rar);
-      }
-    } else {
-      const coinEl = document.createElement('div');
-      coinEl.className = 'bp-reward-coin';
-      coinEl.innerHTML = `<span class="bp-credit-icon">✦</span><strong>${reward.amount.toLocaleString()}</strong><span>PASS CREDITS</span>`;
-      card.appendChild(coinEl);
-    }
-
-    if (claimed) {
-      const chk = document.createElement('div');
-      chk.className = 'bp-claimed-badge';
-      chk.textContent = '✓ CLAIMED';
-      card.appendChild(chk);
-    } else if (unlocked) {
-      const btn = document.createElement('button');
-      btn.className = 'bp-claim-btn';
-      btn.textContent = 'CLAIM';
-      btn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        this._claimPassReward(tier, track);
-        this._renderBattlePass();
-      });
-      card.appendChild(btn);
-    }
-
-    if (!claimed && !unlocked) {
-      const state = document.createElement('div'); state.className = 'bp-locked-state';
-      state.textContent = BattlePass.getTier() < tier ? `REACH TIER ${tier}` : 'PREMIUM REQUIRED'; card.appendChild(state);
-    }
+  _bpRewardCard(reward) {
+    const skin = getArmorSkin(reward.id);
+    const card = document.createElement('button');
+    card.type = 'button';
+    card.id = 'bp-reward-' + reward.tier;
+    card.className = 'bp-milestone-card' + (reward.claimed ? ' claimed' : reward.reached ? ' ready' : ' locked');
+    card.setAttribute('aria-pressed', String(reward.tier === this._bpSelectedTier));
+    card.setAttribute('aria-label', 'Tier ' + reward.tier + ': ' + skin.name + '. ' + (reward.claimed ? 'Collected' : reward.reached ? 'Ready to claim' : 'Locked') + '. Preview reward.');
+    const header = document.createElement('span');
+    header.className = 'bp-card-tier';
+    header.textContent = 'TIER ' + reward.tier;
+    const image = document.createElement('img');
+    image.src = skinArtwork(skin);
+    image.alt = '';
+    image.loading = 'lazy';
+    image.decoding = 'async';
+    const title = document.createElement('strong');
+    title.textContent = skin.name.replace(/ Reforged$/, '');
+    const rarity = document.createElement('span');
+    rarity.className = 'bp-card-rarity';
+    rarity.textContent = skin.rarity;
+    rarity.style.color = RARITY_COLORS[skin.rarity];
+    const state = document.createElement('span');
+    state.className = 'bp-card-state';
+    state.textContent = reward.claimed ? 'COLLECTED ✓' : reward.reached ? 'READY TO CLAIM' : reward.xp.toLocaleString() + ' XP';
+    card.append(header, image, title, rarity, state);
+    card.onclick = () => {
+      this._bpSelectedTier = reward.tier;
+      this._renderBattlePass({ refresh: false });
+      document.getElementById(card.id)?.focus({ preventScroll: true });
+    };
     return card;
   }
 
-  _claimPassReward(tier, track) {
-    const result = BattlePass.claimReward(tier, track);
-    if (!result.ok) return;
-    if (result.reward.type === 'coins') Shop.addCoins(result.reward.amount);
-    else if (result.reward.type === 'skin') Shop.unlock(result.reward.id);
+  async _claimPassReward(tier = null) {
+    if (this._bpClaiming) return;
+    const owner = UserAccount.current();
+    this._bpClaiming = true;
+    this._bpStatus = '';
+    this._bpError = '';
+    this._renderBattlePass({ refresh: false });
+    const result = await BattlePass.claimRewards(tier);
+    if (owner !== UserAccount.current()) { this._bpClaiming = false; return; }
+    if (result.ok && BattlePass.usesServer()) await UserAccount.restore();
+    this._bpClaiming = false;
+    if (owner !== UserAccount.current()) return;
+    if (result.ok) this._bpStatus = 'Rewards collected. Your skins are ready in Inventory.';
+    else this._bpError = result.err;
+    this._renderBattlePass({ refresh: false });
   }
 }

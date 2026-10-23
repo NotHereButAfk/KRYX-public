@@ -1,41 +1,85 @@
-#panel-battlepass{width:min(1180px,94vw)!important;max-width:1180px!important;padding:38px!important;text-shadow:none!important}
-#panel-battlepass .bp-header-row{display:flex;align-items:center;justify-content:space-between;gap:28px;padding-bottom:28px;border-bottom:1px solid #ffffff25;margin-bottom:0}
-#panel-battlepass .bp-title{font-size:clamp(28px,4vw,48px);letter-spacing:3px;margin:14px 0 4px;font-weight:700}
-.bp-intro{color:#ccd7df;margin:0 0 24px}
-#panel-battlepass .bp-tier-label{font-size:24px;color:#fff;margin-bottom:12px}
-#panel-battlepass .bp-xp-bar-wrap{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
-#panel-battlepass .bp-xp-bar-bg{width:250px;height:7px;background:#0007;border-radius:8px;overflow:hidden}
-#panel-battlepass .bp-xp-bar-fill{height:100%;background:#42e1d4}
-#panel-battlepass .bp-xp-text{color:#bdece7;font-size:13px}
-#panel-battlepass .bp-premium-box{background:linear-gradient(135deg,#332945e8,#151b25ed);border:1px solid #b298d760;padding:24px;min-width:260px;border-radius:12px;text-align:left}
-#panel-battlepass .bp-prem-label{color:#dac0ff;font-size:17px;letter-spacing:2px}
-#panel-battlepass .bp-prem-desc{color:#ccd0dd;font-size:14px;margin:10px 0 20px}
-#panel-battlepass button{cursor:pointer;border-radius:5px;font:inherit;letter-spacing:.7px;min-height:40px}
-#panel-battlepass button:disabled{opacity:.45;cursor:default}
-#panel-battlepass button:focus-visible{outline:2px solid white;outline-offset:3px}
-#panel-battlepass .bp-unlock-btn{font-size:12px;background:#ad83eb;color:#110d19;padding:12px;border:0;width:100%;font-weight:700}
-.bp-toolbar{display:flex;justify-content:space-between;align-items:center;gap:18px;padding:24px 0}
-.bp-toolbar strong{color:#fff;font-size:17px}.bp-toolbar p{margin:7px 0 0;color:#c3cbd2;font-size:14px}
-#bp-claim-all{background:#37d7c7;border:0;color:#091d21;padding:10px 24px;font-weight:700!important}
-.bp-navigation{display:flex;align-items:center;gap:12px;margin:0 0 18px}
-.bp-navigation button{border:1px solid #ffffff30;background:#151e29aa;color:#eaf6ff;padding:5px 14px}
-#bp-page-label{font-size:13px;letter-spacing:2px;color:#dae4ee;min-width:150px;text-align:center}
-#bp-current{margin-left:auto;font-size:12px!important}
-#panel-battlepass .bp-track{display:grid;grid-template-columns:repeat(5,minmax(130px,1fr));gap:14px;padding:0 0 12px;overflow-x:auto}
-#panel-battlepass .bp-tier-col{width:auto;gap:10px;align-items:stretch}
-#panel-battlepass .bp-tier-num{font-size:14px;color:#a6b4c1;padding:7px;text-align:center}
-#panel-battlepass .bp-tier-col.current .bp-tier-num{color:#55efdb;background:#26d6bd1c;border-radius:5px}
-#panel-battlepass .bp-reward-card{width:100%;height:174px;box-sizing:border-box;border:1px solid #ffffff25!important;background:#131c27e8!important;border-radius:9px;opacity:1;justify-content:flex-start;padding:14px 10px 38px;gap:8px}
-#panel-battlepass .bp-reward-card.prem-track{background:linear-gradient(150deg,#342741ee,#171b28ef)!important;border-color:#a38ac14d!important}
-#panel-battlepass .bp-reward-card.unlocked:not(.claimed){border-color:#4ed9cd90!important}
-#panel-battlepass .bp-reward-card.claimed{background:#17232cba!important}
-.bp-lane{font-size:10px;letter-spacing:1.8px;color:#9fafbd;align-self:flex-start}.prem-track .bp-lane{color:#d4b4fa}
-#panel-battlepass .bp-reward-coin{display:flex;flex-direction:column;align-items:center;gap:5px;line-height:1;color:#f7dda0}
-.bp-credit-icon{font-size:30px;color:#eccf83}.bp-reward-coin strong{font-size:25px}.bp-reward-coin span:last-child{font-size:9px;letter-spacing:1px;color:#bfc9d2}
-#panel-battlepass .bp-claim-btn{position:absolute;bottom:0;left:0;width:100%;border:0;border-radius:0;background:#36d7c7;color:#102026;height:32px;min-height:32px;font-size:11px;font-weight:700}
-#panel-battlepass .bp-claimed-badge,.bp-locked-state{position:absolute;bottom:0;left:0;right:0;top:auto;text-align:center;padding:10px 4px;font-size:10px;letter-spacing:1px;color:#b5c3cf;background:#0002}
-#panel-battlepass .bp-claimed-badge{color:#6ce4c5}
-#panel-battlepass .bp-reward-label{font-size:15px;margin-top:18px}
-#panel-battlepass .bp-reward-rarity{font-size:10px}
-.bp-footnote{color:#bdc8d2;font-size:13px;line-height:1.7;margin:20px 0 0;max-width:780px}
-@media(max-width:700px){#panel-battlepass{padding:24px 16px!important}.bp-header-row{flex-direction:column;align-items:stretch!important}#panel-battlepass .bp-premium-box{min-width:0}.bp-toolbar{align-items:flex-start}.bp-toolbar strong{font-size:14px}.bp-toolbar p{font-size:12px}#bp-claim-all{padding:10px;white-space:nowrap}.bp-navigation{gap:6px}#bp-page-label{min-width:110px;font-size:11px}#bp-current{font-size:10px!important;padding:5px 8px}.bp-track{scroll-snap-type:x mandatory}.bp-tier-col{scroll-snap-align:start}}
+/* Free cosmetic pass. These selectors outrank legacy menu styles in either bundle order. */
+body #app #panel-battlepass { --menu-content-width: 1220px; }
+body #app #panel-battlepass .bp-season-layout { display: grid; grid-template-columns: 1fr 1.05fr; align-items: stretch; gap: 44px; }
+body #app #panel-battlepass .bp-season-copy { min-width: 0; padding: 10px 0 0; }
+body #app #panel-battlepass .bp-eyebrow { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; color: #bccbcd; font-size: 12px; line-height: 1.4; font-weight: 700; letter-spacing: .13em; }
+body #app #panel-battlepass .bp-free-tag { padding: 4px 8px; border: 1px solid #b4e1c943; border-radius: 4px; color: #b3edcc; background: #5cbe7a14; font-size: 10px; letter-spacing: .06em; }
+body #app #panel-battlepass .bp-season-title { margin: 20px 0 16px; color: #f1f4f4; font-size: clamp(36px, 3.8vw, 52px); font-weight: 700; letter-spacing: -.025em; line-height: .98; }
+body #app #panel-battlepass .bp-season-intro { max-width: 470px; color: var(--menu-muted); font-size: 16px; line-height: 1.5; margin: 0 0 28px; }
+body #app #panel-battlepass .bp-progress-panel { padding: 20px; background: #11171a70; border: 1px solid var(--menu-line); border-radius: 8px; }
+body #app #panel-battlepass .bp-progress-heading { display: flex; align-items: baseline; gap: 8px; color: #b2c0c7; }
+body #app #panel-battlepass #bp-tier-label { font-size: 26px; font-weight: 700; color: #f2f8f6; line-height: 1; }
+body #app #panel-battlepass #bp-tier-total { font-size: 16px; }
+body #app #panel-battlepass #bp-xp-text { margin-left: auto; font-size: 13px; }
+body #app #panel-battlepass .bp-progress-meter { height: 6px; background: #070d1280; border-radius: 8px; overflow: hidden; margin: 14px 0 9px; }
+body #app #panel-battlepass #bp-xp-bar { height: 100%; width: 0; background: #a0d5cf; border-radius: inherit; }
+body #app #panel-battlepass #bp-next-reward { color: #c7ddd8; font-size: 13px; margin: 0 0 22px; }
+body #app #panel-battlepass #bp-season-rail { display: grid; grid-template-columns: repeat(30, minmax(0, 1fr)); gap: 4px; align-items: end; height: 12px; }
+body #app #panel-battlepass #bp-season-rail span { height: 6px; background: #8fa1ab32; border-radius: 1px; }
+body #app #panel-battlepass #bp-season-rail .milestone { height: 12px; background: #b7c7cb50; }
+body #app #panel-battlepass #bp-season-rail .reached { background: #a0d5cf; }
+body #app #panel-battlepass .bp-progress-caption { display: flex; justify-content: space-between; font-size: 9px; letter-spacing: .09em; color: #a5b5bc; margin-top: 6px; }
+body #app #panel-battlepass .bp-season-facts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-top: 18px; }
+body #app #panel-battlepass .bp-season-facts div { display: flex; flex-direction: column; gap: 2px; }
+body #app #panel-battlepass .bp-season-facts strong { color: #edf4f2; font-size: 22px; font-weight: 600; }
+body #app #panel-battlepass .bp-season-facts span { color: #b6c3ca; font-size: 9px; line-height: 1.5; letter-spacing: .07em; }
+body #app #panel-battlepass .bp-feature { display: grid; grid-template-columns: 1fr 1fr; min-width: 0; background: #141b20b8; border: 1px solid #c8dde42c; border-radius: 10px; overflow: hidden; }
+body #app #panel-battlepass .bp-feature-image { position: relative; min-width: 0; overflow: hidden; }
+body #app #panel-battlepass #bp-feature-art { width: 100%; height: 100%; min-height: 330px; object-fit: cover; object-position: 50% 35%; display: block; }
+body #app #panel-battlepass .bp-feature-free { position: absolute; bottom: 18px; left: 16px; padding: 5px 9px; color: #e0f8eb; background: #10241fe8; border: 1px solid #a0d5cf70; font-size: 10px; letter-spacing: .08em; font-weight: 700; border-radius: 4px; }
+body #app #panel-battlepass .bp-feature-info { display: flex; flex-direction: column; align-items: flex-start; justify-content: center; padding: 26px 22px; min-width: 0; }
+body #app #panel-battlepass .bp-feature-info .bp-eyebrow { font-size: 10px; letter-spacing: .08em; }
+body #app #panel-battlepass #bp-feature-name { font-size: 31px; line-height: 1.05; margin: 17px 0 12px; color: #fff; font-weight: 600; }
+body #app #panel-battlepass #bp-feature-rarity { font-size: 11px; letter-spacing: .14em; }
+body #app #panel-battlepass #bp-feature-detail { color: #bfced1; font-size: 14px; line-height: 1.45; margin: 24px 0 18px; }
+body #app #panel-battlepass #bp-claim-selected { width: 100%; min-height: 44px; padding: 10px; background: #a0d5cf; color: #152e2c; border: 1px solid transparent; font-size: 12px; font-weight: 700; }
+body #app #panel-battlepass .bp-collection-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 20px; padding-top: 28px; margin-top: 32px; margin-bottom: 18px; border-top: 1px solid var(--menu-line); }
+body #app #panel-battlepass .bp-collection-toolbar h3 { font-size: 18px; letter-spacing: .07em; margin: 0; line-height: 1.3; }
+body #app #panel-battlepass .bp-collection-toolbar p { color: #bcc9cd; margin: 3px 0 0; font-size: 13px; }
+body #app #panel-battlepass .bp-collection-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+body #app #panel-battlepass .bp-collection-actions button { min-height: 42px; font-size: 12px!important; padding: 10px 16px; }
+body #app #panel-battlepass .bp-milestone-track { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 14px; }
+body #app #panel-battlepass button.bp-milestone-card { display: flex; flex-direction: column; align-items: stretch; min-width: 0; text-align: left; border: 1px solid #c1d1db30; border-radius: 8px; padding: 0; overflow: hidden; background: #171e23a8; color: white; }
+body #app #panel-battlepass button.bp-milestone-card[aria-pressed='true'] { border-color: #a0d5cf; background: #243d3db0; box-shadow: 0 0 0 1px #a0d5cf!important; }
+body #app #panel-battlepass .bp-card-tier { padding: 10px 12px; font-size: 10px; color: #c2d0d3; letter-spacing: .1em; }
+body #app #panel-battlepass .bp-milestone-card img { width: 100%; aspect-ratio: 1; object-fit: cover; display: block; }
+body #app #panel-battlepass .bp-milestone-card strong { padding: 11px 12px 2px; font-size: 19px; line-height: 1.2; font-weight: 600; }
+body #app #panel-battlepass .bp-card-rarity { padding: 0 12px 11px; font-size: 10px; letter-spacing: .1em; text-transform: uppercase; }
+body #app #panel-battlepass .bp-card-state { padding: 9px 5px; border-top: 1px solid #c7d9e120; text-align: center; font-size: 10px; letter-spacing: .06em; color: #b9c7d0; margin-top: auto; background: #090e1240; }
+body #app #panel-battlepass .bp-milestone-card.ready .bp-card-state { background: #79c3b827; color: #b3efdd; }
+body #app #panel-battlepass .bp-milestone-card.claimed .bp-card-state { color: #b5dfbf; }
+body #app #panel-battlepass .bp-feedback { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; margin-top: 14px; }
+body #app #panel-battlepass #bp-status { margin: 0; color: #c1e6d8; font-size: 14px; }
+body #app #panel-battlepass #bp-status.is-error { color: #ffd1b4; }
+body #app #panel-battlepass .bp-save-note { color: #acbac1; margin: 8px 0 0; font-size: 12px; }
+body #app #panel-battlepass #bp-retry { min-height: 36px; font-size: 12px; padding: 6px 14px; }
+body #app #panel-battlepass #bp-retry[hidden] { display: none; }
+
+@media (max-width: 1080px) {
+  body #app #panel-battlepass .bp-season-layout { grid-template-columns: 1fr 1fr; gap: 24px; }
+  body #app #panel-battlepass .bp-feature { grid-template-columns: 1fr; }
+  body #app #panel-battlepass .bp-feature-image { height: 220px; }
+  body #app #panel-battlepass #bp-feature-art { min-height: 0; object-position: 50% 25%; }
+  body #app #panel-battlepass .bp-feature-info { padding: 18px; }
+  body #app #panel-battlepass #bp-feature-name { font-size: 27px; margin: 9px 0 6px; }
+  body #app #panel-battlepass #bp-feature-detail { margin: 12px 0; }
+  body #app #panel-battlepass .bp-milestone-track { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+@media (max-width: 640px) {
+  body #app #panel-battlepass .bp-season-layout { grid-template-columns: 1fr; gap: 26px; }
+  body #app #panel-battlepass .bp-season-title { font-size: 39px; }
+  body #app #panel-battlepass .bp-season-intro { margin-bottom: 20px; }
+  body #app #panel-battlepass .bp-feature { grid-template-columns: .9fr 1fr; }
+  body #app #panel-battlepass .bp-feature-image { height: auto; }
+  body #app #panel-battlepass #bp-feature-art { min-height: 260px; object-position: 50% 40%; }
+  body #app #panel-battlepass .bp-feature-info { padding: 16px 12px; }
+  body #app #panel-battlepass #bp-feature-name { font-size: 25px; }
+  body #app #panel-battlepass .bp-feature-info .bp-eyebrow { font-size: 9px; }
+  body #app #panel-battlepass .bp-feature-free { left: 8px; bottom: 12px; font-size: 9px; }
+  body #app #panel-battlepass .bp-collection-toolbar { margin-top: 24px; padding-top: 22px; align-items: flex-start; flex-direction: column; gap: 14px; }
+  body #app #panel-battlepass .bp-collection-actions { width: 100%; }
+  body #app #panel-battlepass .bp-collection-actions button { flex: 1; }
+  body #app #panel-battlepass .bp-milestone-track { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+  body #app #panel-battlepass .bp-progress-panel { padding: 16px; }
+  body #app #panel-battlepass .bp-eyebrow { font-size: 11px; }
+}

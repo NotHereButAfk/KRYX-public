@@ -168,19 +168,27 @@
     <div id="panel-abilities" class="nav-panel nav-panel-wide hidden">
       <button class="panel-x" data-close-panel aria-label="Close abilities">[X]</button>
       <div class="ev-page-title">ABILITIES</div>
-      <p class="ev-page-copy">Choose the tactical kit you take into every public match.</p>
+      <p class="ev-page-copy">Your tactical kit. Reposition, break sightlines, and control space. Each ability recharges in 15 seconds.</p>
       <div class="ability-page-grid">
         <article class="ability-page-card selected">
           <span class="ability-page-key">Q</span>
-          <div><strong>TELEPORT</strong><p>Blink forward through open space to break sightlines.</p></div>
+          <div><strong>BLINK</strong><p>Press Q to preview a destination up to 22 m away. Click to teleport. Q or right click cancels.</p></div>
         </article>
         <article class="ability-page-card">
-          <span class="ability-page-key">G</span>
+          <span class="ability-page-key">U</span>
           <div><strong>FRAG GRENADE</strong><p>Throw a timed explosive that deals radial damage.</p></div>
         </article>
         <article class="ability-page-card">
-          <span class="ability-page-key">F</span>
+          <span class="ability-page-key">G</span>
           <div><strong>SMOKE GRENADE</strong><p>Block long lanes with a temporary smoke volume.</p></div>
+        </article>
+        <article class="ability-page-card">
+          <span class="ability-page-key">V</span>
+          <div><strong>TIME BOMB</strong><p>Plant a timed explosive while grounded. Watch its fuse and clear the area.</p></div>
+        </article>
+        <article class="ability-page-card">
+          <span class="ability-page-key">E</span>
+          <div><strong>IMPULSE</strong><p>Release a close-range blast that pushes nearby opponents away.</p></div>
         </article>
       </div>
     </div>
@@ -518,25 +526,29 @@
 
     <!-- ===================== PANEL: BATTLE PASS ===================== -->
     <div id="panel-battlepass" class="nav-panel nav-panel-wide hidden">
-      <div class="bp-header-row">
-        <div>
-          <div class="panel-label">SEASON 01 <span class="bp-season-tag">30 TIERS</span></div><h2 class="bp-title">BATTLE PASS</h2><p class="bp-intro">Play. Progress. Collect.</p>
-          <div id="bp-tier-label" class="bp-tier-label">Tier 1 / 30</div>
-          <div class="bp-xp-bar-wrap">
-            <div class="bp-xp-bar-bg"><div id="bp-xp-bar" class="bp-xp-bar-fill"></div></div>
-            <span id="bp-xp-text" class="bp-xp-text">0 / 500 XP</span>
+      <div class="bp-season-layout">
+        <section class="bp-season-copy">
+          <div class="bp-eyebrow">BATTLE PASS / SEASON 01 <span class="bp-free-tag">ALL REWARDS FREE</span></div>
+          <h2 class="bp-season-title">PLAY FOR<br>YOUR COLLECTION.</h2>
+          <p class="bp-season-intro">Six Reforged skins. Thirty tiers. Earn your way through the battle pass, with a skin to collect every five tiers.</p>
+          <div class="bp-progress-panel">
+            <div class="bp-progress-heading"><strong id="bp-tier-label">Tier 1</strong><span id="bp-tier-total">/ 30</span><span id="bp-xp-text">0 / 500 XP</span></div>
+            <div id="bp-xp-meter" class="bp-progress-meter" role="progressbar" aria-label="XP toward next tier" aria-valuemin="0" aria-valuemax="500" aria-valuenow="0"><div id="bp-xp-bar"></div></div>
+            <p id="bp-next-reward"></p>
+            <div id="bp-season-rail" aria-hidden="true"></div>
+            <div class="bp-progress-caption"><span>01 / START</span><span>30 / COMPLETE</span></div>
           </div>
-        </div>
-        <div class="bp-premium-box" id="bp-premium-box">
-          <div class="bp-prem-label">PREMIUM PASS</div>
-          <div class="bp-prem-desc">An extra reward at every tier</div>
-          <button id="bp-unlock-btn" class="bp-unlock-btn">UNLOCK — &#128176; 1000</button>
-        </div>
+          <div class="bp-season-facts"><div><strong id="bp-collected">0 / 6</strong><span>SKINS COLLECTED</span></div><div><strong>25 XP</strong><span>PER ELIMINATION</span></div><div><strong>100 XP</strong><span>PER COMPLETED MATCH</span></div></div>
+        </section>
+        <section class="bp-feature" aria-label="Selected reward preview">
+          <div class="bp-feature-image"><img id="bp-feature-art" alt="" decoding="async"><span class="bp-feature-free">FREE REWARD</span></div>
+          <div class="bp-feature-info"><span id="bp-feature-tier" class="bp-eyebrow"></span><h3 id="bp-feature-name"></h3><span id="bp-feature-rarity"></span><p id="bp-feature-detail"></p><button id="bp-claim-selected" type="button">CLAIM SKIN</button></div>
+        </section>
       </div>
-      <div class="bp-toolbar"><div><strong id="bp-summary"></strong><p>Earn XP by playing matches and eliminating enemies.</p></div><button id="bp-claim-all" type="button">CLAIM ALL</button></div>
-      <div class="bp-navigation"><button id="bp-prev" aria-label="Previous five tiers">←</button><span id="bp-page-label"></span><button id="bp-next" aria-label="Next five tiers">→</button><button id="bp-current">CURRENT TIER</button></div>
-      <div id="bp-track" class="bp-track"></div>
-      <p class="bp-footnote">Free rewards are available to everyone. Premium unlocks the second track, including reached tiers. Pass credits are separate from your K-coin balance.</p>
+      <div class="bp-collection-toolbar"><div><h3>THE REWARDS</h3><p id="bp-summary"></p></div><div class="bp-collection-actions"><button id="bp-next-milestone" type="button">NEXT REWARD</button><button id="bp-claim-all" type="button">CLAIM ALL</button></div></div>
+      <div id="bp-track" class="bp-milestone-track" aria-label="Battle pass reward previews"></div>
+      <div class="bp-feedback"><p id="bp-status" role="status" aria-live="polite"></p><button id="bp-retry" type="button" hidden>TRY AGAIN</button></div>
+      <p id="bp-save-note" class="bp-save-note"></p>
     </div>
 
     <!-- ===================== MAP LOADING SCREEN (ev.io style) ===================== -->

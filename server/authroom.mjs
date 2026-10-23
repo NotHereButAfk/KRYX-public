@@ -2031,7 +2031,7 @@ export class AuthRoom {
                blind: p.blindUntil > now, blindTicks: Math.max(0, p.blindUntil - now),
                abilities: p.abilities, abilityCooldowns: p.abilityCooldowns, abilityCD: +p.abilityCD.toFixed(2) },
         players: publicList,
-        projectiles: this.projectiles.map(p => ({id:p.id,kind:p.kind,wid:p.wid,by:p.by,x:p.x,y:p.y,z:p.z,vx:p.vx,vy:p.vy,vz:p.vz})),
+        projectiles: this.projectiles.map(p => ({id:p.id,kind:p.kind,wid:p.wid,by:p.by,x:p.x,y:p.y,z:p.z,vx:p.vx,vy:p.vy,vz:p.vz,remaining:p.until==null?undefined:Math.max(0,(p.until-this.tick)/TICK_HZ)})),
         bombs: this.frags.filter(f=>f.kind==='timebomb').map(f=>({id:f.id,x:f.x,y:f.y,z:f.z,remaining:Math.max(0,(f.until-this.tick)/TICK_HZ)})),
         smokes: smokeList,
         lootPads: this._lootPadPayload(),

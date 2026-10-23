@@ -691,7 +691,7 @@ export class AuthNetBridge {
         if (e.id !== me) this.game.hud?.addKillFeed?.(`${e.byName} eliminated ${e.victimName}${tag}`);
       }
       else if (e.e === 'ability' && e.kind === 'smoke') {
-        this.game.grenadeSystem?.showAuthoritativeSmoke?.(new THREE.Vector3(e.x, e.y, e.z));
+        this.game.grenadeSystem?.showAuthoritativeSmoke?.(new THREE.Vector3(e.x, e.y, e.z), e.r);
       }
       else if (e.e === 'ability' && e.kind === 'impulse') {
         this.game.grenadeSystem?.showImpulse(new THREE.Vector3(e.x,e.y,e.z));

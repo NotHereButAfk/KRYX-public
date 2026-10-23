@@ -100,9 +100,9 @@ if (/href=["']\/tournaments["']/.test(index)) failures.push('tournaments must no
 requireMatch(index, /id=["']crosshair["']/, 'crosshair element');
 requireMatch(index, /id=["']map-loading["'][^>]*class=["'][^"']*hidden/,
   'match loader stays hidden beneath the first-paint startup shell');
-requireMatch(index, /id=["']connect-screen["'][\s\S]*?boot-connect-logo[\s\S]*?boot-connect-text/,
+requireMatch(index, /id=["']connect-screen["'][\s\S]*?loading-brand[\s\S]*?boot-connect-text/,
   'brief engine connection composition');
-for (const loadingClass of ['ml-building', 'ml-panel', 'ml-name', 'ml-spinner']) {
+for (const loadingClass of ['ml-building', 'ml-panel', 'ml-name', 'loading-pulse']) {
   requireMatch(index, new RegExp(`class=["'][^"']*${loadingClass}`), `arena loading composition: ${loadingClass}`);
 }
 requireMatch(css, /\.ml-panel[^}]*width:\s*clamp\(260px,\s*23.85vw,\s*454px\)/s,
@@ -132,13 +132,17 @@ requireMatch(game, /_showStartupError[\s\S]*?boot-retry[\s\S]*?_runConnectSequen
 requireMatch(game, /const stages = \[[\s\S]*?preloadHumanSoldier[\s\S]*?preloadWeaponModels[\s\S]*?preloadSpartanModel[\s\S]*?for \(const \[label, starter\] of stages\)/,
   'soldier, weapon, and armor presentation assets use the deferred sequential preload path');
 requireMatch(menu, /querySelectorAll\(['"]\[data-panel\]['"]\)/, 'menu panel wiring');
-requireMatch(index, /ability-page-key["']>Q<[\s\S]*?<strong>TELEPORT<\/strong>/,
+requireMatch(index, /ability-page-key["']>Q<[\s\S]*?<strong>BLINK<\/strong>/,
   'abilities page advertises Q teleport');
-requireMatch(index, /ability-page-key["']>G<[\s\S]*?<strong>FRAG GRENADE<\/strong>/,
-  'abilities page advertises G frag');
-requireMatch(index, /ability-page-key["']>F<[\s\S]*?<strong>SMOKE GRENADE<\/strong>/,
-  'abilities page advertises F smoke');
-if (/FLASH GRENADE|<span class="ability-page-key">E<\/span>|<strong>IMPULSE<\/strong>/.test(index)) {
+requireMatch(index, /ability-page-key["']>U<[\s\S]*?<strong>FRAG GRENADE<\/strong>/,
+  'abilities page advertises U frag');
+requireMatch(index, /ability-page-key["']>G<[\s\S]*?<strong>SMOKE GRENADE<\/strong>/,
+  'abilities page advertises G smoke');
+requireMatch(index, /ability-page-key["']>V<[\s\S]*?<strong>TIME BOMB<\/strong>/,
+  'abilities page advertises V bomb');
+requireMatch(index, /ability-page-key["']>E<[\s\S]*?<strong>IMPULSE<\/strong>/,
+  'abilities page advertises E impulse');
+if (/FLASH GRENADE/.test(index)) {
   failures.push('abilities page has no stale unshipped bindings');
 }
 requireMatch(hud, /--xhair-size/, 'dynamic crosshair spread');

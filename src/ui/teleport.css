@@ -1,0 +1,7 @@
+body #app #teleport-aim{width:310px;height:110px;border:0;background:none;box-shadow:none;transform:translate(-50%,-19px);color:#b6ffed;text-align:center;font:600 12px/1.4 sans-serif;letter-spacing:.08em}
+#teleport-aim .blink-reticle{display:block;width:30px;height:30px;margin:3px auto 16px;border:2px solid currentColor;border-radius:6px;box-shadow:0 0 0 5px #172b2a55;transform:rotate(45deg)}
+#teleport-aim .blink-status{display:table;margin:auto;padding:5px 10px;background:#101b22d9;border:1px solid #a0d5cf55;border-radius:4px}
+#teleport-aim .blink-hint{display:block;margin-top:6px;font-size:9px;letter-spacing:.04em;color:#e2e9ec;text-shadow:0 1px 3px #000}
+body #app #teleport-aim[data-valid="false"]{color:#ffbe9e}
+body #app #teleport-aim[hidden]{display:none}
+@media(max-width:600px){body #app #teleport-aim{width:260px}.blink-hint{font-size:8px}}

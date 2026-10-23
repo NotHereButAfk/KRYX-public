@@ -4,6 +4,7 @@ import { getArmorSkin } from './characterskins.mjs';
 import { TeamRoom } from './teamroom.mjs';
 import { SurvivalRoom } from './survivalroom.mjs';
 import { createAchievementService } from './achievementservice.mjs';
+import { createBattlePassService } from './battlepassservice.mjs';
 import { createEconomyService } from './economy/service.mjs';
 import { createHash } from 'node:crypto';
 // Authoritative game server host (Phase 4) — wraps AuthRoom with the
@@ -185,6 +186,7 @@ export function makeAuthServer({ server, port, staticRoot, targetPopulation = 0,
     : (_req, res) => { res.writeHead(200, { 'content-type': 'text/plain' }); res.end('kryx auth server'); };
   const accounts = accountService === undefined ? createAccountService() : accountService;
   const achievements = createAchievementService(accounts);
+  const battlepass = createBattlePassService(accounts, { flushProgress: async () => { await achievements?.ready; await achievements?.flush(); } });
   const economy = createEconomyService(accounts, {serverId:process.env.E_SERVER_ID || 'public-1',mode,privateMatch:process.env.PRIVATE_MATCH==='1'});
   const payments = createPaymentService(accounts ? { pool: accounts.pool, session: accounts.session, ready: economy?.ready || accounts.ready } : null);
   const tournaments = createTournamentService(accounts ? { pool: accounts.pool, session: accounts.session, ready: economy?.ready || accounts.ready } : null);
@@ -231,6 +233,11 @@ export function makeAuthServer({ server, port, staticRoot, targetPopulation = 0,
       return;
     }
     if(!economy && pathname.startsWith('/api/e/')){res.writeHead(503,{'Content-Type':'application/json'});res.end(JSON.stringify({error:'E database unavailable'}));return;}
+    if (pathname.startsWith('/api/battlepass')) {
+      if (battlepass) await battlepass.handler(req, res, pathname);
+      else { res.writeHead(503, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Sign in on the live server to collect rewards.' })); }
+      return;
+    }
     if(pathname==='/withdrawal' || pathname==='/withdrawal.html'){res.writeHead(302,{Location:'/earnings','Cache-Control':'no-store'});res.end();return;}
     if (economy && await economy.handler(req, res, pathname)) return;
     if (withdrawals && await withdrawals(req, res, pathname)) return;

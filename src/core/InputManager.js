@@ -64,7 +64,7 @@ export class InputManager {
       if (Number.isFinite(e.movementY)) this.mouseDY += e.movementY;
     };
     this._onMouseDown = (e) => {
-      if (e.button === 0) this.mouseDown = true;
+      if (e.button === 0) { this.mouseDown = true; this.justPressed.add('PrimaryFire'); }
       if (e.button === 2) this.rightMouseDown = true;
     };
     this._onMouseUp = (e) => {

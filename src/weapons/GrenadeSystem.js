@@ -4,11 +4,11 @@ import * as THREE from 'three';
 import { createEnergyBlast } from '../effects/EnergyBlast.js';
 import { createLauncherGrenade } from './LauncherGrenadeModel.js';
 import { prepareExplosionLights, disposeExplosion, spawnExplosion, updateExplosion } from '../effects/ExplosionEffect.js';
+import { createAbilityGrenade, updateGrenadeIndicator, createGrenadeTrail, updateGrenadeTrail,
+  createImpulseWave, updateImpulseWave, createSmokeCloud, updateSmokeCloud, disposeAbilityObject } from '../effects/AbilityGrenadeEffects.js';
 
 const THROW_SPEED = 16;
 const THROW_ARC   = 4.5;
-const GRAVITY     = -18;
-const BOUNCE_DAMP = 0.40;
 const FRAG_FUSE   = 2.5;
 const SMOKE_FUSE  = 1.2;
 const FRAG_RADIUS = 9;
@@ -33,6 +33,8 @@ export class GrenadeSystem {
     this._travelDir = new THREE.Vector3();
     this._surfaceNormal = new THREE.Vector3(0, 1, 0);
     this._travelRay = new THREE.Ray();
+    this._effectTime = 0;
+    this._lastBounceSound = -1;
 
     this.onExplode = null; // (point, radius, damage) => void
     this.onSelfDamage = null; // (damage, point) => void; Game owns death flow
@@ -67,57 +69,20 @@ export class GrenadeSystem {
     mesh.position.copy(pos);
     this.scene.add(mesh);
 
-    this.throwables.push({ mesh, pos: pos.clone(), vel, type, life: type === 'frag' ? FRAG_FUSE : SMOKE_FUSE });
+    const life = type === 'frag' ? FRAG_FUSE : SMOKE_FUSE;
+    const trail = createGrenadeTrail(this.scene, pos, type);
+    this.throwables.push({ mesh, pos: pos.clone(), vel, type, life, duration:life, trail });
   }
 
   _buildMesh(type) {
-    const g = new THREE.Group();
-    if (type === 'frag') {
-      const bodyMat = new THREE.MeshStandardMaterial({ color: 0x2e3d1f, roughness: 0.7, metalness: 0.45 });
-      const body = new THREE.Mesh(new THREE.SphereGeometry(0.065, 10, 8), bodyMat);
-      g.add(body);
-      // segmented surface bands
-      for (let i = -1; i <= 1; i++) {
-        const band = new THREE.Mesh(
-          new THREE.TorusGeometry(0.065, 0.009, 6, 14),
-          new THREE.MeshStandardMaterial({ color: 0x1a2410, roughness: 0.8, metalness: 0.3 })
-        );
-        band.rotation.x = Math.PI / 2;
-        band.position.y = i * 0.03;
-        g.add(band);
-      }
-      const ring = new THREE.Mesh(
-        new THREE.TorusGeometry(0.022, 0.005, 6, 12),
-        new THREE.MeshStandardMaterial({ color: 0xb0a890, roughness: 0.4, metalness: 0.75 })
-      );
-      ring.position.y = 0.075;
-      g.add(ring);
-    } else {
-      const bodyMat = new THREE.MeshStandardMaterial({ color: 0x3a5068, roughness: 0.55, metalness: 0.35 });
-      const body = new THREE.Mesh(new THREE.CylinderGeometry(0.042, 0.042, 0.14, 10), bodyMat);
-      g.add(body);
-      const band = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.046, 0.046, 0.028, 10),
-        new THREE.MeshStandardMaterial({ color: 0xff6600, roughness: 0.5, metalness: 0.2 })
-      );
-      band.position.y = 0.028;
-      g.add(band);
-      const cap = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.030, 0.042, 0.018, 10),
-        new THREE.MeshStandardMaterial({ color: 0x2a3d4f, roughness: 0.6, metalness: 0.4 })
-      );
-      cap.position.y = 0.079;
-      g.add(cap);
-    }
-    g.traverse(o => { if (o.isMesh) o.castShadow = true; });
-    return g;
+    return createAbilityGrenade(type);
   }
 
   update(dt, player, world = null) {
+    this._effectTime += dt;
     for(let i=this.impulseWaves.length-1;i>=0;i--){
-      const wave=this.impulseWaves[i];wave.age+=dt;wave.mesh.scale.setScalar(.1+wave.age*12);
-      wave.mesh.material.opacity=Math.max(0,1-wave.age/.5);
-      if(wave.age>=.5){this.scene.remove(wave.mesh);wave.mesh.geometry.dispose();wave.mesh.material.dispose();this.impulseWaves.splice(i,1);}
+      const wave=this.impulseWaves[i];
+      if(updateImpulseWave(wave,dt)){disposeAbilityObject(this.scene,wave.mesh);this.impulseWaves.splice(i,1);}
     }
     for (const kind of ['frag','smoke']) {
       const before=this.cooldowns[kind];
@@ -142,15 +107,18 @@ export class GrenadeSystem {
         return !world && distance>=0 && distance<=length ? {distance,nx:0,ny:1,nz:0} : null;
       });
       t.physicsRemainder=state.physicsRemainder;
+      this._bounceFeedback(t.mesh,t.vel.x,t.vel.y,t.vel.z,state.vx,state.vy,state.vz);
       t.pos.set(state.x,state.y,state.z); t.vel.set(state.vx,state.vy,state.vz);
       t.life -= dt;
       t.mesh.position.copy(t.pos);
       tumbleGrenade(t.mesh,t.vel.x,t.vel.y,t.vel.z,dt);
+      updateGrenadeIndicator(t.mesh,dt,t.life,t.duration);
+      if(t.trail) updateGrenadeTrail(t.trail,t.pos,t.vel.length(),dt);
 
       if (t.life <= 0) {
         this._detonate(t, player);
-        this.scene.remove(t.mesh);
-        t.mesh.traverse(o => { if (o.isMesh) { o.geometry.dispose(); o.material.dispose(); } });
+        disposeAbilityObject(this.scene,t.mesh);
+        disposeAbilityObject(this.scene,t.trail?.line);
         this.throwables.splice(i, 1);
       }
     }
@@ -158,22 +126,9 @@ export class GrenadeSystem {
     // smoke clouds
     for (let i = this.smokeClouds.length - 1; i >= 0; i--) {
       const s = this.smokeClouds[i];
-      s.t += dt;
-      const p = s.t / s.life;
-      if (p >= 1) {
-        for (const m of s.meshes) {
-          this.scene.remove(m);
-          m.geometry.dispose();
-          m.material.dispose();
-        }
+      if (updateSmokeCloud(s,dt)) {
+        disposeAbilityObject(this.scene,s.mesh);
         this.smokeClouds.splice(i, 1);
-        continue;
-      }
-      const scale   = p < 0.25 ? THREE.MathUtils.lerp(0.05, 1, p / 0.25) : 1;
-      const opacity = p > 0.72 ? THREE.MathUtils.lerp(0.7, 0, (p - 0.72) / 0.28) : 0.7;
-      for (const m of s.meshes) {
-        m.scale.setScalar(scale);
-        m.material.opacity = opacity;
       }
     }
 
@@ -213,25 +168,21 @@ export class GrenadeSystem {
     }
   }
 
-  _smokeExplode(point) {
-    const RADIUS = 4.2;
-    const meshes = [];
-    for (let i = 0; i < 6; i++) {
-      const offset = new THREE.Vector3(
-        (Math.random() - 0.5) * RADIUS * 0.9,
-        Math.random() * RADIUS * 0.55,
-        (Math.random() - 0.5) * RADIUS * 0.9
-      );
-      const r = RADIUS * (0.55 + Math.random() * 0.45);
-      const mesh = new THREE.Mesh(
-        new THREE.SphereGeometry(r, 8, 6),
-        new THREE.MeshBasicMaterial({ color: 0xd0d0d0, transparent: true, opacity: 0, depthWrite: false })
-      );
-      mesh.position.copy(point).add(offset);
-      this.scene.add(mesh);
-      meshes.push(mesh);
-    }
-    this.smokeClouds.push({ meshes, t: 0, life: 9 });
+  _smokeExplode(point, radius = 5, life = 8) {
+    const cloud=createSmokeCloud(point,radius,life);
+    this.scene.add(cloud.mesh);this.smokeClouds.push(cloud);
+  }
+
+  _bounceFeedback(mesh,vx,vy,vz,nx,ny,nz) {
+    const before=Math.hypot(vx,vy,vz),after=Math.hypot(nx,ny,nz);
+    if(before<2 || after<.4 || (vx*nx+vy*ny+vz*nz)>before*after*.25) return;
+    const count=mesh.userData.audibleBounces||0;
+    if(count>=3 || this._effectTime-this._lastBounceSound<.14) return;
+    mesh.userData.audibleBounces=count+1;this._lastBounceSound=this._effectTime;
+    // Existing short metal contact recording, spatialized and limited so a
+    // cluster of resting grenades cannot generate an audio storm.
+    if(this.audio?.playAt) this.audio.playAt(mesh.position,()=>this.audio.playShellCasing?.());
+    else this.audio?.playShellCasing?.();
   }
 
   // Server events use the same effects without applying a second copy of
@@ -245,8 +196,8 @@ export class GrenadeSystem {
   syncProjectiles(projectiles, dt = 0.05, resolveMuzzle = null) {
     const ids = new Set(projectiles.map(p => p.id));
     for (const [id, mesh] of this.projectileMeshes) if (!ids.has(id)) {
-      this.scene.remove(mesh);
-      mesh.traverse(o => { if (o.isMesh) { o.geometry.dispose(); o.material.dispose(); } });
+      disposeAbilityObject(this.scene,mesh.userData.flightTrail?.line);
+      disposeAbilityObject(this.scene,mesh);
       this.projectileMeshes.delete(id);
     }
     for (const p of projectiles) {
@@ -257,6 +208,10 @@ export class GrenadeSystem {
           new THREE.MeshStandardMaterial({ color: 0xffa33b, emissive: 0xff5511, emissiveIntensity: 1.2 }));
         this.projectileMeshes.set(p.id, mesh); this.scene.add(mesh);
         mesh.position.set(p.x, p.y, p.z);
+        if(['frag','smoke'].includes(p.kind)) {
+          mesh.userData.flightTrail=createGrenadeTrail(this.scene,mesh.position,p.kind);
+          mesh.userData.flightVelocity={x:p.vx,y:p.vy,z:p.vz};
+        }
         const muzzle = resolveMuzzle?.(p);
         if (muzzle) {
           mesh.position.copy(muzzle);
@@ -268,6 +223,13 @@ export class GrenadeSystem {
       }
       this._travel.set(p.x, p.y, p.z);
       mesh.position.lerp(this._travel, 1 - Math.exp(-45 * dt));
+      const velocity=mesh.userData.flightVelocity;
+      if(velocity) {
+        this._bounceFeedback(mesh,velocity.x,velocity.y,velocity.z,p.vx,p.vy,p.vz);
+        velocity.x=p.vx;velocity.y=p.vy;velocity.z=p.vz;
+        updateGrenadeIndicator(mesh,dt,p.remaining);
+        updateGrenadeTrail(mesh.userData.flightTrail,mesh.position,Math.hypot(p.vx,p.vy,p.vz),dt);
+      }
       if (p.kind === 'rocket') {
         this._travel.set(p.vx, p.vy, p.vz).normalize();
         mesh.quaternion.setFromUnitVectors(THREE.Object3D.DEFAULT_UP, this._travel);
@@ -277,22 +239,27 @@ export class GrenadeSystem {
     }
   }
 
-  showAuthoritativeSmoke(point) {
-    this._smokeExplode(point);
+  showAuthoritativeSmoke(point, radius = 5, life = 8) {
+    this._smokeExplode(point,radius,life);
   }
 
   syncBombs(bombs) {
     const ids=new Set(bombs.map(b=>b.id));
-    for(const [id,mesh] of this.bombMeshes)if(!ids.has(id)){this.scene.remove(mesh);mesh.geometry.dispose();mesh.material.dispose();this.bombMeshes.delete(id);}
+    for(const [id,mesh] of this.bombMeshes)if(!ids.has(id)){disposeAbilityObject(this.scene,mesh);this.bombMeshes.delete(id);}
     for(const bomb of bombs){
       let mesh=this.bombMeshes.get(bomb.id);
-      if(!mesh){mesh=new THREE.Mesh(new THREE.CylinderGeometry(.24,.28,.10,16),new THREE.MeshStandardMaterial({color:0x173847,emissive:0x00bbee,emissiveIntensity:1}));this.bombMeshes.set(bomb.id,mesh);this.scene.add(mesh);}
-      mesh.position.set(bomb.x,bomb.y,bomb.z);mesh.material.emissiveIntensity=.6+(Math.sin(bomb.remaining*18)+1)*1.1;
+      if(!mesh){mesh=createAbilityGrenade('timebomb');this.bombMeshes.set(bomb.id,mesh);this.scene.add(mesh);}
+      mesh.position.set(bomb.x,bomb.y,bomb.z);
+      // Snapshot remaining time is authoritative; repeated snapshots must not
+      // independently advance the fuse or make the ring run down twice as fast.
+      mesh.userData.abilityVisual.age=Math.max(0,3-bomb.remaining);
+      updateGrenadeIndicator(mesh,0,bomb.remaining,3);
     }
   }
-  showImpulse(point) {
-    const mesh=new THREE.Mesh(new THREE.RingGeometry(.85,1,48),new THREE.MeshBasicMaterial({color:0x00ddff,transparent:true,opacity:1,side:THREE.DoubleSide,depthWrite:false}));
-    mesh.rotation.x=-Math.PI/2;mesh.position.copy(point);this.scene.add(mesh);this.impulseWaves.push({mesh,age:0});
+  showImpulse(point, radius = 6) {
+    if(this.impulseWaves.length>=8) disposeAbilityObject(this.scene,this.impulseWaves.shift().mesh);
+    const wave=createImpulseWave(point,radius);
+    this.scene.add(wave.mesh);this.impulseWaves.push(wave);
   }
   getHudInfo() {
     return { frags: this.frags, smokes: this.smokes };
@@ -307,14 +274,14 @@ export class GrenadeSystem {
   reset() {
     this.syncBombs([]);
     this.syncProjectiles([]);
-    for(const w of this.impulseWaves){this.scene.remove(w.mesh);w.mesh.geometry.dispose();w.mesh.material.dispose();}this.impulseWaves=[];
+    for(const w of this.impulseWaves) disposeAbilityObject(this.scene,w.mesh);this.impulseWaves=[];
     for (const t of this.throwables) {
-      this.scene.remove(t.mesh);
-      t.mesh.traverse(o => { if (o.isMesh) { o.geometry.dispose(); o.material.dispose(); } });
+      disposeAbilityObject(this.scene,t.mesh);
+      disposeAbilityObject(this.scene,t.trail?.line);
     }
     this.throwables.length = 0;
     for (const s of this.smokeClouds) {
-      for (const m of s.meshes) { this.scene.remove(m); m.geometry.dispose(); m.material.dispose(); }
+      disposeAbilityObject(this.scene,s.mesh);
     }
     this.smokeClouds.length = 0;
     for (const e of this.explosions) {
