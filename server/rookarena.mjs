@@ -1,3 +1,4 @@
+import { tryMeshStep } from '../src/world/MeshStep.js';
 // Server-side collision for every shipped imported map. The browser and
 // authoritative server both parse the exact same .evmap binaries, so rotation
 // can never put a client on geometry the server does not know about.
@@ -76,6 +77,7 @@ function loadArena(definition) {
 
     let supported = !!previous.onGround;
     for (let segment = 0; segment < segments; segment++) {
+      const canStep = supported && state.vy <= .001 && distance < 2;
       const previousY = state.py;
       state.px += stepX;
       state.py += stepY;
@@ -96,6 +98,11 @@ function loadArena(definition) {
       for (let i = 0; i < 3; i++) {
         const hit = octree.capsuleIntersect(capsule);
         if (!hit) break;
+        if (i === 0 && canStep && tryMeshStep(octree, capsule, hit, stepX, stepZ)) {
+          supported = true; state.onGround = 1; state.vy = 0;
+          state.nX = 0; state.nY = 1; state.nZ = 0;
+          continue;
+        }
         capsule.translate(collisionPush.copy(hit.normal).multiplyScalar(hit.depth));
         const rising = state.vy > .001;
         const into = state.vx * hit.normal.x + state.vy * hit.normal.y + state.vz * hit.normal.z;
