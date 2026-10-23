@@ -1,4 +1,4 @@
-import { tryMeshStep } from '../src/world/MeshStep.js';
+import { tryMeshStep, resolveMeshContact } from '../src/world/MeshStep.js';
 // Server-side collision for every shipped imported map. The browser and
 // authoritative server both parse the exact same .evmap binaries, so rotation
 // can never put a client on geometry the server does not know about.
@@ -103,10 +103,10 @@ function loadArena(definition) {
           state.nX = 0; state.nY = 1; state.nZ = 0;
           continue;
         }
-        capsule.translate(collisionPush.copy(hit.normal).multiplyScalar(hit.depth));
         const rising = state.vy > .001;
+        const floorContact = resolveMeshContact(capsule, hit, collisionPush, !rising);
         const into = state.vx * hit.normal.x + state.vy * hit.normal.y + state.vz * hit.normal.z;
-        if (into < 0) {
+        if (into < 0 && !floorContact) {
           state.vx = q(state.vx - hit.normal.x * into);
           state.vy = q(state.vy - hit.normal.y * into);
           state.vz = q(state.vz - hit.normal.z * into);

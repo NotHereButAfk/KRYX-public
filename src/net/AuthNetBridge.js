@@ -539,7 +539,7 @@ export class AuthNetBridge {
       next.onGround = supported ? 1 : 0;
       const position = this._collisionPosition.set(next.px, next.py, next.pz);
       world.resolveCollisions(position, 0.45, this._collisionContact,
-        (next.crouch || next.slide) ? 1.0 : PLAYER_EYE_HEIGHT, stepX, stepZ, canStep);
+        (next.crouch || next.slide) ? 1.0 : PLAYER_EYE_HEIGHT, stepX, stepZ, canStep, next.vy <= .001);
       if (this._collisionContact.boundaryMask & 1) next.vx = 0;
       if (this._collisionContact.boundaryMask & 2) next.vz = 0;
       if (this._collisionContact.boundaryMask & 4) next.vy = Math.min(0, next.vy);

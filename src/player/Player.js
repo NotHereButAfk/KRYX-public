@@ -429,7 +429,7 @@ export class Player {
       world.resolveCollisions(this.position, RADIUS, this._worldContact,
         (this.isSliding || this.isCrouching) ? 1.0 : EYE_HEIGHT,
         this.velocity.x * sweepDt, this.velocity.z * sweepDt,
-        (this.onGround || segmentGrounded) && this.velocity.y <= .001);
+        (this.onGround || segmentGrounded) && this.velocity.y <= .001, this.velocity.y <= .001);
       if (this._worldContact.boundaryMask & 1) this.velocity.x = 0;
       if (this._worldContact.boundaryMask & 2) this.velocity.z = 0;
       if (this._worldContact.boundaryMask & 4) this.velocity.y = Math.min(0, this.velocity.y);

@@ -1,4 +1,4 @@
-import { tryMeshStep } from './MeshStep.js';
+import { tryMeshStep, resolveMeshContact } from './MeshStep.js';
 import * as THREE from 'three';
 import { playableKillY, constrainPlayablePosition } from './PlayableBounds.js';
 import { Capsule } from 'three/addons/math/Capsule.js';
@@ -296,7 +296,7 @@ export class World {
    * Position-only pushout used to leave bots permanently marked airborne: the
    * floor held their mesh up while gravity and the falling animation continued.
    */
-  resolveCollisions(position, radius, contact = null, height = 1.7, stepX = 0, stepZ = 0, canStep = false) {
+  resolveCollisions(position, radius, contact = null, height = 1.7, stepX = 0, stepZ = 0, canStep = false, allowSupport = false) {
     const inputY = position.y;
     if (contact) {
       contact.boundaryMask = 0;
@@ -317,7 +317,7 @@ export class World {
         if (contact) { contact.grounded = true; contact.normalY = 1; }
         continue;
       }
-      capsule.translate(this._collisionPush.copy(hit.normal).multiplyScalar(hit.depth));
+      resolveMeshContact(capsule, hit, this._collisionPush, allowSupport);
       if (contact && hit.normal.y > contact.normalY) {
         contact.normalY = hit.normal.y;
         contact.depth = Math.max(contact.depth, hit.depth);

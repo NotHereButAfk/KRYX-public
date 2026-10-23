@@ -26,3 +26,13 @@ export function tryMeshStep(octree, capsule, hit, dx, dz) {
   capsule.copy(raised);
   return true;
 }
+
+// Resolve a walkable floor vertically. Normal pushout on a ramp moves the
+// capsule downhill every time the centre ground probe snaps it to the floor.
+export function resolveMeshContact(capsule, hit, push, allowSupport) {
+  const supported = allowSupport && hit.normal.y > .35;
+  if (supported) push.set(0, hit.depth / hit.normal.y, 0);
+  else push.copy(hit.normal).multiplyScalar(hit.depth);
+  capsule.translate(push);
+  return supported;
+}
