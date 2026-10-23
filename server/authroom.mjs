@@ -44,7 +44,6 @@ import {
 import {
   BOT_DASH,
   BOT_RETALIATION_AIM_SCALE,
-  botArenaDetectionDistance,
   BOT_STATES,
   botAimErrorMeters,
   botTrackingOffset,
@@ -558,12 +557,14 @@ export class AuthRoom {
 
   _remove(id, refill) {
     this._patrolNavigation?.jobs.delete(id);
+    this._patrolNavigation?.jobs.delete(`pursuit:${id}`);
     if (this.players.delete(id)) this.events.push({ e: 'leave', id });
     if (refill) this._fillBotSlots();
   }
 
   _resetBotAI(p) {
     this._patrolNavigation?.jobs.delete(p.id);
+    this._clearBotPursuit(p);
     p._botEscapeUntil = p._botSteerAt = p._botBlockedScans = 0;
     p._botProgressX = p.state.px; p._botProgressZ = p.state.pz;
     p._botState = p.alive ? BOT_STATES.ROAM : BOT_STATES.DEAD;
@@ -652,16 +653,20 @@ export class AuthRoom {
 
   _botCanSee(p, target, ignoreFov = false) {
     if (this.tick < (p.blindUntil || 0)) return false;
-    if (!target?.alive || this.tick < (target.invulnerableUntil || 0)) return false;
+    if (!target?.alive || !this._canSimulate(target) || !this.opponents(p, target)
+      || this.tick < (target.invulnerableUntil || 0)) return false;
     const cfg = this.botDifficulty;
     const dx = target.state.px - p.state.px;
     const dz = target.state.pz - p.state.pz;
     const distance = Math.hypot(dx, dz);
-    const detectionDistance = target.isBot
-      ? botArenaDetectionDistance(cfg.detectionDistance)
-      : cfg.detectionDistance;
+    const awarenessDistance = cfg.awarenessDistance ?? cfg.detectionDistance;
+    const detectionDistance = p._botTargetId === target.id
+      ? (cfg.trackingDistance ?? awarenessDistance) : awarenessDistance;
     if (distance > detectionDistance) return false;
-    if (!ignoreFov && !isInsideBotFov(p._botAimYaw ?? p._lastYaw ?? 0, dx, dz, cfg.fovDegrees)) return false;
+    // Nearby peripheral awareness still requires a clear sightline below.
+    // Retaining a known target uses a wider range, not hidden live tracking.
+    if (!ignoreFov && distance > (cfg.peripheralDistance ?? 0)
+      && !isInsideBotFov(p._botAimYaw ?? p._lastYaw ?? 0, dx, dz, cfg.fovDegrees)) return false;
     const dy = (target.state.py + HEAD_Y) - (p.state.py + HEAD_Y);
     const length = Math.hypot(dx, dy, dz) || 1e-6;
     if (this._raySmoked(p.state.px, p.state.py + HEAD_Y, p.state.pz,
@@ -796,6 +801,86 @@ export class AuthRoom {
     ];
   }
 
+  _clearBotPursuit(p) {
+    this._patrolNavigation?.jobs.delete(`pursuit:${p.id}`);
+    p._botPursuit = null;
+  }
+
+  _botPursuitPoint(p, goal) {
+    if (!this.arena.groundHeightAt || !this.arena.raycast) return goal;
+    const nav = this._patrolNavigation ||= new PatrolNavigation(this);
+    const key = `pursuit:${p.id}`;
+    const pos = [p.state.px, p.state.py, p.state.pz];
+    let pursuit = p._botPursuit;
+    if (!pursuit || pursuit.targetId !== p._botTargetId) {
+      this._clearBotPursuit(p);
+      // A patrol route must not compete with this bot's combat route for the
+      // shared room budget or be resumed from an obsolete starting point.
+      nav.jobs.delete(p.id);
+      p._botRoute = []; p._botRoamTarget = null;
+      pursuit = p._botPursuit = {
+        targetId: p._botTargetId, goal: [...goal], route: [],
+        nextPlan: 0, nextLane: 0, direct: false,
+      };
+    }
+    // Goals come only from visual memory. A hidden player's live coordinates
+    // never enter the route, and moving visible targets cannot replan each tick.
+    if (this.tick >= pursuit.nextPlan
+      && (Math.hypot(goal[0] - pursuit.goal[0], goal[2] - pursuit.goal[2]) > 3
+        || Math.abs(goal[1] - pursuit.goal[1]) > .7)) {
+      nav.jobs.delete(key);
+      pursuit.goal = [...goal]; pursuit.route = []; pursuit.nextLane = 0;
+    }
+    nav.update(this.tick);
+    const result = nav.take(key);
+    if (result?.status === 'ready') pursuit.route = result.route;
+    if (this.tick >= pursuit.nextLane) {
+      pursuit.nextLane = this.tick + Math.ceil(TICK_HZ * .35);
+      const lane = nav.lane(pos, pursuit.goal);
+      pursuit.direct = !!lane && Math.abs(lane[1] - pursuit.goal[1]) < .7;
+      if (pursuit.direct) {
+        nav.jobs.delete(key);
+        pursuit.route = [];
+      } else if (pursuit.route.length) {
+        // Rejoin only a nearby, fully clear segment. Bound the collision work
+        // instead of testing the entire route on every combat tick.
+        let join = -1;
+        for (let i = Math.min(5, pursuit.route.length - 1); i >= 0; i--) {
+          const point = pursuit.route[i];
+          if (Math.hypot(point[0] - pos[0], point[2] - pos[2]) > 8) continue;
+          const lane = nav.lane(pos, point);
+          if (lane && Math.abs(lane[1] - point[1]) < .7) { join = i; break; }
+        }
+        if (join < 0) pursuit.route = [];
+        else pursuit.route.splice(0, join);
+      }
+    }
+    if (pursuit.direct) return pursuit.goal;
+    const reachedDistance = WALK_SPEED * SPRINT_MULT / TICK_HZ + .35;
+    while (pursuit.route.length
+      && Math.hypot(pursuit.route[0][0] - pos[0], pursuit.route[0][2] - pos[2]) < reachedDistance
+      && Math.abs(pursuit.route[0][1] - pos[1]) < .7) pursuit.route.shift();
+    if (pursuit.route.length) return pursuit.route[0];
+    if (this.tick >= pursuit.nextPlan && !nav.jobs.has(key)) {
+      pursuit.nextPlan = this.tick + TICK_HZ;
+      let destination = pursuit.goal;
+      if (nav.graph) {
+        // Baked patrol routing accepts graph points. Connect the remembered
+        // position to a nearby node; direct-lane checks finish the final leg.
+        const index = nav.nearest(pursuit.goal);
+        destination = index == null ? null : nav.graph.points[index];
+        if (destination) {
+          const finish = nav.lane(destination, pursuit.goal);
+          if (!finish || Math.abs(finish[1] - pursuit.goal[1]) >= .7) destination = null;
+        }
+      }
+      if (destination) nav.request(key, pos, destination);
+    }
+    // Wait for a complete route instead of pushing into the wall or following
+    // a partial path into a dead end. The ordinary search timer still expires.
+    return pos;
+  }
+
   _steerBotMove(p, mx, mz, yaw) {
     if (!mx && !mz) return [mx, mz];
     // Keep an escape heading long enough to clear a corner, rather than
@@ -832,8 +917,15 @@ export class AuthRoom {
       if (score > bestScore) { bestScore = score; best = { x, z, local }; }
     }
     if (stuck && p._botTargetId != null) {
-      p._botIgnoredUntil.set(p._botTargetId, this.tick + TICK_HZ * 8);
-      p._botTargetId = null; p._botRoamTarget = null; p._botBlockedScans = 0;
+      // A corner is not evidence that the opponent vanished. Retry navigation
+      // while the bounded last-seen search remains active.
+      if (p._botPursuit) {
+        this._patrolNavigation?.jobs.delete(`pursuit:${p.id}`);
+        p._botPursuit.route = [];
+        p._botPursuit.direct = false;
+        p._botPursuit.nextLane = 0;
+      }
+      p._botBlockedScans = 0;
     }
     if (!best) return [0, 0];
     p._botEscapeYaw = Math.atan2(best.x, best.z);
@@ -875,7 +967,7 @@ export class AuthRoom {
         const dx = candidate.state.px - p.state.px;
         const dz = candidate.state.pz - p.state.pz;
         const distance = Math.hypot(dx, dz);
-        const detectionDistance = cfg.detectionDistance;
+        const detectionDistance = cfg.awarenessDistance ?? cfg.detectionDistance;
         if (distance >= bestDistance || distance > detectionDistance) continue;
         // Only acquire visible opponents. Remember their last seen position
         // for a bounded search instead of tracking movement through walls.
@@ -902,7 +994,8 @@ export class AuthRoom {
     }
 
     let target = this.players.get(p._botTargetId);
-    if (!target?.alive || !p._botHostility.has(target.id)) {
+    if (!target?.alive || !this._canSimulate(target) || !this.opponents(p, target)
+      || this.tick < (target.invulnerableUntil || 0) || !p._botHostility.has(target.id)) {
       if (p._botHoldGroundTargetId === p._botTargetId) p._botHoldGroundTargetId = null;
       p._botTargetId = null;
       target = null;
@@ -941,6 +1034,10 @@ export class AuthRoom {
       p._botTargetId = null;
       target = null;
       p._botState = BOT_STATES.ROAM;
+    }
+
+    if (p._botPursuit && (!target || p._botPursuit.targetId !== target.id)) {
+      this._clearBotPursuit(p);
     }
 
     if (!target) {
@@ -1067,6 +1164,15 @@ export class AuthRoom {
         mode: 'cover',
       };
     }
+    if (maneuver.mode === 'chase') {
+      const point = this._botPursuitPoint(p, [targetX, targetY, targetZ]);
+      const dx = point[0] - p.state.px, dz = point[2] - p.state.pz;
+      const length = Math.hypot(dx, dz);
+      maneuver = { ...maneuver,
+        forward: length < .35 ? 0 : (-Math.sin(p._botAimYaw) * dx - Math.cos(p._botAimYaw) * dz) / length,
+        strafe: length < .35 ? 0 : (Math.cos(p._botAimYaw) * dx - Math.sin(p._botAimYaw) * dz) / length,
+      };
+    } else if (p._botPursuit) this._clearBotPursuit(p);
     // Stay on navigable ground and redirect around walls before accepting a
     // sidestep or chase. Pursuit can run and fire while stamina permits.
     const [moveX, moveZ] = this._steerBotMove(p, maneuver.strafe, maneuver.forward, p._botAimYaw);
@@ -1606,7 +1712,10 @@ export class AuthRoom {
     target._firingTicks = 0;
     this._resetLifeInventory(target);
     target.deadUntil = this.tick + (target.isBot ? BOT_RESPAWN_TICKS : PLAYER_RESPAWN_TICKS);
-    if (target.isBot) target._botState = BOT_STATES.DEAD;
+    if (target.isBot) {
+      target._botState = BOT_STATES.DEAD;
+      this._clearBotPursuit(target);
+    }
     const victimStreak = target.killStreak || 0;
     target.killStreak = 0;
     target.deaths++;

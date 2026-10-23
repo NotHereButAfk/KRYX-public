@@ -11,9 +11,8 @@ export const BOT_TACTICS = Object.freeze({
 });
 
 // Arena opponents need to notice each other across the wider sightlines in the
-// imported maps. Humans keep the ordinary passive-until-attacked detection
-// radius. For bot-vs-bot play this is movement/footstep awareness; firing still
-// requires a separate unobstructed line-of-sight check.
+// imported maps. This legacy helper is retained for offline behavior; the
+// authoritative presets below separate awareness from effective firing range.
 export function botArenaDetectionDistance(baseDistance = BOT_TACTICS.detectRadius) {
   return Math.min(82, Math.max(baseDistance, baseDistance * 1.7));
 }
@@ -135,28 +134,30 @@ export const BOT_RETALIATION_AIM_SCALE = 1.2;
 // in seconds/metres so designers can tune behavior without knowing the 20 Hz
 // authoritative tick rate. `aimErrorScale` is intentionally above zero even on
 // hard: these are casual arena players, never perfect aim locks.
+// Awareness starts pursuit beyond firing range; tracking has a wider exit
+// radius so retreating opponents do not instantly disappear from attention.
 export const BOT_DIFFICULTIES = Object.freeze({
   easy: Object.freeze({
     reactionMin: 0.65, reactionMax: 1.05,
-    aimErrorScale: 1.75, detectionDistance: 30, fovDegrees: 92,
-    scanInterval: 0.55, decisionInterval: 0.65, losInterval: 0.25,
-    searchDuration: 2.0, focusDuration: 7.0, targetSwitchRatio: 0.62,
+    aimErrorScale: 1.75, detectionDistance: 30, awarenessDistance: 50, trackingDistance: 68, peripheralDistance: 8, fovDegrees: 120,
+    scanInterval: 0.4, decisionInterval: 0.65, losInterval: 0.25,
+    searchDuration: 5.0, focusDuration: 7.0, targetSwitchRatio: 0.62,
     aimTurnSpeed: 3.2, strafeChance: 0.38, jumpChance: 0.025,
     movementSpeed: 0.86, roamSprintChance: 0.12, combatSprintDistance: 28,
   }),
   normal: Object.freeze({
     reactionMin: 0.28, reactionMax: 0.48,
-    aimErrorScale: 1.1, detectionDistance: 42, fovDegrees: 112,
-    scanInterval: 0.35, decisionInterval: 0.45, losInterval: 0.15,
-    searchDuration: 3.25, focusDuration: 10.0, targetSwitchRatio: 0.78,
+    aimErrorScale: 1.1, detectionDistance: 42, awarenessDistance: 72, trackingDistance: 90, peripheralDistance: 10, fovDegrees: 140,
+    scanInterval: 0.25, decisionInterval: 0.45, losInterval: 0.15,
+    searchDuration: 7.5, focusDuration: 10.0, targetSwitchRatio: 0.78,
     aimTurnSpeed: 9.5, strafeChance: 0.62, jumpChance: 0.045,
     movementSpeed: 1.0, roamSprintChance: 0.24, combatSprintDistance: 22,
   }),
   hard: Object.freeze({
     reactionMin: 0.18, reactionMax: 0.42,
-    aimErrorScale: 0.88, detectionDistance: 52, fovDegrees: 132,
-    scanInterval: 0.22, decisionInterval: 0.32, losInterval: 0.10,
-    searchDuration: 4.5, focusDuration: 13.0, targetSwitchRatio: 0.9,
+    aimErrorScale: 0.88, detectionDistance: 52, awarenessDistance: 82, trackingDistance: 100, peripheralDistance: 12, fovDegrees: 150,
+    scanInterval: 0.2, decisionInterval: 0.32, losInterval: 0.10,
+    searchDuration: 9.0, focusDuration: 13.0, targetSwitchRatio: 0.9,
     aimTurnSpeed: 7.0, strafeChance: 0.78, jumpChance: 0.065,
     movementSpeed: 1.08, roamSprintChance: 0.38, combatSprintDistance: 17,
   }),
