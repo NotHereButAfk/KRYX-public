@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { updateWeaponSprintBlock, sprintRequested } from '../src/core/GameplayInput.js';
-import { WEAPONS } from '../src/weapons/weaponDefs.js';
+import { WEAPONS, getWeapon } from '../src/weapons/weaponDefs.js';
 import { WALK_SPEED, SPRINT_MULT, FIRE_SPRINT_RECOVERY } from '../src/sim/MovementConfig.js';
 import { AuthRoom } from '../server/authroom.mjs';
 
@@ -63,11 +63,15 @@ updateWeaponSprintBlock(player, { mouseDown: true }, 'm4', .016);
 assert.equal(player.weaponSprintBlocked, false, 'death clears firing recovery');
 console.log('Sprint/fire passed: every firearm cancels sprint before movement and still fires; walking, recovery, melee, mobile and packet order verified.');
 
-// Holding aim must lower sprint before simulation for every pickup firearm.
-for (const id of ['m4', 'concussion', 'rpg', 'levershotgun']) {
+// Aim cancels sprint only for weapons which support ADS. Launchers and the
+// shotgun deliberately keep right-click disabled, including movement effects.
+for (const id of ['m4', 'uzi', 'concussion', 'rpg', 'levershotgun']) {
   const p = {isSprinting:true,isDead:false};
   const aim = {mouseDown:false,rightMouseDown:true,isDown:()=>true};
   updateWeaponSprintBlock(p,aim,id,1/60);
-  assert(p.weaponSprintBlocked && !p.isSprinting, id+' aim must interrupt sprint');
-  assert(!sprintRequested(aim,1,p.weaponSprintBlocked),id+' aim must suppress movement sprint');
+  const canAim = getWeapon(id).canAim !== false;
+  assert.equal(p.weaponSprintBlocked, canAim, id+' aim must respect ADS availability');
+  assert.equal(p.isSprinting, !canAim, id+' aim must interrupt sprint only when supported');
+  assert.equal(sprintRequested(aim,1,p.weaponSprintBlocked), !canAim,
+    id+' aim must suppress movement sprint only when supported');
 }

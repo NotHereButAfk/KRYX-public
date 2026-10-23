@@ -292,6 +292,24 @@ export function adsMountForSight(
 // normal depth testing to hide rear surfaces without clipping against walls.
 // Clone materials so viewmodel settings cannot affect pickups or remote guns.
 export function prepareFirstPersonModel(group) {
+  // The imported SMG is only 27cm long. Bringing that tiny mesh close to the
+  // eye made its separately authored glove look enormous; fixed-depth ADS
+  // then made the gun shrink away. Normalize its presentation mesh/markers
+  // together before measuring the sight, leaving world models and arms alone.
+  if (group.userData.weaponId === 'uzi' && group.userData.modelSource === 'blender-arsenal'
+      && !group.userData.firstPersonNormalized) {
+    const scale = 2;
+    for (const child of group.children) {
+      child.position.multiplyScalar(scale);
+      child.scale.multiplyScalar(scale);
+    }
+    const pose = group.userData.authoredHandPose;
+    group.userData.authoredHandPose = Object.fromEntries(Object.entries(pose).map(([key, value]) =>
+      [key, Array.isArray(value) ? value.map(coordinate => coordinate * scale) : value]));
+    // Seat the unscaled cupped palm under the enlarged front handguard.
+    group.userData.authoredHandPose.viewmodelSupport = [.024, .063, -.185];
+    group.userData.firstPersonNormalized = true;
+  }
   // Quaternius firearms are authored for a left-side showcase render. In the
   // lower-right first-person carry that exposes the far side of the receiver,
   // making the whole gun read as backwards even though its muzzle still points
