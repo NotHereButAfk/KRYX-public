@@ -62,7 +62,7 @@
     "test:adblock-browser": "node tools/sponsor_block_browser_check.mjs",
     "test:tps-camera": "node tools/third_person_camera_check.mjs",
     "test:account": "node tools/user_account_check.mjs && node tools/account_server_check.mjs && node server/accountsecurity_test.mjs",
-    "test:security": "node server/accountsecurity_test.mjs && node server/security_boundary_test.mjs && node server/security_capacity_test.mjs",
+    "test:security": "node tools/check-backend.mjs",
     "test:crazygames": "node tools/crazygames_account_check.mjs && node tools/crazygames_client_check.mjs && node tools/crazygames_multiplayer_check.mjs",
     "test:bots": "node server/bot_awareness_test.mjs && node tools/bot_pursuit_check.mjs && node tools/baked_navigation_check.mjs && node tools/bot_recovery_check.mjs && node tools/bot_roam_jump_check.mjs && node tools/bot_combat_check.mjs && node tools/bot_balance_check.mjs && node tools/bot_player_style_check.mjs && node tools/bot_patrol_check.mjs && node tools/bot_presentation_check.mjs && node tools/bot_casual_behavior_check.mjs",
     "test:round-flow": "node tools/round_flow_browser_check.mjs",

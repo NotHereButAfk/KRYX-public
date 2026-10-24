@@ -84,3 +84,13 @@ separate from `E_TRUST_PROXY`, which controls economy network grouping.
 Password recovery uses single-use six-digit codes with five verification attempts
 and a ten-minute expiry/cooldown. A successful reset revokes sessions and prevents
 an old-password login already in flight from creating a new session afterward.
+
+## Backend authorization checks
+
+Run `npm run test:security` from the repository root after installing root and
+server dependencies. The suite uses disposable account data and local sockets to
+check session ownership, reward eligibility, duplicate claims, administrator
+authorization, forged commands, connection limits and password recovery.
+The normal private deployment runs these checks before publishing; public pull
+requests and main pushes run the same suite without deployment credentials.
+Passing these checks covers the tested cases, not every possible vulnerability.
