@@ -219,7 +219,7 @@ function sanitizeName(n, usedNames = new Set()) {
   return c;
 }
 
-export function makeAuthServer({ server, port, staticRoot, targetPopulation = 0, mode = process.env.GAME_MODE || 'deathmatch', accountService = undefined, connectionLimits = {} } = {}) {
+export function makeAuthServer({ server, port, host = process.env.BIND_HOST || '127.0.0.1', staticRoot, targetPopulation = 0, mode = process.env.GAME_MODE || 'deathmatch', accountService = undefined, connectionLimits = {} } = {}) {
   const limits = Object.fromEntries(Object.entries(DEFAULT_CONNECTION_LIMITS).map(([key, fallback]) =>
     [key, Number.isSafeInteger(connectionLimits[key]) && connectionLimits[key] > 0 ? connectionLimits[key] : fallback]));
   const peerConnections = new Map();
@@ -503,7 +503,7 @@ export function makeAuthServer({ server, port, staticRoot, targetPopulation = 0,
     wss.close(() => http.close(async () => { try { await achievements?.flush(); await withdrawals?.close?.(); await payments?.close?.(); await tournaments?.close?.(); for(const {economy}of rooms.values())await economy?.runtime.close(); } catch(e){console.error('[economy close]',e.message);} resolveClose(); }));
   });
 
-  if (port) http.listen(port, () => console.log(`[auth] listening on :${port} (tick ${TICK_MS.toFixed(1)}ms)`));
+  if (port) http.listen(port, host, () => console.log(`[auth] listening on ${host}:${http.address().port} (tick ${TICK_MS.toFixed(1)}ms)`));
   return { wss, room, rooms, http, close };
 }
 

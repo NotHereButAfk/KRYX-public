@@ -94,3 +94,7 @@ authorization, forged commands, connection limits and password recovery.
 The normal private deployment runs these checks before publishing; public pull
 requests and main pushes run the same suite without deployment credentials.
 Passing these checks covers the tested cases, not every possible vulnerability.
+
+### Network binding
+
+The authoritative server binds to `127.0.0.1` by default. Keep this setting when nginx on the same host provides HTTPS and WebSockets, so clients cannot bypass the proxy through port 8788. For an intentional LAN or container listener, set `BIND_HOST=0.0.0.0` and restrict access with your firewall. This does not change an HTTP server supplied by an embedding application.
