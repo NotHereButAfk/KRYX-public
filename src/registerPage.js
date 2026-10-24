@@ -2,6 +2,7 @@
 // bounces back to the game already signed in.
 import './style.css';
 import { UserAccount } from './core/UserAccount.js';
+import { authDestination as destination } from './core/AuthDestination.js';
 
 function err(msg) { const e = document.getElementById('reg-err'); if (e) { e.textContent = msg; e.classList.remove('hidden'); } }
 
@@ -14,11 +15,6 @@ const termsEl = document.getElementById('reg-terms');
 const strengthEl = document.getElementById('reg-strength');
 const strengthBar = document.getElementById('reg-strength-bar');
 const matchEl = document.getElementById('reg-match');
-
-function destination() {
-  const next = new URLSearchParams(location.search).get('next');
-  return next && next.startsWith('/') && !next.startsWith('//') ? next : '/';
-}
 
 const returnTo = destination();
 if (returnTo !== '/') {

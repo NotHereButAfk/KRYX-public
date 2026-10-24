@@ -64,3 +64,23 @@ VITE_AUTH_WS_URL=ws://localhost:8788
 
 and run the usual dev server (`npx vite --port 5999 --host`). Open two
 browser tabs — both should show the same countdown and each other's kills.
+
+## Account request limits and proxies
+
+Account endpoints allow 12 authentication attempts per client address per minute.
+Password login also allows 12 attempts per account per ten minutes, shared across
+username/email aliases and source addresses. Limit storage is bounded and expires
+automatically. These limits currently apply per server process.
+
+`ACCOUNT_TRUSTED_PROXIES` is a comma-separated list of immediate/intermediate
+proxy IP addresses. It defaults to `loopback` for nginx on the same host. An empty
+value trusts no proxy. For a container or another proxy host, list its exact IP;
+do not list arbitrary client networks. Forwarded addresses from untrusted peers
+are ignored. Trusted chains are read from right to left until the first untrusted
+address, preventing client-supplied prefixes from bypassing limits. The proxy must
+append the real client address or replace the header with it. This setting is
+separate from `E_TRUST_PROXY`, which controls economy network grouping.
+
+Password recovery uses single-use six-digit codes with five verification attempts
+and a ten-minute expiry/cooldown. A successful reset revokes sessions and prevents
+an old-password login already in flight from creating a new session afterward.

@@ -32,7 +32,7 @@ export function createPasswordReset(pool, { send = resetMailer(), secret = email
       await ready;
       const user = (await pool.query('SELECT id,email FROM users WHERE email=$1', [email])).rows[0];
       if (!user) return;
-      const code = String(randomInt(0, 10000)).padStart(4, '0'), nonce = randomBytes(24).toString('hex');
+      const code = String(randomInt(0, 1_000_000)).padStart(6, '0'), nonce = randomBytes(24).toString('hex');
       // A new code cannot reset the guess budget more than once per ten minutes.
       const inserted = await pool.query(`INSERT INTO password_resets(user_id,digest,nonce,expires_at) VALUES($1,$2,$3,NOW()+INTERVAL '10 minutes')
         ON CONFLICT(user_id) DO UPDATE SET digest=EXCLUDED.digest,nonce=EXCLUDED.nonce,expires_at=EXCLUDED.expires_at,attempts=0,requested_at=NOW()

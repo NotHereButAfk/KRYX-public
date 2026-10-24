@@ -4,6 +4,7 @@ import pg from 'pg';
 import { STORE_ITEMS } from './storecatalog.mjs';
 import { createPasswordReset } from './passwordreset.mjs';
 import { createCrazyGamesVerifier } from './crazygames.mjs';
+import { accountClientAddress, AuthAttemptLimiter } from './auth-rate-limit.mjs';
 
 const activeSkins = new Map(STORE_ITEMS.map(item => [item.id, item.kind]));
 
@@ -61,15 +62,9 @@ export function createAccountService(databaseUrl = process.env.ACCOUNT_DATABASE_
   const pool = options.pool || new Pool({ connectionString: databaseUrl, max: 6, idleTimeoutMillis: 30_000 });
   let ready = false;
   const verifyCrazyGames = createCrazyGamesVerifier(options.crazygames);
-  const attempts = new Map();
-  const allowAttempt = (req) => {
-    const key = String(req.headers['x-forwarded-for'] || req.socket.remoteAddress || '').split(',')[0].trim();
-    const now = Date.now();
-    const entry = attempts.get(key);
-    if (!entry || now - entry.started > 60_000) { attempts.set(key, { started: now, count: 1 }); return true; }
-    entry.count++;
-    return entry.count <= 12;
-  };
+  const attempts = new AuthAttemptLimiter({ now: options.now });
+  const accountAttempts = new AuthAttemptLimiter({ windowMs: 10 * 60_000, now: options.now });
+  const allowAttempt = req => attempts.allow(accountClientAddress(req, options.trustedProxies));
   const initialized = pool.query(`
     CREATE TABLE IF NOT EXISTS users (
       id BIGSERIAL PRIMARY KEY,
@@ -127,12 +122,22 @@ export function createAccountService(databaseUrl = process.env.ACCOUNT_DATABASE_
     return user;
   }
 
-  async function issue(res, userId, partitioned = false) {
+  async function issue(res, userId, partitioned = false, expectedPasswordHash = null) {
     const token = randomBytes(32).toString('base64url');
-    await pool.query(
-      `INSERT INTO account_sessions(token_hash,user_id,expires_at) VALUES($1,$2,NOW()+INTERVAL '${SESSION_DAYS} days')`,
-      [tokenHash(token), userId]
-    );
+    if (expectedPasswordHash) {
+      // A reset may finish while scrypt is in flight. Recheck under a user row
+      // lock, serializing session creation with reset's password update/revoke.
+      const result = await pool.query(`INSERT INTO account_sessions(token_hash,user_id,expires_at)
+        SELECT $1,id,NOW()+INTERVAL '${SESSION_DAYS} days' FROM users
+        WHERE id=$2 AND password_hash=$3 FOR SHARE RETURNING token_hash`,
+      [tokenHash(token), userId, expectedPasswordHash]);
+      if (!result.rows.length) return null;
+    } else {
+      await pool.query(
+        `INSERT INTO account_sessions(token_hash,user_id,expires_at) VALUES($1,$2,NOW()+INTERVAL '${SESSION_DAYS} days')`,
+        [tokenHash(token), userId]
+      );
+    }
     return `kyx_session=${encodeURIComponent(token)}; Path=/; HttpOnly; Secure; ${partitioned ? 'SameSite=None; Partitioned' : 'SameSite=Lax'}; Max-Age=${SESSION_DAYS * 86400}`;
   }
 
@@ -186,11 +191,11 @@ export function createAccountService(databaseUrl = process.env.ACCOUNT_DATABASE_
         if (email.length > 254 || !/^\S+@\S+\.\S+$/.test(email)) { json(res, 400, { ok: false, err: 'Enter your registered email address' }); return true; }
         if (pathname.endsWith('/request')) {
           await reset.request(email);
-          json(res, 200, { ok: true, message: 'If an account uses that email, a four-digit code will arrive shortly. Check spam too. Codes expire in 10 minutes; wait 10 minutes before requesting another.' });
+          json(res, 200, { ok: true, message: 'If an account uses that email, a six-digit code will arrive shortly. Check spam too. Codes expire in 10 minutes; wait 10 minutes before requesting another.' });
         } else {
           const code = String(data.code || ''), password = String(data.password || '');
-          if (!/^\d{4}$/.test(code) || password.length < 8 || password.length > 128) {
-            json(res, 400, { ok: false, err: 'Enter a four-digit code and a password of 8–128 characters' }); return true;
+          if (!/^\d{6}$/.test(code) || password.length < 8 || password.length > 128) {
+            json(res, 400, { ok: false, err: 'Enter a six-digit code and a password of 8–128 characters' }); return true;
           }
           const ok = await reset.confirm(email, code, password);
           json(res, ok ? 200 : 400, ok ? { ok: true } : { ok: false, err: 'Invalid or expired code. After five incorrect attempts, request a new code when the 10-minute wait ends.' });
@@ -232,15 +237,19 @@ export function createAccountService(databaseUrl = process.env.ACCOUNT_DATABASE_
         if (!allowAttempt(req)) { json(res, 429, { ok: false, err: 'Too many attempts. Try again in one minute.' }); return true; }
         const data = await body(req);
         const identifier = String(data.identifier || '').trim().toLowerCase();
+        if (!identifier || identifier.length > 254) { json(res, 401, { ok: false, err: 'Incorrect username, email, or password' }); return true; }
+        if (!accountAttempts.allow('login:' + identifier)) { json(res, 429, { ok: false, err: 'Too many login attempts. Try again in ten minutes.' }); return true; }
         const result = await pool.query(
           'SELECT id,username,email,password_hash,password_salt,kills,deaths,score,games FROM users WHERE (username_key=$1 OR email=$1) AND crazygames_id IS NULL LIMIT 1',
           [identifier]
         );
         const user = result.rows[0];
+        if (user && !accountAttempts.allow('user:' + user.id)) { json(res, 429, { ok: false, err: 'Too many login attempts. Try again in ten minutes.' }); return true; }
         if (!user || String(data.password || '').length > 128 || !(await passwordMatches(String(data.password || ''), user.password_salt, user.password_hash))) {
           json(res, 401, { ok: false, err: 'Incorrect username, email, or password' }); return true;
         }
-        const setCookie = await issue(res, user.id);
+        const setCookie = await issue(res, user.id, false, user.password_hash);
+        if (!setCookie) { json(res, 401, { ok: false, err: 'Password changed. Log in again.' }); return true; }
         delete user.password_hash; delete user.password_salt;
         json(res, 200, { ok: true, user }, { 'Set-Cookie': setCookie });
         return true;

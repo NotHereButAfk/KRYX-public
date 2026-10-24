@@ -2,17 +2,13 @@
 // game, so a successful login sets the session and we bounce back to the game.
 import './style.css';
 import { UserAccount } from './core/UserAccount.js';
+import { authDestination as destination } from './core/AuthDestination.js';
 
 function err(id, msg) { const e = document.getElementById(id); if (e) { e.textContent = msg; e.classList.remove('hidden'); } }
 function clearErr(id) { document.getElementById(id)?.classList.add('hidden'); }
 
 const nameEl = document.getElementById('login-name');
 const passEl = document.getElementById('login-pass');
-
-function destination() {
-  const next = new URLSearchParams(location.search).get('next');
-  return next && next.startsWith('/') && !next.startsWith('//') ? next : '/';
-}
 
 const returnTo = destination();
 if (returnTo !== '/') {

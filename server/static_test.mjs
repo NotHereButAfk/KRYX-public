@@ -28,6 +28,9 @@ try {
   const html = await home.text();
   await check('serves the built game at /', home.status === 200 && /<!doctype html>/i.test(html));
   await check('sets the HTML content type', home.headers.get('content-type')?.startsWith('text/html'));
+  await check('game keeps platform embedding while blocking plugin objects and base URL changes',
+    home.headers.get('content-security-policy') === "base-uri 'self'; object-src 'none'"
+      && !home.headers.has('x-frame-options'));
   await check('does not cache HTML indefinitely', home.headers.get('cache-control') === 'no-cache');
   await check('compresses the HTML application shell', home.headers.get('content-encoding') === 'gzip');
 
@@ -55,6 +58,14 @@ try {
     const page = await fetch(`http://127.0.0.1:${PORT}${route}`);
     const pageHtml = await page.text();
     await check(`serves clean HTML route ${route}`, page.status === 200 && /<!doctype html>/i.test(pageHtml));
+    if (['/login', '/register', '/earnings', '/economy-admin'].includes(route)) {
+      await check(`blocks cross-origin framing on ${route}`,
+        page.headers.get('content-security-policy')?.includes("frame-ancestors 'self'")
+          && page.headers.get('x-frame-options') === 'SAMEORIGIN');
+      const direct = await fetch(`http://127.0.0.1:${PORT}${route}.html`);
+      await check(`blocks cross-origin framing on ${route}.html`,
+        direct.headers.get('x-frame-options') === 'SAMEORIGIN');
+    }
   }
 
   for (const route of ['/withdrawal', '/withdrawal.html']) {

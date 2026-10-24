@@ -96,6 +96,7 @@ const BOT_RESPAWN_TICKS = TICK_HZ * 3;
 const PLAYER_RESPAWN_TICKS = TICK_HZ * PLAYER_RESPAWN_DELAY;
 const SPAWN_PROTECTION_TICKS = Math.ceil(TICK_HZ * 1.5);
 const MAX_INPUT_QUEUE = 8;                  // drop floods; catch-up caps here
+const MAX_ROOM_SPECTATORS = 8;              // separate from the eight active seats
 const INPUT_HOLD_GRACE_TICKS = 3;           // at most 150ms between input packets
 const INPUT_LEAD_TICKS = 6;                 // how far ahead of server tick we allow
 const HISTORY_TICKS = 20;                   // 1s of position history for lag-comp
@@ -460,6 +461,7 @@ export class AuthRoom {
   setSpectating(id, enabled) {
     const p = this.players.get(id);
     if (!p || p.isBot || !!p.spectating === (enabled === true)) return;
+    if (enabled === true && [...this.players.values()].filter(q => !q.isBot && q.spectating).length >= MAX_ROOM_SPECTATORS) return;
     if (enabled !== true && this.targetPopulation
         && [...this.players.values()].filter(q => !q.isBot && !q.spectating).length >= this.targetPopulation) return;
     p.spectating = enabled === true;
@@ -470,6 +472,10 @@ export class AuthRoom {
 
   // Add a HUMAN-controlled player (a real socket).
   add(send, name, waitForReady = false) {
+    const humanCount = [...this.players.values()].filter(p => !p.isBot).length;
+    if (humanCount >= (this.targetPopulation || 8) + MAX_ROOM_SPECTATORS) {
+      send({ t: 'kick', reason: 'match full' }); return null;
+    }
     // A real player always gets a seat. Remove one server bot first when the
     // advertised room is full. Guests are real socket players and replace bots
     // exactly like signed-in players.
@@ -1374,7 +1380,7 @@ export class AuthRoom {
     // long idle period could bank negative cooldown and double-tap the first
     // two rounds faster than the weapon's real cadence.
     const burstGap = Math.ceil(requestedWeapon.rate * TICK_HZ) + 1;
-    if (this.tick - p.lastFireRequestTick > burstGap) p.fireCooldown = 0;
+    if (this.tick - p.lastFireRequestTick > burstGap) p.fireCooldown = Math.max(0, p.fireCooldown);
     p.lastFireRequestTick = this.tick;
     // Hold a "firing" flag for ~0.4s so other clients can shoulder this
     // player's rifle and show the recoil, not just hear about the hit.

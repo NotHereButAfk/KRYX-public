@@ -7,6 +7,7 @@ import { createAchievementService } from './achievementservice.mjs';
 import { createBattlePassService } from './battlepassservice.mjs';
 import { createEconomyService } from './economy/service.mjs';
 import { createHash } from 'node:crypto';
+import { accountClientAddress } from './auth-rate-limit.mjs';
 // Authoritative game server host (Phase 4) — wraps AuthRoom with the
 // connection-level protections the room itself doesn't handle:
 //   • origin allow-list          (ALLOWED_ORIGINS env; loopback-only by default)
@@ -37,6 +38,41 @@ const RATE_TOKENS = 60, RATE_REFILL_MS = 1000;   // ~60 msgs/sec sustained
 const HEARTBEAT_MS = 5000, DEAD_MS = 12000;
 const SEND_BUFFER_CAP = 256 * 1024;         // skip snapshot if socket is backed up
 const MAX_NAME = 24;
+
+// Validate before any coercion or room dispatch. JSON objects may shadow
+// valueOf/toString, and finite but enormous angles overflow MoveSim's quantizer.
+const optionalText = (value, max = 128) => value === undefined || value === null
+  || (typeof value === 'string' && value.length <= max);
+const optionalNumber = (value, max = Number.MAX_SAFE_INTEGER) => value === undefined
+  || (typeof value === 'number' && Number.isFinite(value) && Math.abs(value) <= max);
+const optionalFlag = value => value === undefined || typeof value === 'boolean' || value === 0 || value === 1;
+const commandSequence = value => Number.isSafeInteger(value) && value > 0;
+const validAim = msg => optionalNumber(msg.yaw, 1e6) && optionalNumber(msg.pitch, Math.PI);
+const ABILITY_KINDS = new Set(['frag', 'flash', 'smoke', 'timebomb', 'impulse']);
+const DEFAULT_CONNECTION_LIMITS = { total: 256, perPeer: 64, helloMs: 10000 };
+
+function validCommand(msg) {
+  if (!msg || typeof msg !== 'object' || Array.isArray(msg) || typeof msg.t !== 'string') return false;
+  switch (msg.t) {
+    case 'hello': return optionalText(msg.name, 1000) && optionalText(msg.armorSkin)
+      && (msg.readiness === undefined || typeof msg.readiness === 'boolean');
+    case 'input': return commandSequence(msg.seq) && optionalNumber(msg.tick)
+      && optionalNumber(msg.mx, 1) && optionalNumber(msg.mz, 1) && validAim(msg)
+      && optionalText(msg.wid) && ['sprint', 'crouch', 'jump', 'crouchDown', 'tele', 'aiming'].every(key => optionalFlag(msg[key]));
+    case 'fire': return commandSequence(msg.seq) && typeof msg.wid === 'string'
+      && msg.wid.length <= 128 && validAim(msg) && optionalNumber(msg.viewTick);
+    case 'ability': return commandSequence(msg.seq) && typeof msg.kind === 'string'
+      && msg.kind.length <= 128 && validAim(msg);
+    case 'reload': return typeof msg.wid === 'string' && msg.wid.length <= 128;
+    case 'pickup': return commandSequence(msg.seq) && Number.isSafeInteger(msg.padId) && msg.padId >= 0;
+    case 'ready': return typeof msg.mapId === 'string' && msg.mapId.length <= 128
+      && Number.isSafeInteger(msg.matchStart) && msg.matchStart > 0;
+    case 'spectate': return typeof msg.enabled === 'boolean';
+    case 'chat': return typeof msg.text === 'string' && msg.text.length <= 1000;
+    case 'pong': return optionalNumber(msg.id);
+    default: return true; // Unknown commands remain inert for protocol compatibility.
+  }
+}
 
 const MIME = {
   '.css': 'text/css; charset=utf-8', '.html': 'text/html; charset=utf-8',
@@ -116,6 +152,14 @@ function staticHandler(root) {
       'X-Content-Type-Options': 'nosniff',
       'Referrer-Policy': 'strict-origin-when-cross-origin',
     };
+    if (ext === '.html') {
+      // Account pages must not be framed by another origin. Keep the game
+      // embeddable for approved platforms such as CrazyGames.
+      const accountPage = ['/login.html', '/register.html', '/earnings.html', '/economy-admin.html'].includes(pathname);
+      headers['Content-Security-Policy'] = "base-uri 'self'; object-src 'none'"
+        + (accountPage ? "; frame-ancestors 'self'" : '');
+      if (accountPage) headers['X-Frame-Options'] = 'SAMEORIGIN';
+    }
     if (COMPRESSIBLE.has(ext)) headers.Vary = 'Accept-Encoding';
     if (useGzip) headers['Content-Encoding'] = 'gzip';
     else headers['Content-Length'] = stat.size;
@@ -175,7 +219,10 @@ function sanitizeName(n, usedNames = new Set()) {
   return c;
 }
 
-export function makeAuthServer({ server, port, staticRoot, targetPopulation = 0, mode = process.env.GAME_MODE || 'deathmatch', accountService = undefined } = {}) {
+export function makeAuthServer({ server, port, staticRoot, targetPopulation = 0, mode = process.env.GAME_MODE || 'deathmatch', accountService = undefined, connectionLimits = {} } = {}) {
+  const limits = Object.fromEntries(Object.entries(DEFAULT_CONNECTION_LIMITS).map(([key, fallback]) =>
+    [key, Number.isSafeInteger(connectionLimits[key]) && connectionLimits[key] > 0 ? connectionLimits[key] : fallback]));
+  const peerConnections = new Map();
   if (mode === 'survival') mode = 'deathmatch'; // Temporary maintenance pause.
   if(!['deathmatch','survival'].includes(mode))throw new Error('No authoritative implementation for this mode');
   const Room=mode==='survival'?SurvivalRoom:AuthRoom;
@@ -279,11 +326,26 @@ export function makeAuthServer({ server, port, staticRoot, targetPopulation = 0,
     staticFallback(req, res);
   };
   const http = server || createServer(handler);
-  const wss = new WebSocketServer({ server: http, maxPayload: MAX_MSG_BYTES });
+  const wss = new WebSocketServer({ server: http, maxPayload: MAX_MSG_BYTES, closeTimeout: 1000 });
 
   wss.on('connection', (ws, req) => {
+    // Install before early rejection too: malformed frames on a closing socket
+    // can still emit an error event.
+    ws.on('error', () => { try { ws.close(); } catch {} });
+    const peer = accountClientAddress(req);
+    if (wss.clients.size > limits.total || (peerConnections.get(peer) || 0) >= limits.perPeer) {
+      ws.terminate(); return;
+    }
+    peerConnections.set(peer, (peerConnections.get(peer) || 0) + 1);
+    ws.once('close', () => {
+      const count = (peerConnections.get(peer) || 1) - 1;
+      if (count > 0) peerConnections.set(peer, count); else peerConnections.delete(peer);
+    });
     if (!originOk(req.headers.origin)) { ws.close(1008, 'origin'); return; }
-    const selected=selectRoom(new URL(req.url,'http://localhost'), true);
+    let requestUrl;
+    try { requestUrl = new URL(req.url, 'http://localhost'); }
+    catch { ws.close(1008, 'invalid request'); return; }
+    const selected=selectRoom(requestUrl, true);
     if(!selected){ws.close(1008,'room unavailable');return;}
     const {room,economy}=selected;
 
@@ -291,6 +353,12 @@ export function makeAuthServer({ server, port, staticRoot, targetPopulation = 0,
       id: null, alive: true, lastSeen: Date.now(),
       tokens: RATE_TOKENS, lastRefill: Date.now(),
     };
+    // Pongs must not keep unjoined sockets alive indefinitely.
+    const helloTimer = setTimeout(() => {
+      if (conn.id == null) { conn.alive = false; ws.terminate(); }
+    }, limits.helloMs);
+    helloTimer.unref?.();
+    ws.once('close', () => clearTimeout(helloTimer));
 
     const send = (obj) => {
       if (ws.readyState !== ws.OPEN) return;
@@ -314,8 +382,9 @@ export function makeAuthServer({ server, port, staticRoot, targetPopulation = 0,
 
       let msg;
       try { msg = JSON.parse(raw); } catch { return; }
-      if (!msg || typeof msg.t !== 'string') return;
+      if (!validCommand(msg)) { ws.close(1008, 'invalid command'); return; }
 
+      try {
       switch (msg.t) {
         case 'hello':
           if (conn.id != null || conn.joining) return;
@@ -328,6 +397,7 @@ export function makeAuthServer({ server, port, staticRoot, targetPopulation = 0,
             identity?.username || msg.name,
             new Set(Array.from(room.players.values()).map((player) => player.name)),
           ), msg.readiness === true);
+          if (conn.id != null) clearTimeout(helloTimer);
           const requestedSkin=getArmorSkin(msg.armorSkin);
           if(conn.id!=null && identity){
             const player=room.players.get(conn.id);player.accountId=identity.id;
@@ -340,7 +410,7 @@ export function makeAuthServer({ server, port, staticRoot, targetPopulation = 0,
             try {
               await economy.ready;
               const peer=String(req.socket.remoteAddress||'');
-              const ip=process.env.E_TRUST_PROXY==='1'?String(req.headers['x-forwarded-for']||peer).split(',')[0].trim():peer;
+              const ip=process.env.E_TRUST_PROXY==='1'?accountClientAddress(req):peer;
               const network=(!ip||(['127.0.0.1','::1','::ffff:127.0.0.1'].includes(ip)&&process.env.E_TRUST_PROXY!=='1'))?null:createHash('sha256').update(`${process.env.E_NETWORK_SALT||economy.runtime.serverId}:${ip}`).digest('hex');
               if (conn.alive) {
                 await economy.runtime.join(conn.id, identity ? {...identity,sessionId:identity.sessionId,network} : null, send);
@@ -376,6 +446,7 @@ export function makeAuthServer({ server, port, staticRoot, targetPopulation = 0,
           if (conn.id != null) room.onPickup(conn.id, msg);
           break;
         case 'ability':
+          if (!ABILITY_KINDS.has(msg.kind)) return;
           if (conn.id != null) room.onAbility(conn.id, msg);
           break;
         case 'pong':
@@ -383,11 +454,16 @@ export function makeAuthServer({ server, port, staticRoot, targetPopulation = 0,
         default:
           return;                                        // unknown type ignored
       }
+      } catch (error) {
+        // EventEmitter does not await async listeners: rejecting here otherwise
+        // terminates the whole Node process, disconnecting every player.
+        console.error('[auth command failed]', error?.name || 'Error');
+        conn.alive = false;
+        ws.close(1011, 'command failed');
+      }
     });
 
     ws.on('close', () => { if (conn.id != null) { economy?.runtime.leave(conn.id); room.remove(conn.id); } conn.alive = false; });
-    ws.on('error', () => { try { ws.close(); } catch {} });
-
     ws._conn = conn;
     ws._send = send;
   });

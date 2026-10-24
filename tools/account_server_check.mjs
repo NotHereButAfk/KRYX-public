@@ -31,9 +31,9 @@ try{
  const profile=(await request('me',null,login.cookie)).data.user;
  assert.equal(profile.kills,3);assert.equal(profile.deaths,2);assert.equal(profile.games,1);assert.equal((await achievements.profile(profile.id)).stats.kills,3);
  const known=await request('reset/request',{email:'tester@example.com'}),unknown=await request('reset/request',{email:'unknown@example.com'});
- assert.deepEqual(known.data,unknown.data);assert.equal(mail.length,1);assert.match(mail[0].code,/^\d{4}$/);assert(!JSON.stringify(known.data).includes(mail[0].code));
+ assert.deepEqual(known.data,unknown.data);assert.equal(mail.length,1);assert.match(mail[0].code,/^\d{6}$/);assert(!JSON.stringify(known.data).includes(mail[0].code));
  await request('reset/request',{email:'tester@example.com'});assert.equal(mail.length,1);
- const wrong=mail[0].code==='0000'?'0001':'0000';
+ const wrong=mail[0].code==='000000'?'000001':'000000';
  for(let i=0;i<5;i++)assert.equal((await request('reset/confirm',{email:'tester@example.com',code:wrong,password:'new-password'})).status,400);
  assert.equal((await request('reset/confirm',{email:'tester@example.com',code:mail[0].code,password:'new-password'})).status,400);
  await query("UPDATE password_resets SET requested_at=NOW()-INTERVAL '11 minutes',expires_at=NOW()-INTERVAL '1 minute'");

@@ -41,12 +41,12 @@
         <div id="form-reset" class="auth-form hidden">
           <label class="login-label" for="reset-name">Registered email address <span class="req">*</span></label>
           <input id="reset-name" class="login-input" type="email" autocomplete="email" maxlength="254" />
-          <div class="login-hint" id="reset-status" role="status">We’ll email you a four-digit code to reset your password.</div>
+          <div class="login-hint" id="reset-status" role="status">We’ll email you a six-digit code to reset your password.</div>
           <div id="reset-err" class="auth-error hidden"></div>
           <button id="reset-btn" class="login-submit" type="button">Send code</button>
           <div id="reset-confirm" class="hidden">
-            <label class="login-label" for="reset-code">Four-digit code</label>
-            <input id="reset-code" class="login-input" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" autocomplete="one-time-code" />
+            <label class="login-label" for="reset-code">Six-digit code</label>
+            <input id="reset-code" class="login-input" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" autocomplete="one-time-code" />
             <label class="login-label" for="reset-password">New password</label>
             <input id="reset-password" class="login-input" type="password" minlength="8" maxlength="128" autocomplete="new-password" />
             <label class="login-label" for="reset-password-confirm">Confirm new password</label>
