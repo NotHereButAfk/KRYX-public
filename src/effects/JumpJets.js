@@ -18,7 +18,7 @@ export function createJumpJets(group,bones) {
   const point = new THREE.Vector3();let elapsed=0;
   return {update(dt,remaining) {
     elapsed += dt;
-    group.updateWorldMatrix(true,false);
+    if (remaining > 0) group.updateWorldMatrix(true,false);
     for(const {root,foot} of jets) {
       root.visible=remaining>0;
       if(!root.visible)continue;

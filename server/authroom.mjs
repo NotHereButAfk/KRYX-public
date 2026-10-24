@@ -2075,6 +2075,14 @@ export class AuthRoom {
     }
     // send per-player snapshots (each gets its own ack + authoritative you-state)
     const now = this.tick;
+    let hasRecipients = false;
+    for (const p of this.players.values()) {
+      // Bots still need their authoritative ammo mirror, but have no socket.
+      // Do not build browser snapshots for their no-op send callbacks.
+      p.mag = this._weaponState(p, p.wid).mag;
+      if (!p.isBot) hasRecipients = true;
+    }
+    if (!hasRecipients) return;
     const publicList = [];
     for (const p of this.players.values()) {
       const reloadDuration = Math.max(1, Math.ceil((WEAPONS[p.wid]?.reload || 0) * TICK_HZ));
@@ -2102,23 +2110,35 @@ export class AuthRoom {
       });
     }
     const smokeList = this.smokes.map((s) => ({ x: s.x, y: s.y, z: s.z, r: s.r }));
+    const projectileList = this.projectiles.map(p => ({id:p.id,kind:p.kind,wid:p.wid,by:p.by,x:p.x,y:p.y,z:p.z,vx:p.vx,vy:p.vy,vz:p.vz,remaining:p.until==null?undefined:Math.max(0,(p.until-now)/TICK_HZ)}));
+    const bombList = this.frags.filter(f=>f.kind==='timebomb').map(f=>({id:f.id,x:f.x,y:f.y,z:f.z,remaining:Math.max(0,(f.until-now)/TICK_HZ)}));
+    const lootPads = this._lootPadPayload();
+    const survival = this.mode==='survival'?{wave:this.wave,state:this.waveState,capacity:this.botConfig.desiredParticipants,participants:this.participants().length,enemies:this.enemies().filter(p=>p.alive).length,pending:this.pendingEnemies,total:this.waveTotal,nextWaveIn:Math.max(0,(this.nextWaveTick-now)/TICK_HZ)}:null;
+    let pending = 0;
+    for (const p of this.players.values()) if (!p.isBot && !p.spectating && p.mapReady === false) pending++;
+    const roundGate = { waiting: !!this._roundWaiting, deadline: this._readyDeadline || 0, resultsUntil: this._resultsUntil || 0, pending };
+    const postMatch = this._postMatchUntil ? { until: this._postMatchUntil, rows: this.previousRound.rows } : null;
+    // Build these immutable tick-local values once. Never reuse them across
+    // ticks: queued/captured snapshots must retain their original contents.
+    let arenaPayload;
     for (const p of this.players.values()) {
+      if (p.isBot) continue;
       const ammo = this._weaponState(p, p.wid);
-      p.mag = ammo.mag;
+      const includeArena = rotated || p.mapReady === false || now <= this._arenaBroadcastUntilTick;
+      if (includeArena && !arenaPayload) arenaPayload = this._arenaPayload();
       p.send({
         t: 'snapshot', tick: now, ack: p.ackTick,
-        survival: this.mode==='survival'?{wave:this.wave,state:this.waveState,capacity:this.botConfig.desiredParticipants,participants:this.participants().length,enemies:this.enemies().filter(p=>p.alive).length,pending:this.pendingEnemies,total:this.waveTotal,nextWaveIn:Math.max(0,(this.nextWaveTick-now)/TICK_HZ)}:null,
+        survival,
         economy: this.economy?.ready ? this.economy.preview(p.id) : null,
         mapId: this.arena.id,
         mapName: this.arena.name,
         matchStart: this.matchStart,
         matchDurationMs: this.matchDurationMs,
         serverTime: Date.now(),
-        roundGate: { waiting: !!this._roundWaiting, deadline: this._readyDeadline || 0, resultsUntil: this._resultsUntil || 0,
-          pending: [...this.players.values()].filter(p => !p.isBot && !p.spectating && p.mapReady === false).length },
-        postMatch: this._postMatchUntil ? { until: this._postMatchUntil, rows: this.previousRound.rows } : null,
+        roundGate,
+        postMatch,
         previousRound: this.previousRound || null,
-        arena: rotated || p.mapReady === false || now <= this._arenaBroadcastUntilTick ? this._arenaPayload() : undefined,
+        arena: includeArena ? arenaPayload : undefined,
         you: { ready: p.mapReady !== false, x: p.state.px, y: p.state.py, z: p.state.pz,
                vx: p.state.vx, vy: p.state.vy, vz: p.state.vz,
                eye: p.state.eye,
@@ -2146,10 +2166,10 @@ export class AuthRoom {
                blind: p.blindUntil > now, blindTicks: Math.max(0, p.blindUntil - now),
                abilities: p.abilities, abilityCooldowns: p.abilityCooldowns, abilityCD: +p.abilityCD.toFixed(2) },
         players: publicList,
-        projectiles: this.projectiles.map(p => ({id:p.id,kind:p.kind,wid:p.wid,by:p.by,x:p.x,y:p.y,z:p.z,vx:p.vx,vy:p.vy,vz:p.vz,remaining:p.until==null?undefined:Math.max(0,(p.until-this.tick)/TICK_HZ)})),
-        bombs: this.frags.filter(f=>f.kind==='timebomb').map(f=>({id:f.id,x:f.x,y:f.y,z:f.z,remaining:Math.max(0,(f.until-this.tick)/TICK_HZ)})),
+        projectiles: projectileList,
+        bombs: bombList,
         smokes: smokeList,
-        lootPads: this._lootPadPayload(),
+        lootPads,
         events: this.events,
       });
     }

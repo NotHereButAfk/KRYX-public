@@ -79,6 +79,7 @@
     "test:armor-roster": "node tools/armor_roster_check.mjs",
     "test:evmap": "node tools/evmap_check.mjs",
     "test:client-performance": "node tools/client_performance_check.mjs && node tools/launcher_render_check.mjs",
+    "test:performance": "node tools/ui_update_performance_check.mjs && node tools/avatar_performance_check.mjs && node server/snapshot_payload_test.mjs",
     "test:zombies": "node tools/zombie_roles_check.mjs && node tools/zombie_roster_visual_check.mjs",
     "simulate:bots": "node tools/bot_navigation_simulation.mjs final 180 && node tools/bot_simulation_check.mjs",
     "bake:bot-navigation": "node tools/bake_bot_navigation.mjs",

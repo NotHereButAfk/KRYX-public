@@ -251,7 +251,7 @@ export class HUD {
   // Large centered deathmatch countdown timer
   showDMTimer(timeStr, isLow = false) {
     setText(this.dmTimer, timeStr);
-    this.dmTimer.classList.remove('hidden');
+    toggleClass(this.dmTimer, 'hidden', false);
     toggleClass(this.dmTimer, 'dm-low', isLow);
   }
   hideDMTimer() { this.dmTimer.classList.add('hidden'); }
@@ -379,13 +379,13 @@ export class HUD {
     setText(this.healthText, Math.ceil(player.health));
 
     if (player.shield > 0 && player.maxShield > 0) {
-      this.shieldWrap.classList.remove('hidden');
+      toggleClass(this.shieldWrap, 'hidden', false);
       const spct = Math.max(0, Math.min(100, (player.shield / player.maxShield) * 100));
       setStyle(this.shieldBar, 'width', `${spct}%`);
       setText(this.shieldText, Math.ceil(player.shield));
       setText(this.shieldStacks, `×${Math.ceil(player.maxShield / SHIELD_PER_STACK)}`);
     } else {
-      this.shieldWrap.classList.add('hidden');
+      toggleClass(this.shieldWrap, 'hidden', true);
     }
 
     const spct = Math.max(0, (player.stamina / player.maxStamina) * 100);
@@ -405,7 +405,7 @@ export class HUD {
     toggleClass(this.reloadText, 'hidden', !weaponInfo.isReloading);
     if (this.reloadRing) {
       toggleClass(this.reloadRing, 'hidden', !weaponInfo.isReloading);
-      this.reloadRing.style.setProperty('--reload-fraction', String(Math.max(0, Math.min(1, weaponInfo.reloadProgress || 0))));
+      setCustomStyle(this.reloadRing, '--reload-fraction', String(Math.max(0, Math.min(1, weaponInfo.reloadProgress || 0))));
     }
     if (this.crosshair) {
       const bloom = Math.max(0, Math.min(1, weaponInfo.spreadRatio || 0));
@@ -640,57 +640,72 @@ export class HUD {
     if (!ov || !tb) return;
     if (ov.classList.contains('hidden')) this._selectScoreboardTab('leaderboard');
     const subEl = document.getElementById('sb-sub');
-    if (subEl && sub) subEl.textContent = sub;
-    tb.innerHTML = '';
-    rows.forEach((r, i) => {
-      const rank = i + 1;
-      const tr = document.createElement('tr');
-      if (r.isYou) tr.className = 'sb-row-you';
-      const rankCls = rank <= 3 ? `sb-rank sb-rank-${rank}` : 'sb-rank';
+    if (sub) setText(subEl, sub);
+    // TAB refreshes several times per second. Keep unchanged rows mounted so
+    // score polling does not repeatedly rebuild portraits, badges and cells.
+    const rowsKey = JSON.stringify([isCrazyGames(), rows.map(r => [
+      r.name, r.nameCosmetics, r.isYou, r.isBot, r.score, r.assists, r.kills, r.deaths,
+    ])]);
+    if (this._scoreboardRowsNode !== tb || this._scoreboardRowsKey !== rowsKey) {
+      this._scoreboardRowsNode = tb;
+      this._scoreboardRowsKey = rowsKey;
+      tb.innerHTML = '';
+      rows.forEach((r, i) => {
+        const rank = i + 1;
+        const tr = document.createElement('tr');
+        if (r.isYou) tr.className = 'sb-row-you';
+        const rankCls = rank <= 3 ? `sb-rank sb-rank-${rank}` : 'sb-rank';
 
-      const nameTd = document.createElement('td');
-      nameTd.className = 'sb-name-cell';
-      const portrait = document.createElement(isCrazyGames() ? 'span' : 'img');
-      portrait.className = r.isBot ? 'sb-portrait sb-portrait-bot' : 'sb-portrait';
-      if (isCrazyGames()) { portrait.textContent = 'K'; portrait.style.cssText = 'display:inline-grid;place-items:center;background:#163344;color:#53e9ff;font-weight:bold'; }
-      else portrait.src = '/images/ev-portrait.png';
-      portrait.alt = ''; portrait.width = portrait.height = 34;
-      nameTd.appendChild(portrait);
-      const label = document.createElement('span'); label.className = 'sb-player-name';
-      renderNameCosmetics(label,r.name,r.nameCosmetics); nameTd.appendChild(label);
-      if (r.isYou) {
-        const b = document.createElement('span');
-        b.className = 'sb-you-badge'; b.textContent = 'YOU';
-        nameTd.appendChild(b);
-      }
-      tr.innerHTML = `<td><span class="${rankCls}">${rank}.</span></td>`;
-      tr.appendChild(nameTd);
-      const kills = Number.isFinite(r.kills) ? r.kills : 0;
-      const deaths = Number.isFinite(r.deaths) ? r.deaths : 0;
-      for (const value of [(r.score || 0).toLocaleString(), r.assists ?? 0, kills, deaths,
-        Number((deaths ? kills / deaths : kills).toFixed(2))]) {
-        const cell = document.createElement('td'); cell.textContent = value; tr.appendChild(cell);
-      }
-      tb.appendChild(tr);
-    });
+        const nameTd = document.createElement('td');
+        nameTd.className = 'sb-name-cell';
+        const portrait = document.createElement(isCrazyGames() ? 'span' : 'img');
+        portrait.className = r.isBot ? 'sb-portrait sb-portrait-bot' : 'sb-portrait';
+        if (isCrazyGames()) { portrait.textContent = 'K'; portrait.style.cssText = 'display:inline-grid;place-items:center;background:#163344;color:#53e9ff;font-weight:bold'; }
+        else portrait.src = '/images/ev-portrait.png';
+        portrait.alt = ''; portrait.width = portrait.height = 34;
+        nameTd.appendChild(portrait);
+        const label = document.createElement('span'); label.className = 'sb-player-name';
+        renderNameCosmetics(label,r.name,r.nameCosmetics); nameTd.appendChild(label);
+        if (r.isYou) {
+          const b = document.createElement('span');
+          b.className = 'sb-you-badge'; b.textContent = 'YOU';
+          nameTd.appendChild(b);
+        }
+        tr.innerHTML = `<td><span class="${rankCls}">${rank}.</span></td>`;
+        tr.appendChild(nameTd);
+        const kills = Number.isFinite(r.kills) ? r.kills : 0;
+        const deaths = Number.isFinite(r.deaths) ? r.deaths : 0;
+        for (const value of [(r.score || 0).toLocaleString(), r.assists ?? 0, kills, deaths,
+          Number((deaths ? kills / deaths : kills).toFixed(2))]) {
+          const cell = document.createElement('td'); cell.textContent = value; tr.appendChild(cell);
+        }
+        tb.appendChild(tr);
+      });
+    }
     setText(document.querySelector('#sb-earned')?.previousElementSibling, stats.guest ? 'SCORE THIS MATCH' : 'K THIS MATCH · PENDING VALIDATION');
     setText(document.getElementById('sb-earned'), stats.guest ? Number(stats.guestScore || 0).toLocaleString() : Number(stats.earnedCoins || 0).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2}));
     setText(document.getElementById('sb-spectators'), `Spectators: ${stats.spectators?.join(', ') || '—'}`);
     const performance = document.getElementById('sb-performance');
     if (performance) {
-      performance.replaceChildren();
-      for (const [label, value] of [
+      const values = [
         ['Accuracy', `${stats.shotsFired ? ((stats.hits || 0) / stats.shotsFired * 100).toFixed(1) : '0.0'}%`],
         ['Damage dealt', Math.round(stats.damageDealt || 0).toLocaleString()],
         ['Shots / hits', `${stats.shotsFired || 0} / ${stats.hits || 0}`],
         ['Headshots', stats.headshots || 0], ['Best streak', stats.bestStreak || 0],
-      ]) {
-        const term = document.createElement('dt'); term.textContent = label;
-        const detail = document.createElement('dd'); detail.textContent = value;
-        performance.append(term, detail);
+      ];
+      const performanceKey = JSON.stringify(values);
+      if (this._scoreboardPerformanceNode !== performance || this._scoreboardPerformanceKey !== performanceKey) {
+        this._scoreboardPerformanceNode = performance;
+        this._scoreboardPerformanceKey = performanceKey;
+        performance.replaceChildren();
+        for (const [label, value] of values) {
+          const term = document.createElement('dt'); term.textContent = label;
+          const detail = document.createElement('dd'); detail.textContent = value;
+          performance.append(term, detail);
+        }
       }
     }
-    ov.classList.remove('hidden');
+    toggleClass(ov, 'hidden', false);
   }
 
   hideScoreboard() {

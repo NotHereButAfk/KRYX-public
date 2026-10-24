@@ -242,6 +242,8 @@ export class AuthNetBridge {
     });
     const nameEl = document.createElement('div');
     nameEl.className = 'nameplate';
+    nameEl.style.left = '0';
+    nameEl.style.top = '0';
     const nameRow = document.createElement('div');
     nameRow.className = 'np-name';
     const nameText = document.createElement('span');
@@ -582,7 +584,11 @@ export class AuthNetBridge {
         a.armorSkin=equippedArmor;a.skinGroup=a.avatar.group;
       }
       a.avatar.group.visible = mapReady && r.ready !== false;
-      if (!mapReady || r.ready === false) { a.nameEl.style.display = 'none'; a.footsteps.ready = false; continue; }
+      if (!mapReady || r.ready === false) {
+        if (a.nameEl.style.display !== 'none') a.nameEl.style.display = 'none';
+        a.footsteps.ready = false;
+        continue;
+      }
       a.pos.set(r.x, r.y, r.z);
       const avatarDistanceSq = this._nameOrigin.distanceToSquared(a.pos);
       const footSound = a.footsteps.update(r, dt,
@@ -620,7 +626,19 @@ export class AuthNetBridge {
       a._soundAlive = r.alive !== false;
       // Keep semantic plate state current even while it is off-screen or
       // occluded, so the first visible frame never flashes an empty bar/name.
-      renderNameCosmetics(a.nameText,r.name,r.nameCosmetics);
+      // Snapshots recreate the cosmetics object; compare its displayed fields
+      // before sanitizing/building identity markup for every render frame.
+      const cosmetics = r.nameCosmetics;
+      if (!a._plateIdentityReady || a._plateName !== r.name
+          || a._plateBadge !== cosmetics?.badge || a._plateTitle !== cosmetics?.title
+          || a._plateStyle !== cosmetics?.style) {
+        renderNameCosmetics(a.nameText, r.name, cosmetics);
+        a._plateIdentityReady = true;
+        a._plateName = r.name;
+        a._plateBadge = cosmetics?.badge;
+        a._plateTitle = cosmetics?.title;
+        a._plateStyle = cosmetics?.style;
+      }
       const healthWidth = `${THREE.MathUtils.clamp((r.health || 0) / (r.maxHealth || 100) * 100, 0, 100)}%`;
       if (a.healthFg.style.width !== healthWidth) a.healthFg.style.width = healthWidth;
       // nameplate
@@ -637,11 +655,17 @@ export class AuthNetBridge {
       }
       if (drawable && !a._nameOccluded) {
         const distance = Math.sqrt(distanceSq);
-        a.nameEl.style.display = 'block';
-        a.nameEl.style.left = `${(v.x * 0.5 + 0.5) * w}px`;
-        a.nameEl.style.top = `${(-v.y * 0.5 + 0.5) * h}px`;
-        a.nameEl.style.transform = `translate(-50%,-100%) scale(${THREE.MathUtils.clamp(1.15 - distance / 180, 0.72, 1)})`;
-      } else { a.nameEl.style.display = 'none'; }
+        if (a.nameEl.style.display !== 'block') a.nameEl.style.display = 'block';
+        const x = (v.x * 0.5 + 0.5) * w;
+        const y = (-v.y * 0.5 + 0.5) * h;
+        const scale = THREE.MathUtils.clamp(1.15 - distance / 180, 0.72, 1);
+        if (a._plateX !== x || a._plateY !== y || a._plateScale !== scale) {
+          a.nameEl.style.transform = `translate(${x}px, ${y}px) translate(-50%,-100%) scale(${scale})`;
+          a._plateX = x;
+          a._plateY = y;
+          a._plateScale = scale;
+        }
+      } else if (a.nameEl.style.display !== 'none') { a.nameEl.style.display = 'none'; }
     }
     for (const [id, a] of this.remotes) {
       if (!seen.has(id)) { a.avatar.dispose(); a.nameEl.remove(); this.remotes.delete(id); }

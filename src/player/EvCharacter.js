@@ -91,18 +91,29 @@ const SUPPORT_GRIP = new THREE.Quaternion().setFromRotationMatrix(new THREE.Matr
   .premultiply(new THREE.Quaternion().setFromAxisAngle(Y, Math.PI / 4));
 const TRIGGER_GRIP = new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().makeBasis(
   new THREE.Vector3(0, -1, 0), new THREE.Vector3(0, 0, -1), new THREE.Vector3(1, 0, 0)));
+// Characters update sequentially. Keep carry scratch separate from solveChain's
+// vectors: its target must remain intact while the joint solver uses V/Q.
+const gripParent = new THREE.Quaternion(), gripWeapon = new THREE.Quaternion();
+const rotationPosition = new THREE.Vector3(), rotationScale = new THREE.Vector3();
+const carryScratch = Array.from({ length: 9 }, () => new THREE.Vector3());
+const carryConstraints = Array.from({ length: 2 }, () => ({ center: new THREE.Vector3(), radius: 0, minRadius: 0 }));
+const SIDES = ['R', 'L'];
 
 function orientGrip(hand, weapon, localRotation) {
-  const parent = hand.parent.getWorldQuaternion(new THREE.Quaternion()).invert();
-  hand.quaternion.copy(parent.multiply(weapon.getWorldQuaternion(new THREE.Quaternion())).multiply(localRotation));
+  const parent = hand.parent.getWorldQuaternion(gripParent).invert();
+  hand.quaternion.copy(parent.multiply(weapon.getWorldQuaternion(gripWeapon)).multiply(localRotation));
   hand.updateWorldMatrix(false, true);
 }
 
-function rotateWorld(bone, quaternion) {
-  bone.getWorldQuaternion(Q[5]);
-  bone.parent.getWorldQuaternion(Q[6]).invert();
+function rotateWorld(bone, quaternion, updateChildren = true) {
+  // tick evaluates the hierarchy once; each pose/IK edit below refreshes its
+  // affected branch. Reading those current matrices avoids re-evaluating every
+  // ancestor twice for each joint rotation (getWorldQuaternion does that).
+  bone.matrixWorld.decompose(rotationPosition, Q[5], rotationScale);
+  bone.parent.matrixWorld.decompose(rotationPosition, Q[6], rotationScale);
+  Q[6].invert();
   bone.quaternion.copy(Q[6].multiply(Q[5].premultiply(quaternion)));
-  bone.updateWorldMatrix(false, true);
+  bone.updateWorldMatrix(false, updateChildren);
 }
 
 // Preserve the clip's elbow/knee pole while solving a target in world space.
@@ -132,17 +143,18 @@ export function solveChain(a, b, c, target, poleTarget = null) {
 // only the elbow leaves the palm floating off a gun during jump/fall clips.
 function fitTwoHandCarry(weapon, bones, contact, supportSlide = 1) {
   weapon.updateWorldMatrix(true, false);
-  const origin = weapon.getWorldPosition(new THREE.Vector3());
-  const constraints = ['R', 'L'].map((side, i) => {
-    const shoulder = bones[`Bip001_${side}_UpperArm`].getWorldPosition(new THREE.Vector3());
-    const elbow = bones[`Bip001_${side}_Forearm`].getWorldPosition(new THREE.Vector3());
-    const hand = bones[`Bip001_${side}_Hand`].getWorldPosition(new THREE.Vector3());
-    const offset = new THREE.Vector3(...(i ? contact.support : contact.trigger))
+  const origin = weapon.getWorldPosition(carryScratch[0]);
+  for (let i = 0; i < SIDES.length; i++) {
+    const side = SIDES[i];
+    const shoulder = bones[`Bip001_${side}_UpperArm`].getWorldPosition(carryScratch[1]);
+    const elbow = bones[`Bip001_${side}_Forearm`].getWorldPosition(carryScratch[2]);
+    const hand = bones[`Bip001_${side}_Hand`].getWorldPosition(carryScratch[3]);
+    const offset = carryScratch[4].fromArray(i ? contact.support : contact.trigger)
       .applyMatrix4(weapon.matrixWorld).sub(origin);
     if (i && supportSlide > 0 && weapon.userData.weaponId !== 'rpg') {
       const reach = (shoulder.distanceTo(elbow) + elbow.distanceTo(hand)) * .98;
-      const back = new THREE.Vector3(0, 0, 1).transformDirection(weapon.matrixWorld);
-      const fromShoulder = origin.clone().add(offset).sub(shoulder);
+      const back = carryScratch[5].set(0, 0, 1).transformDirection(weapon.matrixWorld);
+      const fromShoulder = carryScratch[6].copy(origin).add(offset).sub(shoulder);
       const along = fromShoulder.dot(back);
       const discriminant = along * along - fromShoulder.lengthSq() + reach * reach;
       if (fromShoulder.lengthSq() > reach * reach && discriminant >= 0) {
@@ -150,12 +162,15 @@ function fitTwoHandCarry(weapon, bones, contact, supportSlide = 1) {
           Math.max(0, contact.trigger[2] - contact.support[2] - .06) * supportSlide));
       }
     }
-    return { center: shoulder.clone().sub(offset), radius: (shoulder.distanceTo(elbow) + elbow.distanceTo(hand)) * .98, minRadius: Math.abs(shoulder.distanceTo(elbow) - elbow.distanceTo(hand)) + .005 };
-  });
-  const delta = new THREE.Vector3();
+    const constraint = carryConstraints[i];
+    constraint.center.copy(shoulder).sub(offset);
+    constraint.radius = (shoulder.distanceTo(elbow) + elbow.distanceTo(hand)) * .98;
+    constraint.minRadius = Math.abs(shoulder.distanceTo(elbow) - elbow.distanceTo(hand)) + .005;
+  }
+  const delta = carryScratch[7];
   for (let i = 0; i < 16; i++) {
     let changed = false;
-    for (const { center, radius, minRadius } of constraints) {
+    for (const { center, radius, minRadius } of carryConstraints) {
       delta.subVectors(origin, center);
       if (delta.lengthSq() > radius * radius) {
         origin.copy(center).add(delta.setLength(radius)); changed = true;
@@ -168,7 +183,7 @@ function fitTwoHandCarry(weapon, bones, contact, supportSlide = 1) {
   }
   weapon.position.copy(weapon.parent.worldToLocal(origin));
   weapon.updateWorldMatrix(true, true);
-  const trigger = new THREE.Vector3(...contact.trigger).applyMatrix4(weapon.matrixWorld);
+  const trigger = carryScratch[8].fromArray(contact.trigger).applyMatrix4(weapon.matrixWorld);
   solveChain(bones.Bip001_R_UpperArm, bones.Bip001_R_Forearm, bones.Bip001_R_Hand, trigger);
 }
 
@@ -239,6 +254,8 @@ export function buildEvCharacter(skin = null, armorSkin = null) {
   const carryEuler = new THREE.Euler(0, 0, 0, 'YXZ');
   const carryHand = new THREE.Vector3();
   const carryForward = new THREE.Vector3();
+  const poseVectors = Array.from({ length: 5 }, () => new THREE.Vector3());
+  const poseRotation = new THREE.Quaternion(), chestRotation = new THREE.Quaternion();
   const deathBase = new Map();
   const deathPose = createHumanDeathPose();
   const weaponSocket = new THREE.Group();
@@ -339,8 +356,8 @@ export function buildEvCharacter(skin = null, armorSkin = null) {
       }
       const pose = sampleHumanDeathPose(death, deathSide, deathPose, deathTime);
       group.updateWorldMatrix(true, true);
-      const frame = group.getWorldQuaternion(new THREE.Quaternion());
-      const x = X.clone().applyQuaternion(frame), z = new THREE.Vector3(0, 0, 1).applyQuaternion(frame);
+      const frame = group.getWorldQuaternion(poseRotation);
+      const x = poseVectors[0].copy(X).applyQuaternion(frame), z = poseVectors[1].set(0, 0, 1).applyQuaternion(frame);
       const parts = [
         ['Pelvis', 'hips'], ['Spine', 'spine'], ['Spine1', 'chest'], ['Head', 'head'],
         ['R_UpperArm', 'rArm'], ['L_UpperArm', 'lArm'], ['R_Forearm', 'rFore'], ['L_Forearm', 'lFore'],
@@ -349,7 +366,7 @@ export function buildEvCharacter(skin = null, armorSkin = null) {
       ];
       for (const [name, key] of parts) {
         const bone = bones[`Bip001_${name}`];
-        rotateWorld(bone, Q[0].setFromAxisAngle(x, pose[`${key}X`] || 0));
+        rotateWorld(bone, Q[0].setFromAxisAngle(x, pose[`${key}X`] || 0), false);
         rotateWorld(bone, Q[0].setFromAxisAngle(z, pose[`${key}Z`] || 0));
       }
       // The armed idle has one foot far forward. Release that stance as the
@@ -481,7 +498,7 @@ export function buildEvCharacter(skin = null, armorSkin = null) {
     const bodyAxis = V[8].copy(Y).applyQuaternion(Q[1]);
     // Thighs are children of Spine in this rig. Counter-rotate only Spine1
     // and above, otherwise keeping the torso aimed also cancels leg travel.
-    const chestWorld = chest.getWorldQuaternion(Q[2]).clone();
+    const chestWorld = chest.getWorldQuaternion(chestRotation);
     rotateWorld(pelvis, Q[0].setFromAxisAngle(bodyAxis, travelYaw));
     chest.parent.getWorldQuaternion(Q[3]).invert();
     chest.quaternion.copy(Q[3].multiply(chestWorld));
@@ -491,10 +508,10 @@ export function buildEvCharacter(skin = null, armorSkin = null) {
     if (!state.grounded) {
       // Tuck both feet up/back on ascent without moving the gameplay capsule.
       const tuck = airPose.tuck;
-      const backwards = new THREE.Vector3(0, 0, 0.07 * tuck).applyQuaternion(group.getWorldQuaternion(new THREE.Quaternion()));
+      const backwards = poseVectors[0].set(0, 0, 0.07 * tuck).applyQuaternion(group.getWorldQuaternion(poseRotation));
       for (const side of ['L', 'R']) {
         const foot = bones[`Bip001_${side}_Foot`];
-        const targetFoot = foot.getWorldPosition(new THREE.Vector3()).add(backwards);
+        const targetFoot = foot.getWorldPosition(poseVectors[1]).add(backwards);
         targetFoot.y += 0.16 * tuck;
         solveChain(bones[`Bip001_${side}_Thigh`], bones[`Bip001_${side}_Calf`], foot, targetFoot);
       }
@@ -505,14 +522,14 @@ export function buildEvCharacter(skin = null, armorSkin = null) {
     // straight line just to reach an overextended step. Preserve ankle height.
     if (state.grounded && moving && !crouched && !backwards) for (const side of ['L', 'R']) {
       const thigh = bones['Bip001_' + side + '_Thigh'], calf = bones['Bip001_' + side + '_Calf'], foot = bones['Bip001_' + side + '_Foot'];
-      const hip = thigh.getWorldPosition(new THREE.Vector3()), knee = calf.getWorldPosition(new THREE.Vector3()), ankle = foot.getWorldPosition(new THREE.Vector3());
+      const hip = thigh.getWorldPosition(poseVectors[0]), knee = calf.getWorldPosition(poseVectors[1]), ankle = foot.getWorldPosition(poseVectors[2]);
       const a = hip.distanceTo(knee), b = knee.distanceTo(ankle);
       const reach = Math.sqrt(a*a + b*b + 2*a*b*Math.cos(8*Math.PI/180));
-      const offset = ankle.clone().sub(hip), horizontal = Math.hypot(offset.x, offset.z);
+      const offset = poseVectors[3].copy(ankle).sub(hip), horizontal = Math.hypot(offset.x, offset.z);
       const allowed = Math.sqrt(Math.max(0, reach*reach - offset.y*offset.y));
       if(horizontal > allowed && horizontal > .0001){
         ankle.x = hip.x + offset.x * allowed/horizontal; ankle.z = hip.z + offset.z * allowed/horizontal;
-        const footQ = foot.getWorldQuaternion(new THREE.Quaternion());
+        const footQ = foot.getWorldQuaternion(poseRotation);
         solveChain(thigh, calf, foot, ankle);
         foot.parent.getWorldQuaternion(Q[3]).invert();foot.quaternion.copy(Q[3].multiply(footQ));
       }
@@ -570,25 +587,27 @@ export function buildEvCharacter(skin = null, armorSkin = null) {
     const bodyWeight=firing?0:1;
     if(response.drop){
       const chestPosition=chest.getWorldPosition(V[11]);chestPosition.y+=response.drop;
-      chest.position.copy(chest.parent.worldToLocal(chestPosition));chest.updateWorldMatrix(false,true);
+      chest.position.copy(chest.parent.worldToLocal(chestPosition));chest.updateWorldMatrix(false,false);
     }
-    rotateWorld(chest,Q[0].setFromAxisAngle(bodyAxis,response.twist*bodyWeight));
-    rotateWorld(chest,Q[0].setFromAxisAngle(V[7].set(0,0,1).applyQuaternion(Q[1]),response.roll*bodyWeight));
+    // No descendant is read between these rotations. Refresh the chest itself
+    // for exact sequential rotations, then its arms/head only after the last.
+    rotateWorld(chest,Q[0].setFromAxisAngle(bodyAxis,response.twist*bodyWeight), false);
+    rotateWorld(chest,Q[0].setFromAxisAngle(V[7].set(0,0,1).applyQuaternion(Q[1]),response.roll*bodyWeight), false);
     ud.bodyDynamics={...response};
     // Hinge the upper body as one unit; do not curl individual spine joints.
     runLean = ease(runLean, state.sprint && moving && state.grounded && !crouched ? -.14 : 0, dt, 8);
-    rotateWorld(chest, Q[0].setFromAxisAngle(V[8].copy(X).applyQuaternion(Q[1]), runLean));
+    rotateWorld(chest, Q[0].setFromAxisAngle(V[8].copy(X).applyQuaternion(Q[1]), runLean), false);
     ud.runLean = runLean;
     const actionPitch = reload * -0.35 + (actionKind === 'hit' ? -0.12 : -0.25) * actionPulse;
-    rotateWorld(chest, Q[0].setFromAxisAngle(bodyAxis, smoothYaw));
+    rotateWorld(chest, Q[0].setFromAxisAngle(bodyAxis, smoothYaw), false);
     rotateWorld(chest, Q[0].setFromAxisAngle(V[8].copy(X).applyQuaternion(Q[1]), smoothPitch + actionPitch + shot * 0.018 + response.pitch * bodyWeight));
     if (externalWeapon) {
       if (melee) {
         // Carry the hilt through the chop instead of rotating a rifle grip.
         const sword = externalWeapon.userData.weaponId === 'sword';
-        const hand = group.localToWorld(new THREE.Vector3((sword ? 0.08 : 0.30) + swordPose.x, (sword ? 1.24 : 1.30) + swordPose.y, (sword ? -0.48 : -0.36) + swordPose.z));
+        const hand = group.localToWorld(poseVectors[0].set((sword ? 0.08 : 0.30) + swordPose.x, (sword ? 1.24 : 1.30) + swordPose.y, (sword ? -0.48 : -0.36) + swordPose.z));
         solveChain(bones.Bip001_R_UpperArm, bones.Bip001_R_Forearm, bones.Bip001_R_Hand, hand);
-        const guard = group.localToWorld(new THREE.Vector3(-0.24, 1.05, -0.16));
+        const guard = group.localToWorld(poseVectors[0].set(-0.24, 1.05, -0.16));
         solveChain(bones.Bip001_L_UpperArm, bones.Bip001_L_Forearm, bones.Bip001_L_Hand, guard);
       }
       const authoredContact = weaponHandPose(externalWeapon);
@@ -600,7 +619,7 @@ export function buildEvCharacter(skin = null, armorSkin = null) {
         ? THREE.MathUtils.smoothstep(state.reload, 0, .25)
           * (1 - THREE.MathUtils.smoothstep(state.reload, .75, 1)) : 0;
       const supportContact = reloadBlend > 0
-        ? new THREE.Vector3(...contact.support).lerp(new THREE.Vector3(...contact.reload), reloadBlend).toArray()
+        ? poseVectors[0].fromArray(contact.support).lerp(poseVectors[1].fromArray(contact.reload), reloadBlend).toArray()
         : contact.support;
       weaponSocket.updateWorldMatrix(true, false);
       group.getWorldQuaternion(carryRotation);
@@ -622,12 +641,12 @@ export function buildEvCharacter(skin = null, armorSkin = null) {
       if (externalWeapon.userData.weaponId === 'rpg') {
         // Seat the rear saddle on the animated right shoulder, then solve both
         // wrists to the launcher rather than letting a rifle clip drive the tube.
-        const shoulder = bones.Bip001_R_UpperArm.getWorldPosition(new THREE.Vector3());
-        shoulder.add(new THREE.Vector3(0.035, 0.045, 0).applyQuaternion(group.getWorldQuaternion(new THREE.Quaternion())));
-        const saddle = new THREE.Vector3(0, -.018, .14).multiply(externalWeapon.scale).applyQuaternion(externalWeapon.quaternion);
+        const shoulder = bones.Bip001_R_UpperArm.getWorldPosition(poseVectors[0]);
+        shoulder.add(poseVectors[1].set(0.035, 0.045, 0).applyQuaternion(group.getWorldQuaternion(poseRotation)));
+        const saddle = poseVectors[1].set(0, -.018, .14).multiply(externalWeapon.scale).applyQuaternion(externalWeapon.quaternion);
         externalWeapon.position.copy(weaponSocket.worldToLocal(shoulder)).sub(saddle);
         externalWeapon.updateWorldMatrix(true, true);
-        const trigger = new THREE.Vector3(...contact.trigger).applyMatrix4(externalWeapon.matrixWorld);
+        const trigger = poseVectors[0].fromArray(contact.trigger).applyMatrix4(externalWeapon.matrixWorld);
         solveChain(bones.Bip001_R_UpperArm, bones.Bip001_R_Forearm, bones.Bip001_R_Hand, trigger);
       }
       externalWeapon.updateWorldMatrix(true, true);
@@ -637,11 +656,11 @@ export function buildEvCharacter(skin = null, armorSkin = null) {
       if (melee && externalWeapon.userData.weaponId === 'sword') {
         fitTwoHandCarry(externalWeapon, bones, contact);
         // Stack the second palm below the blade hand on the same moving hilt.
-        const support = new THREE.Vector3(...contact.support).applyMatrix4(externalWeapon.matrixWorld);
+        const support = poseVectors[0].fromArray(contact.support).applyMatrix4(externalWeapon.matrixWorld);
         solveChain(bones.Bip001_L_UpperArm, bones.Bip001_L_Forearm, bones.Bip001_L_Hand, support);
       }
       if (!melee && contact.supportVisible !== false) {
-        const support = new THREE.Vector3(...supportContact)
+        const support = poseVectors[0].fromArray(supportContact)
           .applyMatrix4(externalWeapon.matrixWorld);
         if (reloadBlend < 1 && externalWeapon.userData.weaponId !== 'rpg') {
           // Let the support palm slide back along the underside of the gun
@@ -670,7 +689,7 @@ export function buildEvCharacter(skin = null, armorSkin = null) {
     // Unarmed Survival enemies reach forward with the same bot skeleton.
     if (state.zombieReach) {
       for (const [side, x] of [['R', .23], ['L', -.23]]) {
-        const reach = group.localToWorld(new THREE.Vector3(x, 1.42, -.66));
+        const reach = group.localToWorld(poseVectors[0].set(x, 1.42, -.66));
         solveChain(bones['Bip001_' + side + '_UpperArm'], bones['Bip001_' + side + '_Forearm'], bones['Bip001_' + side + '_Hand'], reach);
       }
       if (externalWeapon) externalWeapon.visible = false;

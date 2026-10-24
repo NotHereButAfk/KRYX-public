@@ -1,5 +1,7 @@
 import * as THREE from 'three';
 
+const intersectionsByRaycaster = new WeakMap();
+
 // DOM labels do not participate in the depth buffer, so explicitly test the
 // camera-to-head segment against both rendered map meshes and box-only
 // collision. Returns true only when geometry is closer than the player.
@@ -19,14 +21,23 @@ export function isNameplateOccluded(world, cameraPosition, target, raycaster) {
     return world.raycastCollisionDistance(raycaster.ray, raycaster.far) < raycaster.far;
   }
 
-  let nearest = Infinity;
+  // A box blocker already settles visibility; do not also scan render meshes.
+  const boxHit = world.raycastBoxHit?.(raycaster.ray, raycaster.far);
+  if (boxHit && boxHit.distance < distance - 0.22) return true;
   const meshes = world.raycastMeshes || [];
   if (meshes.length) {
-    const meshHit = raycaster.intersectObjects(meshes, true)[0];
-    if (meshHit) nearest = meshHit.distance;
+    let intersections = intersectionsByRaycaster.get(raycaster);
+    if (!intersections) {
+      intersections = [];
+      intersectionsByRaycaster.set(raycaster, intersections);
+    }
+    intersections.length = 0;
+    raycaster.intersectObjects(meshes, true, intersections);
+    const blocked = intersections.length > 0 && intersections[0].distance < distance - 0.22;
+    // Do not keep map objects alive after a map change through the scratch array.
+    intersections.length = 0;
+    return blocked;
   }
-  const boxHit = world.raycastBoxHit?.(raycaster.ray, raycaster.far);
-  if (boxHit) nearest = Math.min(nearest, boxHit.distance);
-  return nearest < distance - 0.22;
+  return false;
 }
 
