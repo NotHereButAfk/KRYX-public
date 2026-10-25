@@ -115,10 +115,11 @@ let matrixMultiplies = 0;
 THREE.Matrix4.prototype.multiplyMatrices = function(a, b) { matrixMultiplies++; return matrixMultiply.call(this, a, b); };
 actors.forEach((actor, i) => drive(actor, 240, i));
 THREE.Matrix4.prototype.multiplyMatrices = matrixMultiply;
-// The shipped Reforged fixtures require 7,608 multiplies here (10,640 before
-// optimization). Unlike wall-clock timing this budget is deterministic; review
-// it alongside any intentional skeleton/mesh changes instead of adding slack.
-if (moduleArg < 0) assert(matrixMultiplies <= 7608,
+// The embedded Default Reforged has two surfaces/six primitives, replacing
+// the old single surface/four primitives: four extra hierarchy multiplies per
+// actor, or 7,640 here versus 7,608 previously (10,640 before optimization).
+// This deterministic budget changes only with measured hierarchy changes.
+if (moduleArg < 0) assert(matrixMultiplies <= 7640,
   `eight avatars repeated unnecessary hierarchy work (${matrixMultiplies} matrix multiplications)`);
 const samples = [];
 for (let run = 0; run < 5; run++) {

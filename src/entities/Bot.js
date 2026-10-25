@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { groundDeathBody } from '../player/DeathBody.js';
 import { buildPreviewCharacter, rigCharacterLimbs } from '../player/PreviewCharacter.js';
+import { isEvCharacterReady } from '../player/EvCharacter.js';
 import { buildWeaponModel, hasLoadedWeaponModel } from '../weapons/WeaponModels.js';
 import { getWeapon } from '../weapons/weaponDefs.js';
 import { applyRifleCarry, restRifleTransform } from '../player/RifleCarry.js';
@@ -180,8 +181,8 @@ export class Bot {
     const skin = DEFAULT_BOT_SKIN;
     this.armorTypeId = armorTypeId;
     this.skin = skin;
-    // Bots use the exact Blender-authored default warrior and its native rig.
-    // If the asset is still loading, the builder retains its safe fallback.
+    // Bots use Bot Reforged on the shared gameplay rig. Loading keeps an empty
+    // placeholder until that rig is available, never a retired character.
     this.mesh = buildPreviewCharacter(skin, armorTypeId, null, { allowHuman: true });
     this._isHuman = !!this.mesh.userData?.isHuman;
     // Bots and players share one silhouette. The old full-scale bot setting
@@ -229,7 +230,7 @@ export class Bot {
       }
     }
 
-    const weaponDef = !this._isHuman && getWeapon(weaponId);
+    const weaponDef = !this._isHuman && !this.mesh.userData.loadingCharacter && getWeapon(weaponId);
     if (weaponDef) {
       const { group: wm, muzzle } = buildWeaponModel(weaponDef, { procedural: true });
       wm.traverse(o => { if (o.isMesh) { o.castShadow = true; o.userData.noHit = true; } });
@@ -268,6 +269,31 @@ export class Bot {
   get isDead() { return !this.alive; }
 
   refreshWeaponModel() {
+    if (this.mesh.userData.loadingCharacter) {
+      if (!isEvCharacterReady()) return;
+      const previous = this.mesh;
+      const current = buildPreviewCharacter(this.skin, this.armorTypeId);
+      current.position.copy(previous.position);
+      current.rotation.copy(previous.rotation);
+      current.scale.multiplyScalar(PLAYER_WORLD_MODEL_SCALE);
+      current.visible = previous.visible;
+      current.userData.worldModelScale = PLAYER_WORLD_MODEL_SCALE;
+      current.userData.bot = this;
+      current.traverse(obj => { obj.userData.bot = this; });
+      current.add(this.healthBarGroup);
+      previous.parent?.add(current);
+      previous.removeFromParent();
+      this.mesh = current;
+      this._baseScale.copy(current.scale);
+      this.bodyMat = current.userData.primaryMat;
+      this._isHuman = true;
+      this._rig = null;
+      const def = getWeapon(this._isSwordBot ? 'sword' : this._botGun.id);
+      const built = def && buildWeaponModel(def, { procedural: true });
+      current.userData.attachWeapon(built?.group || null, this._isSwordBot);
+      this._weaponMuzzle = built?.muzzle || null;
+      this._weaponMesh = null;
+    }
     if (this._isSwordBot || !hasLoadedWeaponModel(this._botGun?.id)) return;
     if (this._isHuman) {
       if (this._heldWeaponReady) return;

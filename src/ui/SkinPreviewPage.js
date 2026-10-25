@@ -23,15 +23,15 @@ orbit.target.set(0,.9,0);
 function reset(){camera.position.copy(orbit.target).add(new T.Vector3(4.5,2.8,-6.5));orbit.update()}reset();$('reset').onclick=reset; $('toggle').onclick=()=>{const closed=document.querySelector('aside').classList.toggle('closed');$('toggle').textContent=closed?'Open Controls':'Close Controls'};
 const defaults={m4:'Auto Rifle',magnum:'Hand Cannon',battlerifle:'Burst Rifle',energyshotgun:'Sweeper',plasmarifle:'Laser Rifle',rpg:'Rocket Launcher',concussion:'Grenade Launcher',uzi:'Mini SMG',levershotgun:'Shotgun',boltsniper:'Sniper',sword:'Sword'};
 function option(select,id,name){select.add(new Option(name,id))}
-option($('character'),'default','Default');for(const s of [...ARMOR_SKINS].sort((a,b)=>a.name.localeCompare(b.name)))option($('character'),s.id,s.name);
+option($('character'),'default',getSkin('default').name);for(const s of [...ARMOR_SKINS].sort((a,b)=>a.name.localeCompare(b.name)))option($('character'),s.id,s.name);
 for(const [id,name]of Object.entries(defaults))option($('weapon'),id,name+' · Default');for(const s of [...ALL_WEAPON_SKINS].sort((a,b)=>a.name.localeCompare(b.name)))option($('weapon'),s.id,s.name);
-$('character').value='remake_229';
+$('character').value='default';
 let avatar,weaponSkin=null,revision=0,jump=0,attack=0,time=0,travel=0;
 async function select(){const ticket=++revision;$('status').textContent='Loading selected models…';try{
  const finish=ARMOR_SKINS.find(s=>s.id===$('character').value);const skin=ALL_WEAPON_SKINS.find(s=>s.id===$('weapon').value);
  await Promise.all([preloadAuthoredSkin(finish),skin?.model?preloadAuthoredWeaponSkin(skin):Promise.resolve()]);if(ticket!==revision)return;
  avatar?.dispose();avatar=new Avatar(scene,{skin:getSkin('default'),weaponId:skin?.weaponId||$('weapon').value});avatar.group.userData.applyFinish(getSkin('default'),finish);await avatar.group.userData.skinReady;if(ticket!==revision)return;
- weaponSkin=skin;applyWeaponSkin(avatar.weapon,skin);$('status').textContent=(finish?.name||'Default')+' · '+(finish?.rarity||'starter')+' — '+(skin?.name||defaults[$('weapon').value]);
+ weaponSkin=skin;applyWeaponSkin(avatar.weapon,skin);$('status').textContent=(finish?.name||getSkin('default').name)+' · '+(finish?.rarity||'starter')+' — '+(skin?.name||defaults[$('weapon').value]);
  }catch(error){$('status').textContent='Could not load model: '+error.message}}
 $('character').onchange=select;$('weapon').onchange=select;$('jump').onclick=()=>{jump=.85;avatar?.hop()};$('fire').onclick=()=>{attack=.45;avatar?.fire()};
 for (const mode of ['walk','run']) $(mode).onchange=()=>{

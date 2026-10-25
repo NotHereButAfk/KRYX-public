@@ -7,6 +7,9 @@ import { isNameplateOccluded } from '../src/ui/NameplateOcclusion.js';
 import { AuthNetBridge } from '../src/net/AuthNetBridge.js';
 import { compareMatchRows } from '../src/core/MatchRows.js';
 import { renderNameCosmetics } from '../src/ui/NameCosmetics.js';
+import { skinArtwork } from '../src/ui/MarketPreview.js';
+import { getArmorSkin } from '../src/player/ArmorSkins.js';
+import { BOT_SKIN } from '../src/player/skins.js';
 
 // Count real presentation calls against a minimal DOM. This catches redundant
 // setters even when the browser would ultimately paint the same result.
@@ -83,7 +86,9 @@ globalThis.window = { innerWidth: 1600, innerHeight: 900 };
 globalThis.performance = { now: () => clock };
 
 const source = readFileSync(new URL('../src/ui/HUD.js', import.meta.url), 'utf8');
+let equippedArmor = null;
 const context = vm.createContext({ document, compareMatchRows, renderNameCosmetics,
+  skinArtwork, getArmorSkin, BOT_SKIN, Shop: { getEquipped: () => equippedArmor },
   isCrazyGames: () => false, SHIELD_PER_STACK: 25 });
 vm.runInContext(source.slice(source.indexOf('function setText')).replace('export class HUD', 'class HUD') + '\nglobalThis.HUD = HUD;', context);
 const hud = Object.create(context.HUD.prototype);
@@ -124,6 +129,24 @@ hud.showScoreboard(rows, 'Deathmatch', { shotsFired: 10, hits: 3 });
 assert.match(element('sb-rows').children[0].textContent, /Player 7/, 'changed score reorders immediately');
 hud.hideScoreboard(); hud.showScoreboard(rows, 'Deathmatch');
 assert.equal(element('scoreboard-overlay').classList.contains('hidden'), false, 'cached rows still reopen');
+
+const portraitRows = [{ name: 'Owner', isYou: true, kills: 3 }, { name: 'Guest', kills: 2 },
+  { name: 'Bot', isBot: true, kills: 1 }];
+const portraitAt = index => element('sb-rows').children[index].querySelector('.sb-portrait');
+equippedArmor = 'remake_110';
+hud.showScoreboard(portraitRows);
+assert.equal(portraitAt(0).src, skinArtwork('remake_110'), 'offline owner uses their equipped skin');
+assert.equal(portraitAt(1).src, skinArtwork('default'), 'guests use the current default portrait');
+assert.equal(portraitAt(2).src, skinArtwork(BOT_SKIN), 'bots use Bot Reforged');
+portraitRows[0].armorSkin = null; portraitRows[1].armorSkin = 'remake_153';
+hud.showScoreboard(portraitRows);
+assert.equal(portraitAt(0).src, skinArtwork('default'), 'server default overrides stale local selection');
+assert.equal(portraitAt(1).src, skinArtwork('remake_153'), 'other players show their own equipped skin');
+portraitRows[1].armorSkin = 'arctic_ghost'; portraitRows[2].armorSkin = 'arctic_ghost';
+hud.showScoreboard(portraitRows);
+assert.equal(portraitAt(1).src, skinArtwork('default'), 'retired player IDs fall back to current default');
+assert.equal(portraitAt(2).src, skinArtwork(BOT_SKIN), 'retired bot IDs fall back to Bot Reforged');
+equippedArmor = null;
 
 const camera = new THREE.PerspectiveCamera(75, 1600 / 900, .1, 1000);
 camera.position.set(0, 1.7, 0); camera.updateMatrixWorld(true);

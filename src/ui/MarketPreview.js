@@ -1,3 +1,9 @@
+import { REMADE_CHARACTERS, REMADE_GUNS, REMADE_SWORDS } from '../../server/remadecollection.mjs';
+
+const CURRENT_SKIN_THUMBNAILS = new Map(
+  [...REMADE_CHARACTERS, ...REMADE_GUNS, ...REMADE_SWORDS].map(skin => [skin.id, skin.thumbnail]),
+);
+
 export const THEMED_SKIN_CARDS = Object.freeze({
   "default": "/assets/anime-skin-cards/default-reforged-v2.png",
   "remake_236": "/assets/anime-skin-cards/remake_236.webp",
@@ -338,4 +344,10 @@ export function setMarketPreview(button, modelSrc, skin) {
   };
 }
 
-export function skinArtwork(skin) { return THEMED_SKIN_CARDS[skin?.id || "default"] || skin?.thumbnail || `/assets/character-skins/${skin.id}.png`; }
+// Retired saved IDs must never resurrect old portraits or request removed
+// files. Current weapons without an illustrated card keep their catalog render.
+export function skinArtwork(skin) {
+  const id = typeof skin === 'string' ? skin : skin?.id;
+  const card = Object.hasOwn(THEMED_SKIN_CARDS, id || 'default') ? THEMED_SKIN_CARDS[id || 'default'] : null;
+  return card || CURRENT_SKIN_THUMBNAILS.get(id) || THEMED_SKIN_CARDS.default;
+}

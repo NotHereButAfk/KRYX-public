@@ -22,6 +22,7 @@ export function buildMatchRows({
       return {
         name: entry.name || (isYou ? playerName : 'Player'),
         nameCosmetics:entry.nameCosmetics||null,
+        armorSkin: entry.armorSkin || null,
         kills: number(self.kills),
         deaths: number(self.deaths),
         score: number(self.score),

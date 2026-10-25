@@ -1,4 +1,3 @@
-import { isCrazyGames } from '../core/CrazyGamesAccount.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
@@ -12,7 +11,6 @@ export function installAuthoredSkin(id, gltf) {
   templates.set(id, gltf.scene);
 }
 export function preloadAuthoredSkin(finish) {
-  if (isCrazyGames()) return Promise.resolve(null);
   if (!finish?.model) return Promise.resolve(null);
   if (templates.has(finish.id)) return Promise.resolve(templates.get(finish.id));
   if (!pending.has(finish.id)) {

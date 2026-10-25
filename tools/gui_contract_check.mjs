@@ -129,8 +129,9 @@ for (const id of ['boot-progress-fill', 'boot-detail', 'boot-percent', 'boot-ret
 }
 requireMatch(game, /_showStartupError[\s\S]*?boot-retry[\s\S]*?_runConnectSequence/,
   'startup loader exposes a recoverable retry path');
-requireMatch(game, /const stages = \[[\s\S]*?preloadHumanSoldier[\s\S]*?preloadWeaponModels[\s\S]*?preloadSpartanModel[\s\S]*?for \(const \[label, starter\] of stages\)/,
-  'soldier, weapon, and armor presentation assets use the deferred sequential preload path');
+requireMatch(game, /const stages = \[[\s\S]*?\['player', preloadHumanSoldier\][\s\S]*?\['weapons',[\s\S]*?preloadWeaponModels[\s\S]*?\['zombies',[\s\S]*?preloadZombieModel[\s\S]*?for \(const \[label, starter\] of stages\)/,
+  'current player, weapon, and zombie presentation assets use the deferred sequential preload path');
+if (/preloadSpartanModel|\['armor',/.test(game)) failures.push('retired Spartan armor must never be loaded');
 requireMatch(menu, /querySelectorAll\(['"]\[data-panel\]['"]\)/, 'menu panel wiring');
 requireMatch(index, /ability-page-key["']>Q<[\s\S]*?<strong>BLINK<\/strong>/,
   'abilities page advertises Q teleport');

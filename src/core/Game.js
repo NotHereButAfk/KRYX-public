@@ -45,7 +45,6 @@ import { applyRifleCarry, restRifleTransform } from '../player/RifleCarry.js';
 import { applyWalkCycle, triggerHop } from '../player/Locomotion.js';
 import { triggerAction, tickActions, applyMeleeCarry } from '../player/Actions.js';
 import { loadArmorType } from '../player/ArmorTypes.js';
-import { isLowPolyId } from '../player/LowPolyModels.js';
 import { cameraYawToBodyYaw } from '../player/Facing.js';
 import { PLAYER_WORLD_MODEL_SCALE } from '../player/Proportions.js';
 import { GrenadeSystem } from '../weapons/GrenadeSystem.js';
@@ -70,7 +69,6 @@ import { SpectatorCameraRig } from './SpectatorCameraRig.js';
 import { ServerSim } from './ServerSim.js';
 import { NetClient } from './NetClient.js';
 import { preloadZombieModel } from '../entities/Zombie.js';
-import { preloadSpartanModel } from '../player/PreviewCharacter.js';
 import { preloadWeaponModels, onWeaponModelsReady, buildWeaponModel, hasLoadedWeaponModel } from '../weapons/WeaponModels.js';
 import { PickupSystem } from '../world/PickupSystem.js';
 import { getImportedMap, nextImportedMapId } from '../world/MapRegistry.js';
@@ -261,7 +259,7 @@ export class Game {
     this._menuBotSpawnCooldown = 0;
     this._rebuildSpectatorCurves();
 
-    this.selectedSkin      = getSkin('spartan');
+    this.selectedSkin      = getSkin('default');
     this.selectedArmorType = loadArmorType();
     this.selectedArmorSkin = getArmorSkin(Shop.getEquipped());
     this.previewCharacter  = buildPreviewCharacter(this.selectedSkin, this.selectedArmorType, this.selectedArmorSkin);
@@ -397,7 +395,6 @@ export class Game {
     const stages = [
       ['player', preloadHumanSoldier],
       ['weapons', (ready) => { onWeaponModelsReady(ready); preloadWeaponModels(); }],
-      ['armor', preloadSpartanModel],
       ['zombies', ready => { preloadZombieModel().then(ready); }],
     ];
     // Loading every GLB and the 6 MB animation library simultaneously caused
@@ -413,8 +410,6 @@ export class Game {
   }
 
   _ensureHumanPresentationReady(timeoutMs = 20000) {
-    // The original connected body is built synchronously on this platform.
-    if (isCrazyGames()) return Promise.resolve(true);
     if (isHumanSoldierReady()) return Promise.resolve(true);
     if (this._humanPresentationReadyPromise) return this._humanPresentationReadyPromise;
     this._humanPresentationReadyPromise = new Promise((resolve) => {
@@ -436,8 +431,8 @@ export class Game {
     this._presentationPreloadScheduled = true;
     const start = () => {
       this._presentationPreloadScheduled = false;
-      // These assets improve presentation, but every system has an immediate
-      // procedural fallback. Load them only after the menu is usable.
+      // Load presentation assets after the menu is usable. Play readiness
+      // separately waits for the current character rig.
       this._startPresentationPreloads().catch((error) => {
         console.warn('[startup] optional presentation preload failed', error);
       });

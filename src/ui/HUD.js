@@ -1,6 +1,10 @@
 import { isCrazyGames } from '../core/CrazyGamesAccount.js';
 import { compareMatchRows } from '../core/MatchRows.js';
 import {renderNameCosmetics} from './NameCosmetics.js';
+import { skinArtwork } from './MarketPreview.js';
+import { getArmorSkin } from '../player/ArmorSkins.js';
+import { BOT_SKIN } from '../player/skins.js';
+import { Shop } from '../core/Shop.js';
 import { getWeaponHudThumb, warmWeaponHudThumbs } from './WeaponThumbnails.js';
 import './abilities.css';
 import {
@@ -643,8 +647,9 @@ export class HUD {
     if (sub) setText(subEl, sub);
     // TAB refreshes several times per second. Keep unchanged rows mounted so
     // score polling does not repeatedly rebuild portraits, badges and cells.
-    const rowsKey = JSON.stringify([isCrazyGames(), rows.map(r => [
-      r.name, r.nameCosmetics, r.isYou, r.isBot, r.score, r.assists, r.kills, r.deaths,
+    const ownArmorSkin = Shop.getEquipped();
+    const rowsKey = JSON.stringify([isCrazyGames(), ownArmorSkin, rows.map(r => [
+      r.name, r.nameCosmetics, r.isYou, r.isBot, r.armorSkin, r.score, r.assists, r.kills, r.deaths,
     ])]);
     if (this._scoreboardRowsNode !== tb || this._scoreboardRowsKey !== rowsKey) {
       this._scoreboardRowsNode = tb;
@@ -661,7 +666,10 @@ export class HUD {
         const portrait = document.createElement(isCrazyGames() ? 'span' : 'img');
         portrait.className = r.isBot ? 'sb-portrait sb-portrait-bot' : 'sb-portrait';
         if (isCrazyGames()) { portrait.textContent = 'K'; portrait.style.cssText = 'display:inline-grid;place-items:center;background:#163344;color:#53e9ff;font-weight:bold'; }
-        else portrait.src = '/images/ev-portrait.png';
+        else {
+          const armorId = r.armorSkin === undefined && r.isYou ? ownArmorSkin : r.armorSkin;
+          portrait.src = skinArtwork(getArmorSkin(armorId) || (r.isBot ? BOT_SKIN : null));
+        }
         portrait.alt = ''; portrait.width = portrait.height = 34;
         nameTd.appendChild(portrait);
         const label = document.createElement('span'); label.className = 'sb-player-name';

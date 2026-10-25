@@ -67,7 +67,9 @@ const menu = readFileSync(join(root, 'src/ui/MainMenu.js'), 'utf8');
 const inventory = readFileSync(join(root, 'src/ui/InventoryPanel.js'), 'utf8');
 const htaccess = readFileSync(join(root, 'public/.htaccess'), 'utf8');
 const authNet = readFileSync(join(root, 'src/net/AuthNetBridge.js'), 'utf8');
-const hero = readFileSync(join(root, 'src/player/HeroBody.js'), 'utf8');
+const character = readFileSync(join(root, 'src/player/EvCharacter.js'), 'utf8');
+const authoredSkins = readFileSync(join(root, 'src/player/AuthoredSkins.js'), 'utf8');
+const modelResources = readFileSync(join(root, 'src/core/ModelResources.js'), 'utf8');
 assert(!/quaternion\.clone\(\)\.invert\(\)/.test(bot), 'bot billboard allocates every frame');
 assert(/raycastCollisionDistance\(ray, far = Infinity\)/.test(world),
   'world must expose an octree-accelerated bot obstruction query');
@@ -87,8 +89,11 @@ assert(!/\[this\.kickPos\.[xyz], this\.kickVel\.[xyz]\]\s*=/.test(weapons),
 assert(/this\._hudInfo \|\|=/.test(weapons), 'HUD payload must be reused');
 assert(/this\._remoteSeen/.test(authNet) && /this\._remoteProject/.test(authNet),
   'remote-player sync must reuse frame scratch storage');
-assert(!/frustumCulled = false/.test(hero),
-  'connected player bodies must retain camera frustum culling');
+assert(/o\.geometry\.userData\.shared = true/.test(character)
+  && /o\.geometry\.userData\.shared = true/.test(authoredSkins),
+  'current character templates must share their geometry across instances');
+assert(/!isSharedGeometry\(o\.geometry\)/.test(modelResources),
+  'avatar disposal must preserve cached geometry used by other characters');
 assert(!/await this\._startPresentationPreloads\(\)/.test(game),
   'optional presentation assets must not block startup');
 assert(/_schedulePresentationPreloads\(\)/.test(game),

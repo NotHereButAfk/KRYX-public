@@ -8,7 +8,7 @@
  * skin + main weapon card.
  */
 
-import { THEMED_SKIN_CARDS, skinArtwork } from './MarketPreview.js';
+import { skinArtwork } from './MarketPreview.js';
 import { getSkin } from '../player/skins.js';
 import { ARMOR_SKINS, RARITY_COLORS, getArmorSkin } from '../player/ArmorSkins.js';
 import { MAIN_WEAPON_IDS, WEAPONS, isMainWeaponId } from '../weapons/weaponDefs.js';
@@ -166,7 +166,7 @@ export class InventoryPanel {
       const source=skinArtwork(armorSkin || playerSkin);
       portrait.onerror=()=>{portrait.onerror=null;portrait.src=fallback;};
       portrait.src=source;
-      portrait.alt=(armorSkin?.name || 'Default')+' character artwork';
+      portrait.alt=(armorSkin?.name || playerSkin.name)+' character artwork';
     }
     if (armorSkin) {
       row.appendChild(this._characterCard(armorSkin, /*equipped=*/true));
@@ -236,7 +236,7 @@ export class InventoryPanel {
   }
 
   _renderCharacterGrid(grid) {
-    // Default (no armor finish) — shows base soldier.
+    // Default (no armor finish) — the shared Default Reforged character.
     const playerSkin = getSkin(this.host.selectedSkinId);
     grid.appendChild(
       this._defaultCharacterCard(playerSkin, !Shop.getEquipped(), () => this._equipCharacter(null))

@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { existsSync, readdirSync } from 'node:fs';
 import { STORE_ITEMS } from '../server/storecatalog.mjs';
 import { getNightMarket, WEEK_MS } from '../server/nightmarket.mjs';
 import { Shop } from '../src/core/Shop.js';
@@ -8,6 +9,16 @@ const storage = new Map([
   ['sio_armor_skin', 'arctic_ghost'],
   ['sio_armory', JSON.stringify({ magnum: 'magnum_kings_ransom', sword: 'sword_sovereign_blade', __owned: ['magnum_kings_ransom', 'sword_sovereign_blade', 'remake_187', 'remake_425'] })],
 ]);
+for (const path of ['player.glb', 'soldier.glb', 'spartan.glb', 'kyx-player.glb',
+  'kyx-locomotion.glb', 'kyx-view-arms.glb', 'images/ev-portrait.png']) {
+  assert(!existsSync(new URL('../public/' + path, import.meta.url)), `retired asset still ships: ${path}`);
+}
+for (const directory of ['player-skins', 'character-skins']) {
+  const entries = readdirSync(new URL('../public/assets/' + directory, import.meta.url));
+  assert(entries.length > 0, 'current collection must remain available');
+  assert(entries.every(name => /^remake_\d+\.(glb|png)$/.test(name)),
+    `${directory} still contains a retired skin`);
+}
 globalThis.localStorage = { getItem: key => storage.get(key) ?? null, setItem: (key, value) => storage.set(key, value) };
 assert.equal(STORE_ITEMS.length, 357);
 assert.ok(STORE_ITEMS.every(item => item.id.startsWith('remake_')));

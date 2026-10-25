@@ -46,13 +46,10 @@ built.group.traverse((object) => {
 assert(triangles > 3688, 'reference armour plates supplement the original rifle');
 assert(built.group.getObjectByName('reference_receiver_port'), 'custom receiver plate missing');
 const pose = weaponHandPose(built.group);
-const { humanHandContacts } = await import('../src/player/HumanRifleCarry.js');
-const humanContacts = humanHandContacts(built.group);
 for (const [side, markerName] of [['trigger', 'BIND_RIGHTHAND'], ['support', 'BIND_LEFTHAND']]) {
   const marker = built.group.getObjectByName(markerName);
   assert(new THREE.Vector3(...pose[side]).distanceTo(marker.position) < 1e-6, `${side} uses the authored contact`);
   assert(bounds.clone().expandByScalar(0.025).containsPoint(marker.position), `${side} contact belongs to the rifle`);
-  assert(humanContacts[side].distanceTo(marker.position) < 1e-6, `${side} legacy human carry uses the same contact`);
 }
 assert(pose.support[2] < pose.trigger[2] - 0.25, 'hands stay on distinct grip and fore-end contacts');
 assert(!buildEvAutoRifle(new THREE.Group(), m4), 'missing override permits fallback');

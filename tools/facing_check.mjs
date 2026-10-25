@@ -1,7 +1,8 @@
 import fs from 'node:fs';
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
-import { retargetKyxLocomotionClips } from '../src/player/HumanSoldier.js';
+import { installEvCharacter, buildEvCharacter } from '../src/player/EvCharacter.js';
+import { disposeModel } from '../src/core/ModelResources.js';
 import {
   bodyForwardAtYaw,
   cameraYawToBodyYaw,
@@ -53,57 +54,39 @@ for (const [dx, dz] of [[0, 1], [1, 0], [0, -1], [-1, 0], [1, 1]]) {
   assert(near(forward.z, dz / len), `direction ${dx},${dz}: z inverted`);
 }
 
-// Prove the assumption against the actual soldier asset. During the planted
-// portion of its walk cycle the foot moves toward +Z beneath the body, so the
-// body's travel/visual-forward direction is -Z.
-globalThis.ProgressEvent ??= class ProgressEvent {
-  constructor(type, init = {}) {
-    this.type = type;
-    Object.assign(this, init);
-  }
-};
-
-const bytes = fs.readFileSync(new URL('../public/kyx-player.glb', import.meta.url));
-const buffer = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength);
-const gltf = await new Promise((resolve, reject) => {
-  new GLTFLoader().parse(buffer, '', resolve, reject);
-});
-const motionBytes = fs.readFileSync(new URL('../public/kyx-locomotion.glb', import.meta.url));
-const motionGltf = await new Promise((resolve, reject) => new GLTFLoader().parse(
-  motionBytes.buffer.slice(motionBytes.byteOffset, motionBytes.byteOffset + motionBytes.byteLength),
-  '', resolve, reject,
-));
-const walk = retargetKyxLocomotionClips(motionGltf.animations).find((clip) => clip.name === 'Walk');
-assert(walk, 'kyx-locomotion.glb is missing its Walk clip');
-
-const mixer = new THREE.AnimationMixer(gltf.scene);
-mixer.clipAction(walk).play();
-const foot = gltf.scene.getObjectByName('mixamorigLeftToeBase')
-  || gltf.scene.getObjectByName('mixamorigLeftFoot');
-assert(foot, 'kyx-player.glb is missing its left foot bones');
-
-const samples = [];
-const point = new THREE.Vector3();
-for (let i = 0; i <= 120; i++) {
-  mixer.setTime(walk.duration * i / 120);
-  gltf.scene.updateMatrixWorld(true);
+// Prove the convention against the current runtime skeleton and walking pose.
+// Planted feet travel toward +Z under a body moving visually forward along -Z.
+globalThis.ProgressEvent ??= class { constructor(type, init) { Object.assign(this, init); } };
+const bytes = fs.readFileSync(new URL('../public/ev-default.glb', import.meta.url));
+const loader = new GLTFLoader().register(() => ({
+  name: 'FacingProbeTextures', loadTexture: () => Promise.resolve(new THREE.Texture()),
+}));
+const gltf = await loader.parseAsync(bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength), '');
+installEvCharacter(gltf);
+const body = buildEvCharacter();
+const runtime = body.userData;
+const foot = runtime.bones.Bip001_L_Foot;
+assert(foot, 'current character is missing its left foot bone');
+const samples = [], point = new THREE.Vector3();
+for (let frame = 0; frame < 480; frame++) {
+  runtime.setLocomotion(2, true, false, 0, 1, 0, 2 / 60);
+  runtime.mixer.update(1 / 60);
+  body.updateMatrixWorld(true);
+  if (frame < 120) continue;
   foot.getWorldPosition(point);
   samples.push({ y: point.y, z: point.z });
 }
-const minY = Math.min(...samples.map((sample) => sample.y));
-const maxY = Math.max(...samples.map((sample) => sample.y));
+const minY = Math.min(...samples.map(sample => sample.y));
+const maxY = Math.max(...samples.map(sample => sample.y));
 const plantedCutoff = minY + (maxY - minY) * 0.30;
-let plantedDz = 0;
-let plantedSegments = 0;
+let plantedDz = 0, plantedSegments = 0;
 for (let i = 1; i < samples.length; i++) {
   if (samples[i - 1].y < plantedCutoff && samples[i].y < plantedCutoff) {
     plantedDz += samples[i].z - samples[i - 1].z;
     plantedSegments++;
   }
 }
-assert(plantedSegments >= 20, 'walk clip did not expose a stable planted phase');
-assert(plantedDz > 0.25, `walk clip forward-axis proof inverted (${plantedDz.toFixed(3)})`);
-
-console.log(
-  `facing check passed: camera/network/bot yaw agree; soldier planted-foot dz=${plantedDz.toFixed(3)} (+Z), body forward=-Z`
-);
+assert(plantedSegments >= 20, 'walk pose did not expose a stable planted phase');
+assert(plantedDz > 0.25, 'current walk pose faces the wrong travel direction: ' + plantedDz.toFixed(3));
+disposeModel(body);
+console.log('Facing passed: camera/network/bot yaw agree; current Reforged planted-foot travel is +Z, forward is -Z.');

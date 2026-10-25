@@ -1,17 +1,16 @@
 import * as THREE from 'three';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { buildPreviewCharacter } from '../player/PreviewCharacter.js';
-import { isSharedGeometry } from '../player/LowPolyModels.js';
+import { preloadEvCharacter } from '../player/EvCharacter.js';
+import { disposeModel } from '../core/ModelResources.js';
 
-// The cyborg chassis share their geometry between every body in the game, so
+// Imported character templates share their geometry between every body, so
 // tearing down the preview must not free it — swapping armour in the loadout
 // would otherwise empty the player's own model and every bot's.
 function _release(group) {
-  group.traverse((o) => {
-    if (!o.isMesh) return;
-    if (!isSharedGeometry(o.geometry)) o.geometry.dispose();
-    o.material.dispose();
-  });
+  if (!group || group.userData.previewReleased) return;
+  group.userData.previewReleased = true;
+  disposeModel(group);
 }
 
 // Dedicated Three.js renderer for the loadout panel's live armor preview.
@@ -67,19 +66,31 @@ export class ArmorPreviewRenderer {
     this._group = null;
     this._t     = 0;
     this._raf   = null;
+    this._revision = 0;
+    this._disposed = false;
+    this._pendingGroup = null;
   }
 
   // Build (or rebuild) the character for the given player skin + armor.
-  loadArmor(playerSkin, armorTypeId, armorSkin) {
-    if (this._group) {
-      this._scene.remove(this._group);
-      _release(this._group);
-      this._group = null;
-    }
-    // Use the same rigged, skinnable model the match uses. The old static
-    // white Spartan preview ignored equipped finishes and made every character
-    // skin look identical in the loadout.
+  async loadArmor(playerSkin, armorTypeId, armorSkin) {
+    if (this._disposed) return false;
+    const revision = ++this._revision;
+    _release(this._group);
+    _release(this._pendingGroup);
+    this._group = this._pendingGroup = null;
+    this._idleRig = this._idleBase = null;
+    // Never frame the empty startup placeholder. Wait for the same current
+    // character rig used in gameplay, then its selected Reforged finish.
+    const ready = await preloadEvCharacter();
+    if (!ready || this._disposed || revision !== this._revision) return false;
     const g = buildPreviewCharacter(playerSkin, armorTypeId, armorSkin);
+    this._pendingGroup = g;
+    await g.userData.skinReady;
+    if (this._disposed || revision !== this._revision) {
+      _release(g);
+      return false;
+    }
+    this._pendingGroup = null;
     g.traverse((o) => { if (o.isMesh) { o.castShadow = false; o.receiveShadow = false; } });
 
     // center horizontally, sit feet on the disc, frame the whole body.
@@ -153,10 +164,11 @@ export class ArmorPreviewRenderer {
     this._camera.position.set(0.0, midY + 0.15, 4.3);
     this._camera.lookAt(0, midY, 0);
     this._lookY = midY;
+    return true;
   }
 
   start() {
-    if (this._raf !== null) return;
+    if (this._disposed || this._raf !== null) return;
     const loop = () => {
       this._raf = requestAnimationFrame(loop);
       this._t += 0.016;
@@ -194,10 +206,12 @@ export class ArmorPreviewRenderer {
   }
 
   dispose() {
+    this._disposed = true;
+    this._revision++;
     this.stop();
-    if (this._group) {
-      _release(this._group);
-    }
+    _release(this._group);
+    _release(this._pendingGroup);
+    this._group = this._pendingGroup = null;
     this._renderer.dispose();
   }
 }

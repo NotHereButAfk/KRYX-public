@@ -1,6 +1,5 @@
-// Character body-tint catalog. Emptied — there are no selectable player skins.
-// A single hardcoded default keeps the base soldier rendering; it is NOT part
-// of the catalog array, so it never shows up in any shop / inventory skin list.
+// Player defaults use the current Reforged catalog. Retired body-tint IDs map
+// to Default Reforged; selectable cosmetics are exposed by ArmorSkins.
 import { REMADE_CHARACTERS } from '../../server/remadecollection.mjs';
 export const SKINS = [];
 

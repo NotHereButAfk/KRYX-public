@@ -1,6 +1,5 @@
 import { prepareDeathBody } from './DeathBody.js';
 import {createBodyDynamics} from './BodyDynamics.js';
-import { isCrazyGames } from '../core/CrazyGamesAccount.js';
 import { createFootPlanting } from './FootPlanting.js';
 import { jumpAirPose, jumpLandingDuration, isJumpImpulse } from './JumpMotion.js';
 import {SWORD_EDGE_ROLL, swordSwingPose} from '../weapons/SwordMotion.js';
@@ -20,9 +19,8 @@ let template = null;
 let pending = null;
 export function isEvCharacterReady() { return !!template; }
 export function preloadEvCharacter(onLoad) {
-  if (isCrazyGames()) { onLoad?.(false); return Promise.resolve(false); }
   if (template) { onLoad?.(true); return Promise.resolve(true); }
-  pending ??= new GLTFLoader().loadAsync('/ev-default.glb?v=forged-1')
+  pending ??= new GLTFLoader().loadAsync('/ev-default.glb?v=reforged-2')
     .then((gltf) => { installEvCharacter(gltf); return true; })
     .catch((error) => { console.warn('[EV character]', error.message); return false; })
     .finally(() => { pending = null; });
@@ -190,7 +188,7 @@ function fitTwoHandCarry(weapon, bones, contact, supportSlide = 1) {
 export function buildEvCharacter(skin = null, armorSkin = null) {
   if (!template) return null;
   const group = new THREE.Group();
-  group.name = 'EV default operative';
+  group.name = 'Reforged operative';
   const model = cloneSkeleton(template.root);
   // Blender's -Y exports as +Z. The game and all weapon aim use -Z.
   model.rotation.y = Math.PI;

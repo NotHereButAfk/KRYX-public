@@ -3,7 +3,7 @@ import { sampleDeathReaction } from '../sim/DeathReaction.js';
 import * as THREE from 'three';
 import { LandingEffect } from '../effects/LandingEffect.js';
 import { buildPreviewCharacter, rigCharacterLimbs } from './PreviewCharacter.js';
-import { isSharedGeometry } from './LowPolyModels.js';
+import { isSharedGeometry } from '../core/ModelResources.js';
 import { buildWeaponModel, hasLoadedWeaponModel } from '../weapons/WeaponModels.js';
 import { getWeapon } from '../weapons/weaponDefs.js';
 import { applyWalkCycle, triggerHop } from './Locomotion.js';
@@ -97,6 +97,9 @@ export class Avatar {
     this.muzzle = null;
     this._weaponAssetReady = hasLoadedWeaponModel(id);
     if (this.weapon) { this.group.remove(this.weapon); this.weapon = null; }
+    // Remember the loadout while the current character downloads, but don't
+    // display a floating gun where the retired fallback body used to be.
+    if (this.group.userData.loadingCharacter) return;
     const def = getWeapon(id);
     if (!def) return;
     if (this.isHuman && this.group.userData.attachWeapon) {
@@ -155,8 +158,7 @@ export class Avatar {
   update(dt, s) {
     // A peer can arrive before an optional asset download finishes. Upgrade
     // that peer too, preserving its world transform and animation state.
-    if (!this.group.userData.isEvCharacter && (this._modelOptions.armorTypeId || 'vanguard') === 'vanguard'
-        && isEvCharacterReady()) {
+    if (!this.group.userData.isEvCharacter && isEvCharacterReady()) {
       const old = this.group;
       this.dispose();
       this.group = buildPreviewCharacter(this._modelOptions.skin, 'vanguard');
@@ -454,9 +456,8 @@ export class Avatar {
     this.scene.remove(this.group);
     this.group.traverse((o) => {
       if (!o.isMesh) return;
-      // The cyborg chassis share their buffers between every body on the map
-      // (LowPolyModels caches geometry per shape). Freeing one here would empty
-      // the player's own model and every bot's along with this avatar's.
+      // Imported character and weapon templates share their buffers. Releasing
+      // one avatar must not invalidate another player's geometry.
       if (!isSharedGeometry(o.geometry)) o.geometry?.dispose?.();
       if (Array.isArray(o.material)) o.material.forEach((m) => m.dispose?.());
       else o.material?.dispose?.();
