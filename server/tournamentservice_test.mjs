@@ -1,7 +1,7 @@
 import {readFileSync} from 'node:fs';
 import assert from 'node:assert/strict';
 import {Readable} from 'node:stream';
-import {randomBytes,generateKeyPairSync,sign} from 'node:crypto';
+import {randomBytes,randomUUID,generateKeyPairSync,sign} from 'node:crypto';
 import {PGlite} from '@electric-sql/pglite';
 import bs58 from 'bs58';
 import {createTournamentService,feeUnits} from './tournamentservice.mjs';
@@ -12,12 +12,12 @@ const discordKey=publicKey.export({format:'der',type:'spki'}).subarray(-32).toSt
 const db=new PGlite();await db.exec("CREATE TABLE users(id BIGINT PRIMARY KEY,username TEXT);INSERT INTO users VALUES(1,'Organizer'),(2,'Player2'),(3,'Player3');");
 await db.exec(readFileSync(new URL('./migrations/001_e_economy.sql',import.meta.url),'utf8'));
 const pool={async query(sql,args){if(!args&&(sql.includes('CREATE TABLE')||sql.includes('ALTER TABLE'))){await db.exec(sql);return {rows:[],rowCount:0};}const r=await db.query(sql,args);return {...r,rowCount:sql.trim().startsWith('SELECT')?r.rows.length:r.affectedRows};},async connect(){return {query:pool.query,release(){}};}};
-let userId=1,now=Date.now(),chain=MAINNET_GENESIS,discordPosts=0;
+let userId=1,now=Date.now(),chain=MAINNET_GENESIS,discordPosts=0,rpcCalls=0;
 const discordRequests=[];
 const merchant=key(),txs=new Map(),appId='123456789012345678',guildId='234567890123456789';
 const service=createTournamentService({pool,session:async()=>userId?{id:userId,username:'Player'}:null},{now:()=>now,reconcileIntervalMs:0,env:{SOLANA_MERCHANT_ADDRESS:merchant,TOURNAMENT_ADMIN_USER_IDS:'1',DISCORD_APPLICATION_ID:appId,DISCORD_GUILD_ID:guildId,DISCORD_PUBLIC_KEY:discordKey,DISCORD_BOT_TOKEN:'test-token',DISCORD_TOURNAMENT_CHANNEL_ID:'345678901234567890',DISCORD_MOD_CHANNEL_ID:'456789012345678902'},fetchImpl:async(url,opts)=>{
   if(url.startsWith('https://discord.com/')){assert.deepEqual(JSON.parse(opts.body).allowed_mentions,{parse:[]});discordRequests.push({url,body:JSON.parse(opts.body)});discordPosts++;return {ok:true,json:async()=>({id:'456789012345678901'})};}
-  const {method,params}=JSON.parse(opts.body);let result;
+  rpcCalls++;const {method,params}=JSON.parse(opts.body);let result;
   if(method==='getGenesisHash')result=chain;
   if(method==='getSignaturesForAddress')result=[...txs].filter(([,tx])=>tx.transaction.message.accountKeys.includes(params[0])).map(([signature])=>({signature,confirmationStatus:'finalized',err:null}));
   if(method==='getTransaction')result=txs.get(params[0]);
@@ -25,6 +25,14 @@ const service=createTournamentService({pool,session:async()=>userId?{id:userId,u
 }});
 await service.ready;
 async function call(path,data,headers={}){const raw=data===undefined?'':JSON.stringify(data),req=Readable.from([...Buffer.from(raw)].map(byte=>Buffer.from([byte])));req.url=path;req.method=data===undefined?'GET':'POST';req.headers={host:'game.test',origin:'https://game.test',...headers};let status,result;await service(req,{writeHead(s){status=s},end(s){result=JSON.parse(s)}},path.split('?')[0]);return {status,...result};}
+async function seedLegacyOrder(eventId,owner){
+  const event=(await pool.query('SELECT * FROM tournaments WHERE id=$1',[eventId])).rows[0];
+  const profile=(await pool.query('SELECT * FROM tournament_profiles WHERE user_id=$1',[owner])).rows[0];
+  return (await pool.query(`INSERT INTO tournament_orders
+    (id,tournament_id,user_id,wallet,asset,amount_units,reference,merchant,created_at,expires_at)
+    VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING *`,
+    [randomUUID(),eventId,owner,profile.solana_address,event.asset,event.fee_units,key(),merchant,new Date(now-60000),new Date(now+600000)])).rows[0];
+}
 const eventBody={durationMinutes:60,prizeAmounts:['20','10'],type:'most_kills',title:'Arena night',description:'Meet in Discord',capacity:2,asset:'SOL',fee:'0.05',startsAt:new Date(now+3600000).toISOString(),closesAt:new Date(now+1800000).toISOString()};
 assert.equal(feeUnits('0.05','SOL'),'50000000');assert.equal(feeUnits('2.50','USDC'),'2500000');assert.throws(()=>feeUnits('0','SOL'));assert.throws(()=>feeUnits('1e2','SOL'));
 userId=2;assert.equal((await call('/api/tournaments/admin/create',eventBody)).status,403);userId=1;
@@ -40,12 +48,18 @@ userId=2;assert.equal((await call(`/api/tournaments/${id}/enter`,{confirm:true})
 assert.equal((await call('/api/community/profile',{solanaAddress:'bad'})).status,400);
 await call('/api/community/profile',{solanaAddress:key()});
 assert.equal((await call(`/api/tournaments/${id}/enter`,{confirm:false})).status,400);
-chain='devnet';assert.equal((await call(`/api/tournaments/${id}/enter`,{confirm:true})).status,503);chain=MAINNET_GENESIS;
-const pending=await call(`/api/tournaments/${id}/enter`,{confirm:true,fee:0});assert.equal(pending.status,201);assert.equal(pending.order.amount,'0.05');
-assert.equal((await call(`/api/tournaments/${id}/enter`,{confirm:true})).order.id,pending.order.id);
+chain='devnet';assert.equal((await call(`/api/tournaments/${id}/enter`,{confirm:true})).status,410);chain=MAINNET_GENESIS;
+assert.equal((await call(`/api/tournaments/${id}/enter`,{confirm:true,fee:0})).status,410);
+assert.equal(rpcCalls,0,'paused new entries contacted the payment network');
+assert.equal((await pool.query('SELECT * FROM tournament_orders')).rowCount,0,'new legacy entry created a payable order');
+const order=await seedLegacyOrder(id,2);
+const beforePaused=(await pool.query('SELECT * FROM tournament_orders')).rows;
+assert.equal((await call(`/api/tournaments/${id}/enter`,{confirm:true})).status,410);
+assert.deepEqual((await pool.query('SELECT * FROM tournament_orders')).rows,beforePaused,'blocked request modified an old order');
+const pending=await call(`/api/tournaments/orders/${order.id}`);
+assert.equal(pending.status,200);assert.equal(pending.order.amount,'0.05');assert.equal(pending.order.paymentUrl,null);
 assert.equal((await pool.query('SELECT * FROM tournament_entries')).rowCount,0);
 userId=3;assert.equal((await call(`/api/tournaments/orders/${pending.order.id}`)).status,404);userId=2;
-const order=(await pool.query('SELECT * FROM tournament_orders WHERE id=$1',[pending.order.id])).rows[0];
 function transfer(o,amount=BigInt(o.amount_units)){
   const signature=bs58.encode(randomBytes(64)),data=Buffer.alloc(12);data.writeUInt32LE(2);data.writeBigUInt64LE(amount,4);
   return {blockTime:Math.floor(now/1000),transaction:{signatures:[signature],message:{header:{numRequiredSignatures:1},accountKeys:[key(),o.merchant,o.reference,'11111111111111111111111111111111'],instructions:[{programIdIndex:3,accounts:[0,1,2],data:bs58.encode(data)}]}},meta:{err:null,preBalances:[1000000000,0,0,0],postBalances:[0,Number(amount),0,0]}};
@@ -54,10 +68,11 @@ const wrong=transfer(order,1n);txs.set(wrong.transaction.signatures[0],wrong);aw
 const multi=transfer(order);multi.transaction.message.accountKeys.push(key());multi.transaction.message.instructions[0].accounts.push(4);txs.set(multi.transaction.signatures[0],multi);await service.reconcile();assert.equal((await pool.query('SELECT * FROM tournament_entries')).rowCount,0);
 const good=transfer(order);txs.set(good.transaction.signatures[0],good);await service.reconcile();await service.reconcile();assert.equal((await pool.query('SELECT * FROM tournament_entries')).rowCount,1);
 assert.equal((await call(`/api/tournaments/orders/${order.id}`)).order.status,'registered');
-assert.equal((await call(`/api/tournaments/${id}/enter`,{confirm:true})).status,409);
-userId=3;await call('/api/community/profile',{solanaAddress:key()});const second=await call(`/api/tournaments/${id}/enter`,{confirm:true});assert.equal(second.status,201);
-userId=1;await call('/api/community/profile',{solanaAddress:key()});assert.equal((await call(`/api/tournaments/${id}/enter`,{confirm:true})).status,409);
-const lateOrder=(await pool.query('SELECT * FROM tournament_orders WHERE id=$1',[second.order.id])).rows[0];now+=610000;const late=transfer(lateOrder);txs.set(late.transaction.signatures[0],late);await service.reconcile();
+assert.equal((await call(`/api/tournaments/${id}/enter`,{confirm:true})).status,410);
+userId=3;await call('/api/community/profile',{solanaAddress:key()});assert.equal((await call(`/api/tournaments/${id}/enter`,{confirm:true})).status,410);
+const lateOrder=await seedLegacyOrder(id,3);
+userId=1;await call('/api/community/profile',{solanaAddress:key()});assert.equal((await call(`/api/tournaments/${id}/enter`,{confirm:true})).status,410);
+now+=610000;const late=transfer(lateOrder);txs.set(late.transaction.signatures[0],late);await service.reconcile();
 assert.equal((await pool.query('SELECT status FROM tournament_orders WHERE id=$1',[lateOrder.id])).rows[0].status,'needs_review');assert.equal((await pool.query('SELECT * FROM tournament_entries')).rowCount,1);
 userId=0;assert.equal((await call('/api/community/discord/link-code',{})).status,401);
 userId=2;const issued=await call('/api/community/discord/link-code',{});assert.equal(issued.expiresIn,300);const code=issued.code;assert.equal(code.length,24);
@@ -78,8 +93,9 @@ userId=2;assert.equal((await call(`/api/tournaments/admin/registrations?id=${id}
 userId=1;
 const usdEvent=await call('/api/tournaments/admin/create',{...eventBody,asset:'K',fee:'2.50'});assert.equal(usdEvent.status,201);
 await pool.query("UPDATE tournaments SET asset='USDC',fee_units='2500000' WHERE id=$1",[usdEvent.event.id]);
-userId=3;const usdPending=await call(`/api/tournaments/${usdEvent.event.id}/enter`,{confirm:true});assert.equal(usdPending.order.amount,'2.5');
-const usd=(await pool.query('SELECT * FROM tournament_orders WHERE id=$1',[usdPending.order.id])).rows[0];
+userId=3;assert.equal((await call(`/api/tournaments/${usdEvent.event.id}/enter`,{confirm:true})).status,410);
+const usd=await seedLegacyOrder(usdEvent.event.id,3);
+const usdPending=await call(`/api/tournaments/orders/${usd.id}`);assert.equal(usdPending.order.amount,'2.5');assert.equal(usdPending.order.paymentUrl,null);
 const usdTx=transfer(usd),data=Buffer.alloc(10);data[0]=12;data.writeBigUInt64LE(BigInt(usd.amount_units),1);data[9]=6;
 usdTx.transaction.message.accountKeys=[key(),key(),USDC_MINT,key(),usd.reference,'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA'];
 usdTx.transaction.message.instructions=[{programIdIndex:5,accounts:[1,2,3,0,4],data:bs58.encode(data)}];
@@ -154,4 +170,4 @@ assert.ok(discordRequests.some(r=>r.url.includes('/webhooks/')&&r.body.content.i
 assert.ok(!(discordRequests.some(r=>r.url.includes('/channels/456789012345678902/messages'))));
 
 await service.close();await db.close();
-console.log('Tournament tests passed: login/wallet/fee gates, server pricing, origin/admin checks, slot reservations, finalized payments, retry safety, late-payment review and signed one-time Discord links.');
+console.log('Tournament tests passed: K entries, paused legacy payment creation, suppressed payment URLs, preserved SOL/USDC reconciliation, late-payment review, origin/admin gates and signed one-time Discord links.');

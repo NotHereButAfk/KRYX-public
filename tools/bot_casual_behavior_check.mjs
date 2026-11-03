@@ -61,7 +61,7 @@ function duel(extra = {}) {
   room.tick = TICK_HZ;
   bot._botLosCache = false; bot._botNextLosTick = 0;
   room._driveBot(bot);
-  assert(bot._botReactionUntil - room.tick >= Math.ceil(.28 * TICK_HZ),
+  assert(bot._botReactionUntil - room.tick >= Math.ceil(.18 * TICK_HZ),
     'reappearing targets must receive a fresh reaction window');
   assert.equal(bot.fireReq, null, 'reacquisition fired immediately');
   // A smoke cloud appearing between perception scans must also stop the shot.

@@ -1,3 +1,4 @@
+import { REAL_MONEY_PURCHASES_ENABLED } from '../core/SkinPrices.js';
 import { Shop } from '../core/Shop.js';
 import { Armory } from '../core/Armory.js';
 
@@ -11,6 +12,7 @@ async function request(path, options = {}) {
 }
 
 export async function openSolanaCheckout({ skinId, name, price, onComplete }) {
+  if (!REAL_MONEY_PURCHASES_ENABLED) throw new Error('Real-money purchases are paused. Use earned K in the shop.');
   const current = ++generation;
   clearTimeout(timer);
   const el = id => document.getElementById(id);

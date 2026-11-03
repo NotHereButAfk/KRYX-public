@@ -67,7 +67,7 @@ async function load() {
       };
     }
     $("catalog").replaceChildren();
-    text("p", "Skins are available in the Night Market with SOL or USDC. In-game currency cannot be used to buy skins.", $("catalog"));
+    text("p", "Buy Night Market skins with earned K: 1,000 common, 1,500 rare, 2,000 epic, 2,500 legendary and 3,000 mythic.", $("catalog"));
     $("ledger").replaceChildren();
     for (const t of h.transactions) {
       const row = document.createElement("tr");

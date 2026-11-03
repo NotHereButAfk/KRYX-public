@@ -24,6 +24,6 @@ export function playFootstepRecording(audio, sprint = false, landing = false) {
   bank.last = index;
   playBufferVoice(audio, bank.buffers[index], {
     rate:(landing ? .88 : sprint ? 1.03 : .97) + Math.random() * .05,
-    gain:landing ? .7 : sprint ? .55 : .4, lowpass:1900, priority:0,
+    gain:landing ? .7 : sprint ? .55 : .4, lowpass:2600, priority:0,
   });
 }

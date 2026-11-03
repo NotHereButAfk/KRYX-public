@@ -1,3 +1,4 @@
+import { SPAWN_PROTECTION_SECONDS } from '../sim/DeathTiming.js';
 import { strafeTilt } from './StrafeTilt.js';
 import { applyMouseLook } from '../core/MouseLook.js';
 import { BACKWARD_WALK_MULT, WALK_SPEED, SPRINT_MULT, SLIDE_LAUNCH_SPEED, SLIDE_DURATION, SLIDE_RECOVERY, JUMP_SPEED, PLAYER_EYE_HEIGHT as EYE_HEIGHT } from '../sim/MovementConfig.js';
@@ -88,6 +89,7 @@ export class Player {
     this.teleportCooldown    = 0;
     this.teleportMaxCooldown = TELEPORT_COOLDOWN;
     this._respawnEpoch       = 0;
+    this._spawnProtectionUntil = 0;
     this.onTeleport = null; // (fromPos, toPos) => void
 
     // Sound state
@@ -133,6 +135,8 @@ export class Player {
 
   respawn(position) {
     this._respawnEpoch++;
+    // Wall-clock protection expires even when a menu blocks movement updates.
+    this._spawnProtectionUntil = performance.now() + SPAWN_PROTECTION_SECONDS * 1000;
     this.health   = this.maxHealth;
     this.stamina  = this.maxStamina;
     this.shield   = this.maxShield;
@@ -178,6 +182,10 @@ export class Player {
 
     this.recoilPitch = 0; this.recoilPitchVel = 0;
     this.recoilYaw = 0;   this.recoilYawVel = 0;
+  }
+
+  get spawnProtected() {
+    return performance.now() < this._spawnProtectionUntil;
   }
 
   takeDamage(amount) {

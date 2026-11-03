@@ -24,7 +24,7 @@ export const Shop = {
   buy(skinId, price) {
     return { ok: false, err: skinId === '__bp_premium__'
       ? 'Every battle pass reward is free. Earn XP to unlock it.'
-      : 'Skin purchases with in-game currency are no longer available' };
+      : 'Sign in and use the online shop to buy skins with K' };
   },
 
   unlock(skinId) {

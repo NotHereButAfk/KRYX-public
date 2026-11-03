@@ -100,12 +100,12 @@ export class Game {
       antialias: _q !== 'low',
       powerPreference: 'high-performance',
     });
-    this.renderer.shadowMap.enabled = false; // sky-only lighting: no shadow casters
+    this.renderer.shadowMap.enabled = false; // configured by the arena lighting quality tier
     this.renderer.shadowMap.type = THREE.PCFShadowMap;
     this.renderer.setPixelRatio(rendererPixelRatio(_q, window.devicePixelRatio, (this.canvas.parentElement?.clientWidth || window.innerWidth), (this.canvas.parentElement?.clientHeight || window.innerHeight)));
     this.renderer.setSize((this.canvas.parentElement?.clientWidth || window.innerWidth), (this.canvas.parentElement?.clientHeight || window.innerHeight));
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure = 0.78;
+    this.renderer.toneMappingExposure = 0.92;
 
     // Presentation models start after the arena decode. Starting their parsers
     // here could block the one-second connection handoff on a cold cache.
@@ -120,7 +120,7 @@ export class Game {
     // tasks. The loading overlay hides the arena anyway, so build it after the
     // real map arrives instead of delaying the loader's first paint.
     this._environmentReady = false;
-    this.world.scene.environmentIntensity = 0.5;
+    this.world.scene.environmentIntensity = 0.4;
 
     // ── HDR bloom post-processing ──────────────────────────────────────────
     // Makes every emissive surface — neon signs, lit windows, glowing weapon
@@ -340,6 +340,7 @@ export class Game {
     this.audio.stopAmbientCity();
     this.weaponSystem.disposeImpactEffects?.();
     this._blinkPreview?.dispose();
+    this.world.lighting.dispose();
     this.renderer.dispose();
     this.botManager.clear();
     this.zombieManager.clear();
@@ -742,6 +743,7 @@ export class Game {
 
   _setRuntimeQuality(quality, resetMonitor = false) {
     this._runtimeQuality = quality;
+    this.world.lighting.setQuality(quality, this.renderer);
     this.renderer.setPixelRatio(rendererPixelRatio(quality, window.devicePixelRatio, (this.canvas.parentElement?.clientWidth || window.innerWidth), (this.canvas.parentElement?.clientHeight || window.innerHeight)));
     const wantsBloom = bloomEnabled(quality);
     if (wantsBloom && !this.composer) this._buildPostFX();
@@ -836,7 +838,7 @@ export class Game {
       // In an authoritative match the server applies grenade damage. Running
       // the local copy too would double-hit and let a client decide its death.
       if (this._authNet?.ready) return;
-      this._onPlayerDamaged(damage, point);
+      this._onPlayerDamaged(damage, point, null, true);
     };
 
     this.weaponSystem.onHitBot = (enemy, dmg, point, meta) => {
@@ -1038,10 +1040,6 @@ export class Game {
       }
       this.audio.setVolume(s.volume);
       if (this._runtimeQuality !== s.quality) this._setRuntimeQuality(s.quality, true);
-      // Apply the heavy toggles live so a quality drop gives immediate relief
-      // (bloom + shadows). The decorative light budget is baked at world build,
-      // so the lighting part of the change takes full effect on the next reload.
-      // shadows stay off — sky-only lighting has no shadow casters.
       // accessibility toggles apply live
       const rm = GameSettings.get('reduceMotion');
       this.player.reduceMotion = rm;
@@ -1994,8 +1992,11 @@ export class Game {
 
   // ── Player damage / death ───────────────────────────────────────────────────
 
-  _onPlayerDamaged(dmg, from = null, attacker = null) {
+  _onPlayerDamaged(dmg, from = null, attacker = null, bypassSpawnProtection = false) {
     if (this.player.isDead || this._playerDowned) return;
+    // Menus never grant protection. Only a fresh spawn blocks enemy damage;
+    // self explosives and falling out of the arena keep their normal behavior.
+    if (!bypassSpawnProtection && this.player.spawnProtected) return;
     const died = this.player.takeDamage(dmg);
     this.audio.playHurt();
     this.hud.flashDamage();
@@ -2351,7 +2352,7 @@ export class Game {
       const crossedKillPlane = this.player.position.y < (this.world.killY ?? -25);
       const recoveredByMoveSim = !!this.moveBridge?.recoveredThisFrame;
       if (crossedKillPlane || recoveredByMoveSim) {
-        this._onPlayerDamaged(this.player.health + this.player.shield + 1);
+        this._onPlayerDamaged(this.player.health + this.player.shield + 1, null, null, true);
       }
     }
     // A server snapshot can change alive/dead during AuthNetBridge.update(),
@@ -2977,13 +2978,18 @@ export class Game {
     const showWeapon = mount.visible;
     mount.visible = false;
     if (!this.renderer.info.autoReset) this.renderer.info.reset();
-    if (this._bloomEnabled && this.composer) {
-      this.renderPass.camera = camera;
-      this.composer.render();
-    } else {
-      this.renderer.render(this.world.scene, camera);
+    this.world.lighting.prepareFrame();
+    try {
+      if (this._bloomEnabled && this.composer) {
+        this.renderPass.camera = camera;
+        this.composer.render();
+      } else {
+        this.renderer.render(this.world.scene, camera);
+      }
+    } finally {
+      this.world.lighting.restoreFrame();
+      mount.visible = showWeapon;
     }
-    mount.visible = showWeapon;
     if (this.state === 'playing' && showWeapon) {
       this.weaponSystem.renderViewmodel(this.renderer, this.world);
     }

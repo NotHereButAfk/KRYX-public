@@ -1,4 +1,8 @@
+import { chooseBotFiringStep } from './BotFiringLane.js';
+import { advanceFireCooldown, scheduleNextShot } from '../weapons/FireControl.js';
+import { shotSpread } from '../weapons/ShotSpread.js';
 import * as THREE from 'three';
+import { observeBotTarget, predictBotTarget } from './BotSkill.js';
 import { groundDeathBody } from '../player/DeathBody.js';
 import { buildPreviewCharacter, rigCharacterLimbs } from '../player/PreviewCharacter.js';
 import { isEvCharacterReady } from '../player/EvCharacter.js';
@@ -9,7 +13,7 @@ import { applyWalkCycle } from '../player/Locomotion.js';
 import { applyMeleeCarry } from '../player/Actions.js';
 import { directionToBodyYaw, turnBodyYaw } from '../player/Facing.js';
 import { BOT_SKIN } from '../player/skins.js';
-import { BOT_DASH, BOT_RETALIATION_AIM_SCALE, BOT_TACTICS, advanceBotMagazine, advanceBurst, botAimErrorMeters, botTrackingOffset, botArenaDetectionDistance, botLoadoutForId, chooseCombatSteering, choosePlayerLikeBotMove, chooseReachableRoamPoint, isBotDashLaneSafe } from './BotCombat.js';
+import { BOT_DASH, BOT_RETALIATION_AIM_SCALE, BOT_TACTICS, advanceBotMagazine, botAimErrorMeters, botTrackingOffset, botLoadoutForId, chooseCombatSteering, choosePlayerLikeBotMove, chooseReachableRoamPoint, isBotDashLaneSafe } from './BotCombat.js';
 import { BOT_DIFFICULTIES, chooseBotCoverPoint, shouldBotTacticalReload, isInsideBotFov } from './BotCombat.js';
 import { BACKWARD_WALK_MULT, BOT_MOVEMENT_SCALE, WALK_SPEED, SPRINT_MULT, STAMINA_MAX, STAMINA_DRAIN, STAMINA_REGEN, STAMINA_REGEN_DELAY } from '../sim/MovementConfig.js';
 import { DEATH_BODY_DURATION, DEATH_IMPACT_TIME, createDeathReaction, sampleDeathReaction } from '../sim/DeathReaction.js';
@@ -17,12 +21,13 @@ import { PLAYER_WORLD_MODEL_SCALE } from '../player/Proportions.js';
 
 const _STILL = { bob: 0, lean: 0, swing: 0 };
 const _tmpA = new THREE.Vector3();   // scratch: bullet-cone basis
+const _tmpShotAim = new THREE.Vector3();
 const _tmpB = new THREE.Vector3();
 
 const DETECT_RADIUS = BOT_TACTICS.detectRadius;
-const ATTACK_RADIUS = BOT_TACTICS.meleeAttackDistance;
-const ATTACK_DAMAGE = 12;
-const ATTACK_COOLDOWN = 0.95;
+const ATTACK_RADIUS = getWeapon('sword').range;
+const ATTACK_DAMAGE = getWeapon('sword').damage;
+const ATTACK_COOLDOWN = getWeapon('sword').fireRate;
 const LUNGE_TIME = 0.2;      // how long a sword bot's strike takes to play
 const RESPAWN_DELAY = 4;
 const RADIUS = 0.5;
@@ -41,8 +46,8 @@ const PROVOKE_DURATION = BOT_TACTICS.memoryDuration;
 // can't turn into a perfect marksman at point-blank, which a fixed angular cone
 // does (a 3° cone at 5m physically cannot miss a torso).
 // Cover and player strafing still matter because these remain real ray shots.
-const AIM_SKILL_MIN = 0.74;    // per-bot multiplier — lower is a better shot
-const AIM_SKILL_MAX = 1.06;
+const AIM_SKILL_MIN = 0.50;    // per-bot multiplier — lower is a better shot
+const AIM_SKILL_MAX = 0.72;
 const REACTION_MIN  = BOT_DIFFICULTIES.normal.reactionMin;
 const REACTION_MAX  = BOT_DIFFICULTIES.normal.reactionMax;
 // Player hitboxes, relative to their feet: a torso sphere and a head.
@@ -106,10 +111,17 @@ export class Bot {
     this._staminaDelay = 0;
     this._staminaRecovering = false;
     this._encounterTime = 0;
-    this._gunTimer    = Math.random() * 0.8;
+    this._perceptionTime = 0;
+    this._observation = null;
+    this._observedTarget = null;
+    this._gunTimer    = 0;
+    this._shotBloom = 0;
+    this._firingLaneT = 0;
+    this._firingLane = null;
+    this._coverReturnPoint = null;
     this._magAmmo     = this._botGun?.magSize || 0;
     this._reloadTimer = 0;
-    this._burstShots  = 2 + Math.floor(Math.random() * 3);
+    this._burstShots  = 6;
     // Per-bot marksmanship multiplier on the aim error. Rolling this per bot is
     // what makes some of them feel dangerous and others sloppy.
     this._aimSkill    = AIM_SKILL_MIN + Math.random() * (AIM_SKILL_MAX - AIM_SKILL_MIN);
@@ -428,11 +440,19 @@ export class Bot {
     this._provoked = false;
     this._provokedByPlayer = false;
     this._encounterTime = 0;
+    this._perceptionTime = 0;
+    this._observation = null;
+    this._observedTarget = null;
     this._provokeTimer = 0;
     this._losCache = false;
     this._losT = 0;
     this._decisionT = 0;
-    this._burstShots = 2 + Math.floor(Math.random() * 3);
+    this._burstShots = 6;
+    this._gunTimer = 0;
+    this._shotBloom = 0;
+    this._firingLane = null;
+    this._coverReturnPoint = null;
+    this._firingLaneT = 0;
     this._magAmmo = this._botGun?.magSize || 0;
     this._reloadTimer = 0;
     this._targetEntity = null;
@@ -473,14 +493,16 @@ export class Bot {
 
   /** Clear line of sight from the bot's eye to the player's chest? */
   canNotice(player, world) {
-    return isInsideBotFov(this.mesh.rotation.y,
-      player.position.x - this.position.x, player.position.z - this.position.z, 112)
+    const dx = player.position.x - this.position.x, dz = player.position.z - this.position.z;
+    const distance = Math.hypot(dx, dz), awareness = BOT_DIFFICULTIES.normal;
+    return (distance <= awareness.peripheralDistance
+        || isInsideBotFov(this.mesh.rotation.y, dx, dz, awareness.fovDegrees))
       && this.hasLineOfSight(player, world);
   }
 
   hasLineOfSight(player, world) {
     this._shootFrom.set(this.position.x, this.position.y + 1.5, this.position.z);
-    this._shootTarget.set(player.position.x, player.position.y + PLAYER_BODY_Y, player.position.z);
+    this._shootTarget.set(player.position.x, player.position.y + (player.isCrouching || player.isSliding ? .65 : PLAYER_BODY_Y), player.position.z);
     const dist = this._shootFrom.distanceTo(this._shootTarget);
     if (dist < 0.5) return true;
     this._shootDir.subVectors(this._shootTarget, this._shootFrom).normalize();
@@ -512,18 +534,20 @@ export class Bot {
     });
   }
 
-  _shootAt(player, onAttack, world) {
+  _shootAt(player, onAttack, world, shotRounds = 1) {
+    if (!this._botGun || shotRounds <= 0) return false;
     const nativeMuzzle = this.mesh?.userData?.getMuzzleWorldPosition;
     if (nativeMuzzle) {
-      if (!nativeMuzzle(this._shootFrom)) return;
+      if (!nativeMuzzle(this._shootFrom)) return false;
     } else {
-      if (!this._weaponMuzzle?.parent) return;
+      if (!this._weaponMuzzle?.parent) return false;
       this._weaponMuzzle.updateWorldMatrix(true, false);
       this._weaponMuzzle.getWorldPosition(this._shootFrom);
     }
-    this._shootTarget.set(player.position.x, player.position.y + PLAYER_BODY_Y, player.position.z);
+    const aim = predictBotTarget(this._observation, this._perceptionTime, true) ?? this._lastSeenPos;
+    this._shootTarget.set(aim.x, aim.y + (player.isCrouching || player.isSliding ? .65 : PLAYER_BODY_Y), aim.z);
     const dist = this._shootFrom.distanceTo(this._shootTarget);
-    if (dist < 0.5) return;
+    if (dist < 0.5) return false;
     this._shootDir.subVectors(this._shootTarget, this._shootFrom).normalize();
 
     // Fire feedback: rigged humans use their skeletal recoil; cyborg/procedural
@@ -536,7 +560,7 @@ export class Bot {
       this._muzzleFlash.rotation.set(0, 0, Math.random() * Math.PI);
       this._muzzleFlash.scale.setScalar(0.75 + Math.random() * 0.6);
     }
-    if (this.audio) this.audio.playAt(this._shootFrom, () => this.audio.playShot(this._botGun.sound));
+    if (this.audio) this.audio.playAt(this._shootFrom, () => this.audio.playShot(this._botGun.sound, shotRounds));
 
     // ── The bullet is a real ray ───────────────────────────────────────────────
     // Scatter it inside the bot's aim cone, then see what it actually hits. This
@@ -555,29 +579,37 @@ export class Bot {
       .addScaledVector(_tmpB, tracking.y * spread)
       .normalize();
 
-    this._bulletRay.set(this._shootFrom, this._shootDir);
-    const range = this._botGun.range;
-
-    // Nearest world obstruction along the bullet's actual path.
-    let blockAt = Infinity;
-    if (world?.raycastCollisionDistance) {
-      blockAt = world.raycastCollisionDistance(this._bulletRay, range);
+    _tmpShotAim.copy(this._shootDir);
+    const physicalSpread = shotSpread(this._botGun, this._shotBloom, 1, this._animSpeed);
+    const pelletCount = this._botGun.ammoPerShot > 1 ? shotRounds : (this._botGun.pellets || 1);
+    for (let pellet = 0; pellet < pelletCount; pellet++) {
+      this._shootDir.copy(_tmpShotAim)
+        .addScaledVector(_tmpA, (Math.random() - .5) * physicalSpread)
+        .addScaledVector(_tmpB, (Math.random() - .5) * physicalSpread).normalize();
+      this._bulletRay.set(this._shootFrom, this._shootDir);
+      const range = this._botGun.range;
+      const blockAt = world?.raycastCollisionDistance?.(this._bulletRay, range) ?? Infinity;
+      const hitDist = this._rayHitsPlayer(player, range);
+      if (hitDist !== null && hitDist < blockAt) {
+        const critical = this._shotHeadshot ? (this._botGun.headshotMultiplier || 1) : 1;
+        onAttack(this._botGun.damage * critical, this.position, this);
+      }
     }
-
-    // Does it reach the player before that?
-    const hitDist = this._rayHitsPlayer(player, range);
-    if (hitDist !== null && hitDist < blockAt) onAttack(this._botGun.damage, this.position, this);
+    return true;
   }
 
   /** Distance along _bulletRay at which it strikes the player, or null. */
   _rayHitsPlayer(player, range) {
     let best = null;
-    for (const [dy, r] of [[PLAYER_BODY_Y, PLAYER_BODY_R], [PLAYER_HEAD_Y, PLAYER_HEAD_R]]) {
+    this._shotHeadshot = false;
+    const crouched = player.isCrouching || player.isSliding;
+    for (const [dy, r, head] of [[crouched ? .65 : PLAYER_BODY_Y, PLAYER_BODY_R, false],
+      [crouched ? 1.0 : PLAYER_HEAD_Y, PLAYER_HEAD_R, true]]) {
       this._sphere.center.set(player.position.x, player.position.y + dy, player.position.z);
       this._sphere.radius = r;
       if (!this._bulletRay.intersectSphere(this._sphere, this._hitPt)) continue;
       const d = this._bulletRay.origin.distanceTo(this._hitPt);
-      if (d <= range && (best === null || d < best)) best = d;
+      if (d <= range && (best === null || d < best)) { best = d; this._shotHeadshot = head; }
     }
     return best;
   }
@@ -657,6 +689,13 @@ export class Bot {
       this.bodyMat.emissiveIntensity = 0;
     }
 
+    // Weapon time keeps advancing while turning, searching or reloading.
+    // Reaction time, rather than a second queued delay, controls acquisition.
+    this._gunTimer = advanceFireCooldown(Math.max(0, this._gunTimer), dt);
+    if (this._botGun) this._shotBloom = Math.max(this._botGun.spreadMin ?? this._botGun.spread ?? 0,
+      this._shotBloom - (this._botGun.spreadRecovery ?? .24) * dt);
+    this._firingLaneT = Math.max(0, (this._firingLaneT || 0) - dt);
+
     // Bot weapons use finite magazines. The pause is both a fair combat window
     // and a visible action because its progress feeds the shared carry rig.
     if (this._reloadTimer > 0 && this._botGun) {
@@ -685,15 +724,34 @@ export class Bot {
 
     // ── Awareness ──────────────────────────────────────────────────────────────
     // Visible humans can start an encounter without damaging the bot first.
-    const targetDetectRadius = player?.isBot
-      ? botArenaDetectionDistance(DETECT_RADIUS)
-      : DETECT_RADIUS;
-    const inRange = !player.isDead && distToPlayer < targetDetectRadius;
+    const inRange = !player.isDead;
+    this._perceptionTime += dt;
+    if (this._observedTarget !== player) {
+      this._observedTarget = player;
+      this._observation = null;
+      this._coverReturnPoint = null;
+      this._losCache = false;
+      // BotManager may have just assigned a damage-confirmed attacker behind
+      // our FOV. Preserve that cue while discarding the previous visual sample.
+      if (!(this._targetEntity === player && this._provoked)) {
+        this._lastSeenValid = false;
+        this._provoked = false;
+      }
+      this._losT = 0;
+    }
     this._losT -= dt;
     if (inRange) {
       if (this._losT <= 0) {
-        this._losT = 0.12 + Math.random() * 0.1;
+        this._losT = 0.08 + Math.random() * 0.02;
+        const wasVisible = this._losCache;
         this._losCache = this._provoked ? this.hasLineOfSight(player, world) : this.canNotice(player, world);
+        if (this._losCache) {
+          if (!wasVisible && this._unseenTime > .4) this._reactT = REACTION_MIN + Math.random() * (REACTION_MAX - REACTION_MIN);
+          this._observation = observeBotTarget(wasVisible ? this._observation : null,
+            player.position, this._perceptionTime, player.id ?? player);
+          this._lastSeenPos.copy(player.position);
+          this._lastSeenValid = true;
+        }
       }
     } else {
       this._losCache = false;
@@ -710,8 +768,6 @@ export class Bot {
       if (!this._provoked) this._reactT = REACTION_MIN + Math.random() * (REACTION_MAX - REACTION_MIN);
       this._provoked = true;
       this._provokeTimer = PROVOKE_DURATION;
-      this._lastSeenPos.copy(player.position);
-      this._lastSeenValid = true;
     } else if (this._provokeTimer > 0) {
       this._provokeTimer -= dt;
       if (this._provokeTimer <= 0) {
@@ -734,7 +790,7 @@ export class Bot {
     let gaitDirF = 0;
     let gaitDirR = 0;
     if (engaged) {
-      const target = hasVisual ? player.position : this._lastSeenPos;
+      const target = predictBotTarget(this._observation, this._perceptionTime, hasVisual) ?? this._lastSeenPos;
       this._toTarget.set(target.x - this.position.x, 0, target.z - this.position.z);
       const targetDistance = this._toTarget.length();
       const targetDir = this._combatDir.copy(this._toTarget);
@@ -744,8 +800,8 @@ export class Bot {
       this._decisionT -= dt;
       if (this._decisionT <= 0) {
         this._decisionT = 0.95 + Math.random() * 0.80;
-        if (Math.random() < 0.35) this._strafeSign *= -1;
-        const targetIsHigher = player.position.y > this.position.y + 1.15;
+
+        const targetIsHigher = target.y > this.position.y + 1.15;
         this._wantsJump = this._onGround && this._jumpCooldown <= 0 &&
           (targetIsHigher || (hasVisual && targetDistance > 6 && targetDistance < 18
             && Math.random() < 0.10));
@@ -753,11 +809,11 @@ export class Bot {
 
       this._encounterTime += dt;
       let maneuver = choosePlayerLikeBotMove({
-        id: this.id, elapsed: this._encounterTime, distance: targetDistance,
+        id: this.id, strafeSide: this._strafeSign, distance: targetDistance,
         reacting: this._reactT > 0, hasLineOfSight: hasVisual,
-        reloading: this._reloadTimer > 0,
+        reloading: this._reloadTimer > 0, range: this._botGun?.range ?? 30,
       });
-      const needsCover = !this._isSwordBot && (this._reloadTimer > 0 || this.health < 36);
+      const needsCover = !this._isSwordBot && (this._reloadTimer > 0 || this.health < 65);
       if (!needsCover || this._coverTimer <= 0) this._coverPoint = null;
       if (needsCover && this._reactT <= 0 && this._coverDecisionT <= 0 && !this._coverPoint) {
         this._coverDecisionT = 1;
@@ -772,8 +828,29 @@ export class Bot {
             return world?.raycastCollisionDistance?.(this._bulletRay, far) ?? far;
           },
         });
+        if (this._coverPoint && hasVisual && !this._coverReturnPoint) {
+          this._coverReturnPoint = this.position.clone();
+        }
         this._coverTimer = 2.2;
       }
+      if (hasVisual && !needsCover && !this._isSwordBot) {
+        if (this._firingLaneT <= 0 || !this._firingLane) {
+          this._firingLaneT = .15;
+          this._firingLane = chooseBotFiringStep({
+            x: this.position.x, y: this.position.y, z: this.position.z,
+            targetX: target.x, targetY: target.y + PLAYER_BODY_Y, targetZ: target.z,
+            forward: maneuver.forward, strafe: maneuver.strafe, killY: world?.killY ?? -25,
+            groundHeightAt: world?.groundHeightAt?.bind(world),
+            raycast: world?.raycastCollisionDistance ? (ox, oy, oz, dx, dy, dz, far) => {
+              this._shootFrom.set(ox, oy, oz); this._shootDir.set(dx, dy, dz);
+              this._bulletRay.set(this._shootFrom, this._shootDir);
+              return world.raycastCollisionDistance(this._bulletRay, far);
+            } : undefined,
+          });
+          if (this._firingLane.strafe) this._strafeSign = Math.sign(this._firingLane.strafe);
+        }
+        maneuver = { ...maneuver, ...this._firingLane };
+      } else { this._firingLane = null; this._firingLaneT = 0; }
       if (this._coverPoint) {
         const cx = this._coverPoint.x - this.position.x, cz = this._coverPoint.z - this.position.z;
         const length = Math.hypot(cx, cz);
@@ -781,6 +858,19 @@ export class Bot {
           forward: (targetDir.x * cx + targetDir.z * cz) / length,
           strafe: (-targetDir.z * cx + targetDir.x * cz) / length,
           mode: 'cover',
+        };
+      }
+      // Retrace the known-safe entry to reload cover. Chasing the enemy's
+      // last position directly from behind a wall often drove into that wall.
+      if (hasVisual && !needsCover) this._coverReturnPoint = null;
+      if (!needsCover && !hasVisual && this._coverReturnPoint) {
+        const px = this._coverReturnPoint.x - this.position.x, pz = this._coverReturnPoint.z - this.position.z;
+        const length = Math.hypot(px, pz);
+        if (length <= .3) this._coverReturnPoint = null;
+        else maneuver = {
+          forward: (targetDir.x * px + targetDir.z * pz) / length,
+          strafe: (-targetDir.z * px + targetDir.x * pz) / length,
+          mode: 'peek', sprint: false,
         };
       }
       chasing = !!maneuver.sprint;
@@ -818,20 +908,21 @@ export class Bot {
         target.z - this.position.z
       );
 
-      // Ranged bots use short bursts only with a verified firing lane.
+      // Keep firing while repositioning, only through a verified firing lane.
       const aimDelta = Math.abs(Math.atan2(Math.sin(this._targetYaw - this.mesh.rotation.y),
         Math.cos(this._targetYaw - this.mesh.rotation.y)));
       if (this._botGun && this._reloadTimer <= 0 && hasVisual && this._reactT <= 0
         && aimDelta < 0.28 && distToPlayer < this._botGun.range) {
-        this._gunTimer -= dt;
         if (this._gunTimer <= 0 && this.hasLineOfSight(player, world)) {
-          this._shootAt(player, onAttack, world);
-          const magazine = advanceBotMagazine(this._magAmmo, this._reloadTimer, 0, this._botGun, true);
-          this._magAmmo = magazine.ammo;
-          this._reloadTimer = magazine.reloadRemaining;
-          const burst = advanceBurst(this._burstShots);
-          this._burstShots = burst.shotsRemaining;
-          this._gunTimer = this._botGun.fireRate * burst.delayScale;
+          const shotRounds = Math.min(this._magAmmo, this._botGun.ammoPerShot || 1);
+          if (this._shootAt(player, onAttack, world, shotRounds)) {
+            const magazine = advanceBotMagazine(this._magAmmo, this._reloadTimer, 0, this._botGun, true);
+            this._magAmmo = magazine.ammo;
+            this._reloadTimer = magazine.reloadRemaining;
+            this._gunTimer = scheduleNextShot(this._gunTimer, this._botGun.fireRate);
+            this._shotBloom = Math.min(this._botGun.spreadMax ?? this._botGun.spread ?? 0,
+              this._shotBloom + (this._botGun.spreadBloomPerShot || 0));
+          }
         }
       }
 
@@ -1001,7 +1092,7 @@ export class Bot {
     // Smooth turn toward the desired facing — no more instant snap-arounds.
     if (this._yawInit) {
       this.mesh.rotation.y = turnBodyYaw(
-        this.mesh.rotation.y, this._targetYaw, dt, 3.2
+        this.mesh.rotation.y, this._targetYaw, dt, BOT_DIFFICULTIES.normal.aimTurnSpeed
       );
     } else { this.mesh.rotation.y = this._targetYaw; this._yawInit = true; }
 
@@ -1061,7 +1152,7 @@ export class Bot {
       // gently return to zero via the smoother inside armorTick.
       if (ud.setAim && player) {
         if (this._provoked || engaged) {
-          const aimAt = hasVisual ? player.position : this._lastSeenPos;
+          const aimAt = predictBotTarget(this._observation, this._perceptionTime, hasVisual) ?? this._lastSeenPos;
           const dx = aimAt.x - this.position.x;
           const dz = aimAt.z - this.position.z;
           const dy = (aimAt.y + 1.0) - (this.position.y + 1.5);

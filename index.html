@@ -493,37 +493,6 @@
       <div id="tournament-events" aria-live="polite"></div>
     </div>
 
-    <div id="checkout-modal" class="checkout-modal hidden" role="dialog" aria-modal="true" aria-labelledby="checkout-title">
-      <div class="checkout-card">
-        <button id="checkout-close" class="checkout-close" type="button" aria-label="Close checkout">&times;</button>
-        <div class="checkout-kicker">SECURE CHECKOUT</div>
-        <h2 id="checkout-title">PURCHASE SKIN</h2>
-        <div class="checkout-item"><strong id="checkout-item"></strong><span id="checkout-price"></span></div>
-        <label class="checkout-terms-accept">
-          <input id="checkout-terms-checkbox" type="checkbox" />
-          <span>I agree to the <a href="/terms#digital-purchases" target="_blank" rel="noopener">Digital Skin Purchase Terms</a>.</span>
-        </label>
-        <details class="checkout-details checkout-terms-details"><summary>Purchase terms summary</summary><p>This digital purchase is final except where required by law. The skin entitlement is permanent for your account. Skin visuals may be modified and reward multipliers may be rebalanced.</p></details>
-        <button id="checkout-continue" class="checkout-continue" type="button" disabled>ACCEPT &amp; CONTINUE</button>
-        <div id="checkout-payment-options" class="checkout-payment-options hidden">
-          <div id="checkout-assets" class="checkout-assets">
-            <button id="checkout-sol" class="checkout-continue" type="button">PAY WITH SOL</button>
-            <button id="checkout-usdc" class="checkout-continue" type="button">PAY WITH USDC</button>
-          </div>
-          <div id="checkout-order" class="hidden">
-            <div class="checkout-payment-heading"><span>PAYMENT AMOUNT</span><h3 id="checkout-amount"></h3><p>Solana mainnet · Network fees extra</p></div>
-            <div class="checkout-payment-grid">
-              <div class="checkout-scan"><canvas id="checkout-qr" aria-label="Solana Pay payment request"></canvas><span>Scan with a Solana Pay wallet</span></div>
-              <div class="checkout-actions"><p>Scan the QR code or copy the payment request.</p><button id="checkout-copy" type="button">Copy payment request</button><span id="checkout-expiry"></span></div>
-            </div>
-            <details class="checkout-details"><summary>Order details</summary><dl><dt>Order ID</dt><dd id="checkout-order-id"></dd><dt>Recipient</dt><dd id="checkout-recipient"></dd></dl></details>
-          </div>
-        </div>
-        <div id="checkout-status" class="checkout-status" aria-live="polite"></div>
-        <div class="checkout-trust">Approve payment in your wallet. We never ask for your private key or recovery phrase. Skin purchases do not convert K coins into cryptocurrency.</div>
-      </div>
-    </div>
-
     <!-- ===================== PANEL: BATTLE PASS ===================== -->
     <div id="panel-battlepass" class="nav-panel nav-panel-wide hidden">
       <div class="bp-season-layout">

@@ -29,13 +29,14 @@ function duel({ distance = 60, targetIsBot = false, boxes = [] } = {}) {
 }
 
 function driveAt(room, bot, tick) {
+  assert(Number.isFinite(tick), 'perception fixture requires a finite server tick');
   room.tick = tick;
   return room._driveBot(bot);
 }
 
 for (const targetIsBot of [false, true]) {
   const kind = targetIsBot ? 'bot' : 'human';
-  test(`notices a visible ${kind} at 70m, then runs closer without long-range fire`, () => {
+  test(`notices a visible ${kind} at 70m and fires while holding rifle range`, () => {
     const { room, bot, target } = duel({ distance: 70, targetIsBot });
     assert(room._botCanSee(bot, target), 'open distant sightline was ignored');
     room._driveBot(bot);
@@ -45,46 +46,65 @@ for (const targetIsBot of [false, true]) {
 
     const command = driveAt(room, bot, bot._botReactionUntil);
     assert.equal(bot._botState, 'engage');
-    assert(command.inp.mz > 0, 'distant opponent did not trigger forward pursuit');
-    assert.equal(command.inp.sprint, 1, 'distant pursuit should use ordinary sprint');
+    assert.equal(command.inp.mz, 0, 'in-range opponent triggered an unnecessary forward rush');
+    assert.notEqual(command.inp.mx, 0, 'ranged combat lost lateral footwork');
+    assert.equal(command.inp.sprint, 0, 'visible engagement should not rush into close range');
     assert.equal(command.botDash, false, 'awareness must not grant a speed boost');
-    assert.equal(command.aiming, false, 'distant acquisition extended the aiming range');
-    assert.equal(bot.fireReq, null, 'awareness extended the ordinary firing range');
+    assert.equal(command.aiming, true, 'visible opponent inside weapon range was not aimed at');
+    assert(bot.fireReq, 'bot waited to run closer before firing at a visible opponent');
     const moved = step(bot.state, command.inp, room.simWorld);
-    assert(moved.pz < bot.state.pz, 'pursuit command did not move toward the target');
+    assert.notEqual(moved.px, bot.state.px, 'ranged command did not produce actual lateral motion');
+    assert.equal(moved.pz, bot.state.pz, 'ranged command closed distance unnecessarily');
   });
 
-  test(`retains an acquired ${kind} at 80m but cannot acquire a fresh one there`, () => {
+  test(`acquires and fires at a visible ${kind} beyond the former 72m and 90m limits`, () => {
     const fresh = duel({ distance: 80, targetIsBot });
-    assert.equal(fresh.room._botCanSee(fresh.bot, fresh.target), false);
+    assert.equal(fresh.room._botCanSee(fresh.bot, fresh.target), true);
     fresh.room._driveBot(fresh.bot);
-    assert.equal(fresh.bot._botTargetId, null, 'tracking distance leaked into new acquisition');
+    assert.equal(fresh.bot._botTargetId, fresh.target.id, 'visible opponent was rejected by an AI distance cap');
+    driveAt(fresh.room, fresh.bot, fresh.bot._botReactionUntil);
+    assert(fresh.bot.fireReq, 'M4 failed to fire at80m inside its actual weapon range');
 
-    const { room, bot, target } = duel({ targetIsBot });
-    room._driveBot(bot);
-    target.state.pz = -80;
-    const command = driveAt(room, bot, bot._botReactionUntil + 1);
-    assert.equal(bot._botTargetId, target.id, 'pursuit dropped a visible fleeing opponent');
-    assert.equal(bot._botLosCache, true, 'tracking did not extend beyond acquisition range');
-    assert.equal(bot._botLastSeen.z, -80);
-    assert(command.inp.mz > 0, 'retained opponent did not receive a chase command');
-    assert.equal(bot.fireReq, null);
-
-    target.state.pz = -91;
+    const { room, bot, target } = fresh;
+    target.state.pz = -110;
+    bot.fireReq = null;
     driveAt(room, bot, bot._botNextLosTick);
-    assert.equal(bot._botLosCache, false, 'tracking exceeded its bounded distance');
-    assert.equal(bot._botLastSeen.z, -80, 'out-of-range position replaced the last sighting');
+    assert.equal(bot._botTargetId, target.id, 'visible fleeing opponent was dropped by an AI distance cap');
+    assert.equal(bot._botLosCache, true);
+    assert.equal(bot._botLastSeen.z, -110, 'a visible target did not update the last sighting');
+    assert(bot.fireReq, 'M4 firing was capped below its actual range');
   });
 }
 
-test('acquisition has a 72m boundary and checks for new opponents every quarter second', () => {
-  const { room, bot, target } = duel({ distance: 72.1 });
+test('a visible Uzi target outside weapon range is acquired and approached without firing', () => {
+  const { room, bot, target } = duel({ distance: 90 });
+  bot.wid = bot.mainWid = 'uzi';
+  bot.matchWeapons.add('uzi');
+  bot.mag = room._weaponState(bot, 'uzi').mag;
+  assert(room._botCanSee(bot, target), 'weapon range incorrectly limits vision');
+  room._driveBot(bot);
+  assert.equal(bot._botTargetId, target.id);
+  const command = driveAt(room, bot, bot._botReactionUntil);
+  assert(command.inp.mz > 0 && command.inp.mx !== 0,
+    'out-of-range opponent did not trigger a controlled advancing sidestep');
+  assert.equal(command.aiming, false);
+  assert.equal(bot.fireReq, null, 'Uzi fired beyond its actual80m range');
+  const moved = step(bot.state, command.inp, room.simWorld);
+  assert(moved.pz < bot.state.pz, 'out-of-range command did not close distance');
+  target.state.pz = -79;
+  driveAt(room, bot, bot._botNextLosTick);
+  assert(bot.fireReq, 'entering actual Uzi range did not allow fire');
+});
+
+test('a newly visible distant target respects the configured perception scan cadence', () => {
+  const { room, bot, target } = duel({ distance: 110,
+    boxes: [{ min: [-5, 0, -40], max: [5, 4, -39] }] });
   assert.equal(room._botCanSee(bot, target), false);
   room._driveBot(bot);
   assert.equal(bot._botTargetId, null);
-  target.state.pz = -72;
+  room.arena.boxes.length = 0;
   assert.equal(room._botCanSee(bot, target), true);
-  const scanAt = Math.ceil(.25 * TICK_HZ);
+  const scanAt = Math.ceil(room.botDifficulty.scanInterval * TICK_HZ);
   driveAt(room, bot, scanAt - 1);
   assert.equal(bot._botTargetId, null, 'new targets bypassed the perception cadence');
   driveAt(room, bot, scanAt);
@@ -180,8 +200,8 @@ test('reappearing opponents receive a fresh casual reaction window', () => {
   room.smokes.length = 0;
   driveAt(room, bot, TICK_HZ * 2);
   const reactionTicks = bot._botReactionUntil - room.tick;
-  assert(reactionTicks >= Math.ceil(.28 * TICK_HZ));
-  assert(reactionTicks <= Math.ceil(.48 * TICK_HZ));
+  assert(reactionTicks >= Math.ceil(.18 * TICK_HZ));
+  assert(reactionTicks <= Math.ceil(.30 * TICK_HZ));
   assert.equal(bot._botState, 'react');
   assert.equal(bot.fireReq, null, 'reacquisition fired immediately');
 });
@@ -193,12 +213,12 @@ test('wider awareness preserves forgiving aim, gradual turning, and reaction bef
   room._driveBot(bot);
   assert(Math.abs(bot._botAimYaw) > 0, 'bot did not begin facing its opponent');
   assert(Math.abs(bot._botAimYaw) < Math.abs(desired), 'acquisition snapped to perfect aim');
-  assert.equal(room.botDifficulty.aimErrorScale, 1.1, 'awareness increased shooting accuracy');
-  assert(botAimErrorMeters(30, room.botDifficulty.aimErrorScale) > .9,
+  assert.equal(room.botDifficulty.aimErrorScale, .65, 'normal skill tuning drifted');
+  assert(botAimErrorMeters(30, room.botDifficulty.aimErrorScale) > .5,
     'casual world-space scatter became a perfect aim lock');
   const reactionUntil = bot._botReactionUntil;
-  assert(reactionUntil >= Math.ceil(.28 * TICK_HZ));
-  assert(reactionUntil <= Math.ceil(.48 * TICK_HZ));
+  assert(reactionUntil >= Math.ceil(.18 * TICK_HZ));
+  assert(reactionUntil <= Math.ceil(.30 * TICK_HZ));
   for (let tick = 1; tick < reactionUntil; tick++) {
     driveAt(room, bot, tick);
     assert.equal(bot.fireReq, null, 'new target was fired on before the reaction window ended');

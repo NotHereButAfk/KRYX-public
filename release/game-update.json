@@ -1,0 +1,11 @@
+{
+  "id": "2026-11-k-only-skin-shop",
+  "title": "Sharper opponents, refreshed arenas and K-only skins",
+  "changes": [
+    "Bots engage from range, keep firing at normal weapon speed and return from cover after reloading.",
+    "Improved arena shading, lighting and architectural shadows.",
+    "Distinct weapon sounds, clearer distance cues and bullet-impact audio.",
+    "Spawn protection lasts exactly two seconds. Click to Resume does not grant immunity.",
+    "Buy skins with earned K: 1,000 common through 3,000 mythic. Real-money purchases are paused."
+  ]
+}

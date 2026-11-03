@@ -1,3 +1,4 @@
+import { REAL_MONEY_PURCHASES_ENABLED } from '../core/SkinPrices.js';
 let version=0,poll,profileVersion=0,linkPoll;
 async function api(path,data){
   const response=await fetch(path,{credentials:'same-origin',...(data===undefined?{}:{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)})});
@@ -118,6 +119,7 @@ export async function openTournamentPanel(){
       if(category==='finished'){node('p','This tournament has finished.',card);if(entered)node('p','You were registered for this tournament.',card,'tournament-confirmed');}
       else if(entered){node('div','✓ REGISTERED — PAYMENT CONFIRMED',card,'tournament-confirmed');node('p','Watch the Discord announcements for check-in and match instructions.',card);}
       else if(!open)node('p','Registration is closed.',card);
+      else if(event.asset!=='K'&&!REAL_MONEY_PURCHASES_ENABLED)node('p','Real-money entry payments are paused.',card);
       else if(!me||!me.profile.solana_address)node('p','Complete your account requirements above to enter.',card);
       else if(!list.configured)node('p','Entry payments are not available yet.',card);
       else{

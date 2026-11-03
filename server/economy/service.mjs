@@ -1,3 +1,4 @@
+import { getNightMarket } from '../nightmarket.mjs';
 import { EconomyStore } from "./store.mjs";
 import { EconomyRuntime } from "./runtime.mjs";
 const send = (res, status, value) => {
@@ -81,8 +82,8 @@ export function createEconomyService(accounts, options = {}) {
         send(res, 200, {
           ...(await store.profile(user.id, user.sessionId)),
           admin,
-          catalog: config.items.catalog.map(item => ({...item, priceE: null})),
-          kPurchases: false,
+          catalog: config.items.catalog,
+          kPurchases: true,
           ownedSkins: user.ownedSkins || [],
           dailyCap: config.DAILY_E_CAP,
           earningEnabled: config.enabled,
@@ -142,7 +143,12 @@ export function createEconomyService(accounts, options = {}) {
         return true;
       }
       if (req.method === "POST" && path === "/api/e/purchase") {
-        send(res, 410, { error: "Skin purchases with in-game currency are no longer available" });
+        const result = await store.purchase(user.id, data.itemId, key(), config, {
+          beforePurchase: async () => {
+            if (!getNightMarket(runtime.clock()).items.some(item => item.id === data.itemId)) throw new Error('This skin is not in the current Night Market');
+          },
+        });
+        send(res, 200, { ok: true, ...result });
         return true;
       }
       if (req.method === "POST" && path === "/api/e/admin/config") {

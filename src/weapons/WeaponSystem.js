@@ -403,7 +403,7 @@ export class WeaponSystem {
     this._shotBloom = 0;                      // sustained-fire accuracy cone
 
     this.tracers = [];
-    this._bulletImpacts = new BulletImpactEffects(scene);
+    this._bulletImpacts = new BulletImpactEffects(scene, point => this.audio?.playBulletImpactAt?.(point));
     this._impactWorld = null;
     this.muzzleSmoke = [];
     this.rockets = [];
@@ -494,6 +494,9 @@ export class WeaponSystem {
 
   renderViewmodel(renderer, world) {
     if (!this.weaponMount.visible) return;
+    // Share the world's PMREM; do not allocate a second environment per frame.
+    this.viewScene.environment = world.scene.environment;
+    this.viewScene.environmentIntensity = world.scene.environmentIntensity;
     const sources = [world._hemisphere, world._sun, world._rim];
     sources.forEach((source, index) => {
       const light = this.viewLights[index];
@@ -503,7 +506,7 @@ export class WeaponSystem {
         light.intensity = source.intensity;
         light.position.copy(source.position);
         if (source.groundColor) light.groundColor.copy(source.groundColor);
-        if (source.target) light.target.position.copy(source.target.position);
+        if (source.target) { light.target.position.copy(source.target.position); light.target.updateMatrixWorld(true); }
       }
     });
     const parent = this.weaponMount.parent;

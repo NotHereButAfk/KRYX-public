@@ -12,8 +12,9 @@ const NO_RAYCAST = () => {};
 // One instanced draw call, with all storage and scratch objects reused. The
 // same small soft disc is a surface mark, dust mote or narrow warm spark.
 export class BulletImpactEffects {
-  constructor(scene) {
+  constructor(scene, onImpact = null) {
     this.scene = scene;
+    this.onImpact = onImpact;
     this.mesh = null;
     this._mapRoot = null;
     this._world = null;
@@ -181,6 +182,7 @@ export class BulletImpactEffects {
     this.mesh.instanceMatrix.needsUpdate = true;
     this.mesh.instanceColor.needsUpdate = true;
     this.mesh.geometry.attributes.impactAlpha.needsUpdate = true;
+    this.onImpact?.(this._point);
     return true;
   }
 

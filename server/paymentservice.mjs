@@ -1,3 +1,4 @@
+import { SKIN_PRICES, REAL_MONEY_PURCHASES_ENABLED } from '../src/core/SkinPrices.js';
 import { randomUUID, randomBytes } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import bs58 from 'bs58';
@@ -66,7 +67,7 @@ export function createPaymentService(accounts, { fetchImpl = fetch, env = proces
     return { ok: true, orderId: o.id, skinId: o.skin_id, kind: o.skin_kind, asset: o.asset,
       amount: decimalAmount(o.amount_units, o.asset === 'SOL' ? 9 : 6), status: o.status,
       expiresAt: new Date(o.expires_at).toISOString(), merchant: o.merchant, network: 'Solana mainnet',
-      paymentUrl: o.status === 'pending' && new Date(o.expires_at).getTime() > now() ? paymentUrl(o) : null,
+      paymentUrl: REAL_MONEY_PURCHASES_ENABLED && o.status === 'pending' && new Date(o.expires_at).getTime() > now() ? paymentUrl(o) : null,
       signature: o.signature };
   }
   const checking = new Map();
@@ -117,13 +118,14 @@ export function createPaymentService(accounts, { fetchImpl = fetch, env = proces
     try {
       await initialized;
       if (req.method === 'GET' && pathname === '/api/store/night-market') return send(res, 200, { ok: true, ...getNightMarket(now()) });
-      if (req.method === 'GET' && pathname === '/api/store/config') return send(res, 200, { ok: true, configured, assets: ['SOL','USDC'], kPurchases: false, network: 'Solana mainnet', prices: PRICE });
+      if (req.method === 'GET' && pathname === '/api/store/config') return send(res, 200, { ok: true, configured: false, assets: [], kPurchases: true, currency: 'K', prices: SKIN_PRICES });
       if (req.method !== 'GET' && !sameOrigin(req)) return send(res, 403, { ok: false, err: 'Cross-site checkout is not allowed' });
       const user = await accounts.session(req);
       if (!user) return send(res, 401, { ok: false, err: 'Log in to purchase skins' });
       if (req.method === 'POST' && pathname === '/api/store/purchase-k') {
-        return send(res, 410, { ok: false, err: 'Skin purchases with in-game currency are no longer available' });
+        return send(res, 410, { ok: false, err: 'Use /api/e/purchase for K purchases' });
       }
+      if (req.method === 'POST' && pathname === '/api/store/orders' && !REAL_MONEY_PURCHASES_ENABLED) return send(res, 410, { ok: false, err: 'Real-money purchases are paused. Use earned K in the shop.' });
       if (!configured) return send(res, 503, { ok: false, err: 'Solana checkout is awaiting merchant configuration' });
       if (req.method === 'POST' && pathname === '/api/store/orders') {
         const body = await readBody(req);

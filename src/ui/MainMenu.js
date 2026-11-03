@@ -24,7 +24,8 @@ import { ArmorPreviewRenderer } from './ArmorPreviewRenderer.js';
 import { InventoryPanel, MAIN_GUNS } from './InventoryPanel.js';
 import { WEAPONS } from '../weapons/weaponDefs.js';
 import { warmWeaponThumbs, renderWeaponSkinned } from './WeaponThumbnails.js';
-import { openSolanaCheckout } from '../payments/SolanaCheckout.js';
+import { purchaseSkin } from '../core/SkinPurchase.js';
+import { skinPrice } from '../core/SkinPrices.js';
 
 // Shop card previews use the same weapon-render pipeline as the inventory:
 // each gun-skin card shows one of the 5 main guns wearing the finish.
@@ -933,9 +934,7 @@ export class MenuUI {
     root.innerHTML = '';
     const equippedArmor = Shop.getEquipped();
 
-    // Every rarity has a default price; armor skins override with their own.
-    const RARITY_PRICE = { common: 20, rare: 30, epic: 40, legendary: 60, mythic: 80 };
-    const priceOf = (skin) => RARITY_PRICE[skin.rarity || 'common'] ?? 20;
+    const priceOf = skin => skinPrice(skin.rarity || 'common');
 
     const _hex6 = n => n.toString(16).padStart(6, '0');
 
@@ -1106,15 +1105,18 @@ export class MenuUI {
         btn.classList.add('shop-btn-buy');
         const priceLine = document.createElement('div');
         priceLine.className = 'shop-price-line';
-        priceLine.textContent = `$${price.toFixed(2)} USD`;
+        priceLine.textContent = `${price.toLocaleString()} K`;
         const alternative = document.createElement('span');
-        alternative.textContent = 'Pay with SOL / USDC';
+        alternative.textContent = 'Earn K by playing';
         priceLine.appendChild(alternative);
         ctaWrap.appendChild(priceLine);
-        btn.textContent = 'VIEW PURCHASE OPTIONS';
-        btn.addEventListener('click', (e) => {
+        btn.textContent = 'BUY WITH K';
+        btn.addEventListener('click', async (e) => {
           e.stopPropagation();
-          openSolanaCheckout({ skinId: skin.id, name: skin.name, kind, price, onComplete: () => this._renderShop() });
+          if (!window.confirm(`Buy ${skin.name} for ${price.toLocaleString()} K?`)) return;
+          btn.disabled = true;
+          try { await purchaseSkin(skin.id); this._renderShop(); }
+          catch (error) { btn.textContent = error.message; btn.disabled = false; }
         });
       }
       ctaWrap.appendChild(btn);

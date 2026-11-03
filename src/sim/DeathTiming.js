@@ -4,6 +4,7 @@ export const DEATH_IMPACT_TIME = 0.42;
 export const DEATH_SETTLE_TIME = 0.68;
 export const DEATH_BODY_DURATION = 4.65;
 export const PLAYER_RESPAWN_DELAY = 6;
+export const SPAWN_PROTECTION_SECONDS = 2;
 
 export function deathFallProgress(elapsed) {
   // Gravity accelerates the collapse right through contact. An ease-out curve

@@ -425,7 +425,7 @@ async function loadTexture(record) {
 
 function buildMaterial(record, textures) {
   if (record.type === 3) {
-    return new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0 });
+    return new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0, visible: false });
   }
   if (record.type === 1 || record.type === 2) {
     return new THREE.MeshBasicMaterial({
@@ -438,8 +438,8 @@ function buildMaterial(record, textures) {
 
   const params = {
     color: record.color ?? new THREE.Color(0xffffff),
-    // Preserve the authored arena palette instead of filmic desaturation.
-    toneMapped: false,
+    // Smooth directional shading; use the same ACES path at every quality.
+    toneMapped: true,
     opacity: record.alpha ?? 1,
     transparent: (record.alpha ?? 1) < 0.99,
     dithering: true,
@@ -453,7 +453,7 @@ function buildMaterial(record, textures) {
   if (record.aoMap >= 0 && textures[record.aoMap]) params.aoMap = textures[record.aoMap];
   if (record.aoIntensity != null) params.aoMapIntensity = record.aoIntensity;
   if (record.normalMap >= 0 && textures[record.normalMap]) params.normalMap = textures[record.normalMap];
-  return new THREE.MeshToonMaterial(params);
+  return new THREE.MeshLambertMaterial(params);
 }
 
 function buildGeometry(record) {

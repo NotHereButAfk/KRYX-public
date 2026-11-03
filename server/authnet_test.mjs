@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import {makeInput} from '../src/sim/MoveSim.js';
 import {PLAYER_RESPAWN_DELAY} from '../src/sim/DeathTiming.js';
+import {WALK_SPEED} from '../src/sim/MovementConfig.js';
 // Phase 4 + 5 authority/abuse proof. Boots the real AuthRoom over an in-proc
 // WebSocket server and drives raw clients to prove the exit criteria:
 //   Phase 4: join, sequenced input, ack/snapshot, prediction reconciliation,
@@ -15,6 +16,7 @@ import { AuthRoom, TICK_HZ, botPresentationYaw } from './authroom.mjs';
 
 const PORT = 8799;
 const { close, room } = makeAuthServer({ port: PORT });
+try {
 // Combat proofs must not randomly enter the wall-clock results freeze mid-test.
 // Round rotation/readiness has its own browser and match-clock suites.
 room._rotateMatch = () => false;
@@ -29,10 +31,10 @@ const ok = (name, cond, extra = '') => {
 // ── raw client helper ──
 function client() {
   const ws = new WebSocket(`ws://127.0.0.1:${PORT}`, { origin: 'http://localhost' });
-  const c = { ws, welcome: null, snaps: [], events: [], seq: 0, fireSeq: 0, pickupSeq: 0 };
+  const c = { ws, welcome: null, welcomeCount: 0, snaps: [], events: [], seq: 0, fireSeq: 0, pickupSeq: 0 };
   ws.on('message', (raw) => {
     const m = JSON.parse(raw);
-    if (m.t === 'welcome') c.welcome = m;
+    if (m.t === 'welcome') { c.welcome = m; c.welcomeCount++; }
     else if (m.t === 'snapshot') { c.snaps.push(m); if (m.events?.length) c.events.push(...m.events); }
     else if (m.t === 'ping') ws.send(JSON.stringify({ t: 'pong', id: m.id }));
   });
@@ -47,6 +49,11 @@ function client() {
 }
 const open = (c) => new Promise((r) => c.ws.on('open', r));
 function sleep(ms) { return new Promise((r) => setTimeout(r, ms)); }
+async function waitFor(predicate, timeoutMs = 2000) {
+  const until = performance.now() + timeoutMs;
+  while (!predicate() && performance.now() < until) await sleep(20);
+  return !!predicate();
+}
 const ownPublic = (c, snap) => snap?.players.find((p) => p.id === c.welcome.you);
 async function drive(c, frames, input) {
   const firstSeq = c.seq + 1;
@@ -349,24 +356,46 @@ for (let i = 0; i < 60; i++) {
 }
 ok('bots: visible humans are engaged without provocation', unprovokedShots > 0,
    `deaths=${duelHuman.deaths}, health=${duelHuman.health}`);
-// Roaming moved the bot during the neutral proof. Restore a clear ten-metre
-// firing lane so this assertion isolates retaliation instead of search range.
-Object.assign(duelHuman.state, { px: 0, py: 0, pz: -10, vx: 0, vz: 0 });
-Object.assign(duelBot.state, { px: 0, py: 0, pz: 0, vx: 0, vz: 0 });
-duelRoom._damage(duelBot, duelHuman, 1, false);
-// Start this independent five-second duel at full health after the acquisition test.
-duelHuman.health = 100;
-const retaliationStart = [duelBot.state.px, duelBot.state.pz];
-const retaliationMag = duelBot.mag;
-for (let i = 0; i < 100; i++) duelRoom.update();
-const retaliationTravel = Math.hypot(
-  duelBot.state.px - retaliationStart[0], duelBot.state.pz - retaliationStart[1],
-);
+// Acquisition can already kill its target. Use a fresh encounter rather than
+// assigning health to a dead player and accidentally measuring a bot's patrol.
+const retaliationRoom = new AuthRoom(duelArena);
+retaliationRoom._rotateMatch = () => false;
+const retaliationHuman = retaliationRoom.players.get(retaliationRoom.add(() => {}, 'Retaliation Target'));
+const retaliationBot = retaliationRoom.players.get(retaliationRoom.addBot('Retaliation Bot'));
+Object.assign(retaliationHuman.state, { px: 0, py: 0, pz: -20, vx: 0, vz: 0 });
+Object.assign(retaliationBot.state, { px: 0, py: 0, pz: 0, vx: 0, vz: 0 });
+retaliationHuman.invulnerableUntil = retaliationBot.invulnerableUntil = 0;
+retaliationBot._botAimYaw = 0;
+// A partially spent magazine exercises real fire before and after a reload;
+// final magazine size alone cannot prove that any shots were emitted.
+retaliationBot.mag = retaliationBot.ammo.m4.mag = 3;
+retaliationRoom._damage(retaliationBot, retaliationHuman, 1, false);
+let retaliationTravel = 0, retaliationPeak = 0, retaliationShots = 0, retaliationHits = 0;
+let retaliationReloaded = false, retaliationShotsAfterReload = 0;
+for (let i = 0; i < 5 * TICK_HZ; i++) {
+  // Keep the same live target available without changing the damage pipeline.
+  // Shot and hit events below measure actual accuracy, not survival time.
+  retaliationHuman.health = 100;
+  retaliationHuman.shield = 100;
+  const before = [retaliationBot.state.px, retaliationBot.state.pz];
+  retaliationRoom.update();
+  const moved = Math.hypot(retaliationBot.state.px - before[0], retaliationBot.state.pz - before[1]);
+  retaliationTravel += moved;
+  retaliationPeak = Math.max(retaliationPeak, moved * TICK_HZ);
+  const shots = retaliationRoom.events.filter(e => e.e === 'shot' && e.by === retaliationBot.id).length;
+  retaliationShots += shots;
+  retaliationHits += retaliationRoom.events.filter(e => e.e === 'hit'
+    && e.by === retaliationBot.id && e.id === retaliationHuman.id).length;
+  if (retaliationReloaded && retaliationBot.reloadUntil <= retaliationRoom.tick) retaliationShotsAfterReload += shots;
+  retaliationReloaded ||= retaliationBot.reloadUntil > retaliationRoom.tick;
+}
 ok('bots: a provoked public-match bot repositions while returning deliberately inaccurate fire',
-   retaliationTravel > 0.1 && retaliationTravel < 15 && duelBot.mag < retaliationMag,
-   `travel=${retaliationTravel.toFixed(2)}, mag=${retaliationMag}->${duelBot.mag}, humanHealth=${duelHuman.health}`);
-ok('bots: return fire retains imperfect aim', duelHuman.health > 0,
-   `humanHealth=${duelHuman.health}`);
+   retaliationTravel > .1 && retaliationTravel <= WALK_SPEED * 5 + .1
+   && retaliationPeak <= WALK_SPEED + .05 && retaliationShots > 3
+   && retaliationReloaded && retaliationShotsAfterReload > 0,
+   `travel=${retaliationTravel.toFixed(2)}, peak=${retaliationPeak.toFixed(2)}, shots=${retaliationShots}, afterReload=${retaliationShotsAfterReload}`);
+ok('bots: return fire retains imperfect aim', retaliationHits > 0 && retaliationHits < retaliationShots,
+   `hits=${retaliationHits}/${retaliationShots}`);
 
 // Moving-target lag compensation must use the snapshot clock, not the input
 // sequence clock. At tick 40 the target has crossed three metres sideways, but
@@ -462,18 +491,35 @@ const protector = protectedRoom.players.get(protectorId);
 const freshSpawn = protectedRoom.players.get(protectedId);
 protectedRoom._damage(freshSpawn, protector, 100, false);
 const protectedHealth = freshSpawn.health;
-for (let i = 0; i < 31; i++) protectedRoom.update();
+for (let i = 0; i < 39; i++) protectedRoom.update();
 protectedRoom._damage(freshSpawn, protector, 25, false);
-ok('spawn protection: fresh players cannot be damaged for 1.5 seconds',
-   protectedHealth === 100 && freshSpawn.health === 75,
+const stillProtected = freshSpawn.health === 100;
+protectedRoom.update();
+protectedRoom._damage(freshSpawn, protector, 25, false);
+ok('spawn protection: enemy damage starts exactly two seconds after spawn',
+   protectedHealth === 100 && stillProtected && freshSpawn.health === 75,
    `health ${protectedHealth}→${freshSpawn.health}`);
 
 // reconnect + duplicate session
+const humansBeforeDuplicate = new Set([...room.players.values()].filter(p => !p.isBot).map(p => p.id));
 const dup = client(); await open(dup);
-dup.hello('Alice2'); dup.hello('Alice2');   // second hello on same socket
-await sleep(150);
+dup.hello('Alice2'); dup.hello('DuplicateWhileJoining');
+const duplicateJoined = await waitFor(() => dup.welcome && ownPublic(dup, dup.last()));
+const duplicateId = dup.welcome?.you;
+// Exercise the fully joined guard too, and wait for an input ACK sent after
+// that hello so the assertion cannot run before the server processes it.
+if (dup.ws.readyState === WebSocket.OPEN) {
+  dup.hello('DuplicateAfterJoining');
+  dup.input({ mx: 0, mz: 0, yaw: 0 });
+}
+const duplicateProcessed = await waitFor(() => dup.seq > 0 && dup.last()?.ack >= dup.seq);
+const duplicateActors = [...room.players.values()].filter(p => !p.isBot && !humansBeforeDuplicate.has(p.id));
 ok('duplicate session: second hello on live socket ignored',
-   dup.last()?.players.length >= 2);
+   duplicateJoined && duplicateProcessed && dup.ws.readyState === WebSocket.OPEN
+   && dup.welcomeCount === 1 && dup.welcome?.you === duplicateId
+   && duplicateActors.length === 1 && duplicateActors[0].id === duplicateId
+   && duplicateActors[0].name === 'Alice2',
+   `welcomes=${dup.welcomeCount}, newHumans=${duplicateActors.length}, ack=${dup.last()?.ack}`);
 
 const aliceId = a.welcome.you;
 a.ws.close(); await sleep(200);
@@ -495,6 +541,7 @@ ok('lossy input: server stayed alive under 50% drop + jitter', !!b.last(), `${se
 function TICK() { return 50; }
 
 console.log(`\n${pass} passed, ${fail} failed`);
-close();
-await sleep(100);
-process.exit(fail ? 1 : 0);
+process.exitCode = fail ? 1 : 0;
+} finally {
+  await close();
+}
