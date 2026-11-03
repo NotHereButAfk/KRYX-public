@@ -59,6 +59,7 @@ export const MAP_CATALOG = Object.freeze([
     fogNear: 145,
     fogFar: 360,
     lighting: Object.freeze({
+      sunDirection: Object.freeze([-0.55, 0.8, 0.45]),
       sky: 0xeaf5ff,
       ground: 0x354352,
       hemisphereIntensity: 1.35,
@@ -97,7 +98,8 @@ export const MAP_CATALOG = Object.freeze([
     fileName: 'HUT8Gypsum_2.evmap', url: '/maps/HUT8Gypsum_2.evmap',
     loadingImage: '/images/maps/gypsum.jpg', environment: 'dust',
     background: 0xe5bc9d, fog: 0xe0bba3, fogNear: 145, fogFar: 360,
-    lighting: Object.freeze({sky:0xffefdb,ground:0x504034,hemisphereIntensity:1.35,
+    lighting: Object.freeze({
+      sunDirection: Object.freeze([-0.7, 0.65, -0.35]),sky:0xffefdb,ground:0x504034,hemisphereIntensity:1.35,
       sun:0xffe5c4,sunIntensity:1.5,rim:0x99c9e5,rimIntensity:.3}),
   }),
   Object.freeze({
@@ -105,7 +107,8 @@ export const MAP_CATALOG = Object.freeze([
     fileName: 'HUT8Checkpoint_0.evmap', url: '/maps/HUT8Checkpoint_0.evmap',
     loadingImage: '/images/maps/checkpoint.jpg', environment: 'dust',
     background: 0xc9e2f1, fog: 0xc4d7e7, fogNear: 145, fogFar: 360,
-    lighting: Object.freeze({sky:0xf0f8ff,ground:0x39424c,hemisphereIntensity:1.4,
+    lighting: Object.freeze({
+      sunDirection: Object.freeze([0.5, 0.85, -0.4]),sky:0xf0f8ff,ground:0x39424c,hemisphereIntensity:1.4,
       sun:0xfff1dd,sunIntensity:1.5,rim:0x80c9ff,rimIntensity:.35}),
   }),
   Object.freeze({
@@ -115,15 +118,17 @@ export const MAP_CATALOG = Object.freeze([
     fileName: 'FractalPawnv3_1.evmap', url: '/maps/FractalPawnv3_1.evmap',
     loadingImage: '/images/maps/fractal.jpg', environment: 'dust',
     background: 0x293244, fog: 0x45536b, fogNear: 145, fogFar: 360,
-    lighting: Object.freeze({sky:0xdcecff,ground:0x303045,hemisphereIntensity:1.4,
-      sun:0xe7eeff,sunIntensity:1.35,rim:0x87c4ff,rimIntensity:.45}),
+    lighting: Object.freeze({
+      sunDirection: Object.freeze([-0.5, 0.75, 0.6]),sky:0xdcecff,ground:0x586180,hemisphereIntensity:2.2,
+      sun:0xe7eeff,sunIntensity:1.35,rim:0x87c4ff,rimIntensity:.65}),
   }),
   Object.freeze({
     id: 'ancient', name: 'Ancient', region: 'Ancient', botMaxDrop: 4,
     fileName: 'Ancient23.evmap', url: '/maps/Ancient23.evmap',
     loadingImage: '/images/maps/ancient.jpg', environment: 'dust',
     background: 0xd4ccba, fog: 0xcbbfae, fogNear: 145, fogFar: 360,
-    lighting: Object.freeze({sky:0xfff3df,ground:0x454036,hemisphereIntensity:1.4,
+    lighting: Object.freeze({
+      sunDirection: Object.freeze([0.65, 0.7, 0.3]),sky:0xfff3df,ground:0x454036,hemisphereIntensity:1.4,
       sun:0xffe7c5,sunIntensity:1.5,rim:0x98c5df,rimIntensity:.3}),
   }),
   Object.freeze({
@@ -131,7 +136,8 @@ export const MAP_CATALOG = Object.freeze([
     fileName: '_map_little_town_4.evmap', url: '/maps/_map_little_town_4.evmap',
     loadingImage: '/images/maps/little-town-2065.jpg', environment: 'dust',
     background: 0x82cfff, fog: 0xb2daf0, fogNear: 145, fogFar: 360,
-    lighting: Object.freeze({sky:0xeaf7ff,ground:0x384b40,hemisphereIntensity:1.4,
+    lighting: Object.freeze({
+      sunDirection: Object.freeze([-0.4, 0.9, -0.55]),sky:0xeaf7ff,ground:0x384b40,hemisphereIntensity:1.4,
       sun:0xfff3da,sunIntensity:1.6,rim:0x7bcaff,rimIntensity:.35}),
   }),
 ]);

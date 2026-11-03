@@ -494,6 +494,9 @@ export class WeaponSystem {
 
   renderViewmodel(renderer, world) {
     if (!this.weaponMount.visible) return;
+    // Share the world's PMREM; do not allocate a second environment per frame.
+    this.viewScene.environment = world.scene.environment;
+    this.viewScene.environmentIntensity = world.scene.environmentIntensity;
     const sources = [world._hemisphere, world._sun, world._rim];
     sources.forEach((source, index) => {
       const light = this.viewLights[index];
@@ -503,7 +506,7 @@ export class WeaponSystem {
         light.intensity = source.intensity;
         light.position.copy(source.position);
         if (source.groundColor) light.groundColor.copy(source.groundColor);
-        if (source.target) light.target.position.copy(source.target.position);
+        if (source.target) { light.target.position.copy(source.target.position); light.target.updateMatrixWorld(true); }
       }
     });
     const parent = this.weaponMount.parent;

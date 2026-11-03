@@ -4,6 +4,7 @@ import { playableKillY, constrainPlayablePosition } from './PlayableBounds.js';
 import { Capsule } from 'three/addons/math/Capsule.js';
 import { Octree } from 'three/addons/math/Octree.js';
 import { boundedOctreeRayIntersect } from './BoundedOctreeRay.js';
+import { ArenaLighting } from './ArenaLighting.js';
 import { loadEvMap } from './EvMapLoader.js';
 import { DEFAULT_MAP_ID, getImportedMap, nextImportedMapId } from './MapRegistry.js';
 
@@ -66,24 +67,15 @@ export class World {
   }
 
   _buildLighting() {
-    this._hemisphere = new THREE.HemisphereLight();
-    this._sun = new THREE.DirectionalLight();
-    this._sun.position.set(-82, 118, 66);
-    this._rim = new THREE.DirectionalLight();
-    this._rim.position.set(72, 42, -64);
-    this.scene.add(this._hemisphere, this._sun, this._rim);
+    this.lighting = new ArenaLighting(this.scene);
+    // Keep the viewmodel light-copy interface stable.
+    this._hemisphere = this.lighting.hemisphere;
+    this._sun = this.lighting.sun;
+    this._rim = this.lighting.rim;
   }
 
   _applyLighting(definition) {
-    const profile = definition.lighting;
-    if (!profile) return;
-    this._hemisphere.color.setHex(profile.sky);
-    this._hemisphere.groundColor.setHex(profile.ground);
-    this._hemisphere.intensity = profile.hemisphereIntensity;
-    this._sun.color.setHex(profile.sun);
-    this._sun.intensity = profile.sunIntensity;
-    this._rim.color.setHex(profile.rim);
-    this._rim.intensity = profile.rimIntensity;
+    this.lighting.apply(definition, this._mapBounds);
   }
 
   async loadMap(mapId) {
@@ -137,6 +129,7 @@ export class World {
     );
     this._applyLighting(definition);
     this.scene.add(map.root);
+    this.lighting.setupMap(map.root);
     map.root.traverse((object) => {
       if (object.isMesh && object.matrixAutoUpdate) {
         object.matrixAutoUpdate = false;

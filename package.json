@@ -29,7 +29,7 @@
     "assets": "node tools/asset_pipeline.mjs",
     "certify": "node tools/certify.mjs",
     "test:maps": "node tools/map_rotation_check.mjs && node tools/server_arena_cache_check.mjs",
-    "test:map-lighting": "node tests/map-lighting.test.mjs",
+    "test:map-lighting": "node --test tests/map-lighting.test.mjs tests/arena-lighting.test.mjs",
     "test:facing": "node tools/facing_check.mjs",
     "test:human-motion": "node tools/forward_gait_check.mjs && node tools/backward_gait_check.mjs && node tools/human_pose_stability_check.mjs",
     "test:human-pose": "node tools/human_pose_stability_check.mjs",
