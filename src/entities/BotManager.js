@@ -112,8 +112,16 @@ export class BotManager {
       bot._targetScanT = Math.max(0, (bot._targetScanT || 0) - dt);
       if (!target || bot._targetScanT <= 0) {
         bot._targetScanT = .3 + (Math.abs(bot.id || 0) % 4) * .025;
-        if (target && !bot._provoked && bot.canNotice && !bot.canNotice(target, world || this.world)) target = null;
-        let best = target, bestDistance = target ? bot.position.distanceToSquared(target.position) * .55 : Infinity;
+        const targetVisible = target && (bot._provoked
+          ? bot.hasLineOfSight?.(target, world || this.world)
+          : bot.canNotice?.(target, world || this.world));
+        if (target && !bot._provoked && !targetVisible) target = null;
+        // Give a brief occlusion some continuity, but a hidden opponent cannot
+        // monopolize attention when another threat is plainly visible.
+        const remembered = targetVisible ? target?.position : bot._lastSeenPos;
+        const keepFocus = target && (targetVisible || (bot._unseenTime || 0) <= .35);
+        let best = target, bestDistance = keepFocus && remembered
+          ? bot.position.distanceToSquared(remembered) * .55 : Infinity;
         for (const candidate of [player, ...this.bots]) {
           if (!candidate || candidate === bot || candidate === target || candidate.isDead || candidate.alive === false) continue;
           const distance = bot.position.distanceToSquared(candidate.position);

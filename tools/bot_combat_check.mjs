@@ -10,7 +10,6 @@ import {
   advanceBotMagazine,
   advanceBurst,
   botAimErrorMeters,
-  botArenaDetectionDistance,
   botDashBonusSpeed,
   botLoadoutForId,
   botSeparationVector,
@@ -24,23 +23,19 @@ import {
 } from '../src/entities/BotCombat.js';
 import { BotManager } from '../src/entities/BotManager.js';
 import { AuthRoom, TICK_HZ } from '../server/authroom.mjs';
+import { WEAPONS } from '../src/weapons/weaponDefs.js';
 
 assert.ok(BOT_DIFFICULTIES.easy.reactionMin > BOT_DIFFICULTIES.hard.reactionMin);
 assert.ok(BOT_DIFFICULTIES.easy.aimErrorScale > BOT_DIFFICULTIES.hard.aimErrorScale);
-assert.ok(BOT_DIFFICULTIES.easy.detectionDistance < BOT_DIFFICULTIES.hard.detectionDistance);
 assert.ok(BOT_DIFFICULTIES.easy.movementSpeed < BOT_DIFFICULTIES.hard.movementSpeed);
 assert.equal(getBotDifficulty('missing'), BOT_DIFFICULTIES.normal);
-assert.ok(botArenaDetectionDistance(BOT_TACTICS.detectRadius) > BOT_TACTICS.detectRadius,
-  'bot opponents do not receive enough arena awareness to find each other');
-assert.ok(botArenaDetectionDistance(100) <= 82,
-  'bot opponent awareness grew beyond its performance/safety cap');
 assert.equal(isInsideBotFov(0, 0, -10, 90), true);
 assert.equal(isInsideBotFov(0, 0, 10, 90), false);
 assert.ok(Math.abs(smoothBotAim(0, Math.PI, 4, 0.05)) < Math.PI,
   'aim smoothing must turn toward a target without snapping');
 const wrappedTurn = smoothBotAim(-3, 3, 4, 0.05) + 3;
 assert(wrappedTurn < 0 && wrappedTurn > -0.1, 'bot took the long turn across the angle boundary');
-console.log('ok   difficulty presets change reaction, accuracy, movement decisions, detection and aim speed');
+console.log('ok   difficulty presets retain reaction, accuracy, movement decisions and gradual aim');
 
 let roamSeed = 17;
 const reachableRoam = chooseReachableRoamPoint({
@@ -123,17 +118,17 @@ for (const c of cases) {
   console.log(`ok   ${c.name}`);
 }
 
-const randoms = [0, 0.5];
-let ri = 0;
-const continueBurst = advanceBurst(3, () => randoms[ri++ % randoms.length]);
-assert.equal(continueBurst.shotsRemaining, 2);
-assert.equal(continueBurst.burstPause, false);
-
-const pauseBurst = advanceBurst(1, () => randoms[ri++ % randoms.length]);
-assert.ok(pauseBurst.shotsRemaining >= 2 && pauseBurst.shotsRemaining <= 4);
-assert.equal(pauseBurst.burstPause, true);
-assert.ok(pauseBurst.delayScale > continueBurst.delayScale);
-console.log('ok   ranged fire uses short bursts with a readable pause');
+for (const automatic of [false, true]) {
+  for (const distance of [3, 65, 160]) {
+    for (const remaining of [0, 1, 4, 50]) {
+      const fire = advanceBurst(remaining, () => assert.fail('cadence must not roll a random pause'),
+        { automatic, distance, range: 150 });
+      assert.equal(fire.delayScale, 1, 'bot fire diverged from its weapon cadence');
+      assert.equal(fire.burstPause, false, 'bot fire inserted a synthetic burst pause');
+    }
+  }
+}
+console.log('ok   every weapon keeps native cadence without distance-based or random pauses');
 
 const lobbyLoadouts = Array.from({ length: 8 }, (_, i) => botLoadoutForId(i + 1));
 assert.equal(lobbyLoadouts.filter(Boolean).length, 7, 'eight-slot lobby should contain one blade bot');
@@ -141,6 +136,15 @@ assert.deepEqual(lobbyLoadouts.slice(0, 5).map((w) => w?.id || 'sword'),
   ['m4', 'battlerifle', 'plasmarifle', 'uzi', 'sword']);
 assert.ok(lobbyLoadouts.filter(Boolean).every((w) =>
   w.magSize > 0 && w.reloadTime > 0 && w.damage > 0 && w.range > 0));
+for (const loadout of lobbyLoadouts.filter(Boolean)) {
+  const playerWeapon = WEAPONS.find(weapon => weapon.id === loadout.id);
+  for (const key of ['damage', 'fireRate', 'magSize', 'reloadTime', 'range', 'automatic']) {
+    assert.equal(loadout[key], playerWeapon[key], loadout.id + ' has bot-only ' + key);
+  }
+  for (const key of ['pellets', 'ammoPerShot']) {
+    assert.equal(loadout[key] ?? 1, playerWeapon[key] ?? 1, loadout.id + ' has bot-only ' + key);
+  }
+}
 console.log('ok   full lobby receives varied weapons with finite magazines and reloads');
 
 const rifleRole = botLoadoutForId(1);
@@ -155,6 +159,13 @@ assert.equal(magazine.ammo, 0, 'bot magazine refilled before reload completed');
 magazine = advanceBotMagazine(magazine.ammo, magazine.reloadRemaining, 0.02, rifleRole);
 assert.equal(magazine.ammo, rifleRole.magSize, 'bot magazine did not refill after reload');
 assert.equal(magazine.reloadRemaining, 0);
+const burstRifleRole = botLoadoutForId(2);
+const fullVolley = advanceBotMagazine(burstRifleRole.magSize, 0, 0, burstRifleRole, true);
+assert.equal(fullVolley.ammo, burstRifleRole.magSize - 3, 'burst rifle failed to consume three rounds');
+const partialVolley = advanceBotMagazine(2, 0, 0, burstRifleRole, true);
+assert.equal(partialVolley.ammo, 0, 'partial burst should consume exactly its two remaining rounds');
+assert.equal(partialVolley.reloadRemaining, burstRifleRole.reloadTime,
+  'partial burst emptied the magazine without starting reload');
 console.log('ok   finite bot magazines block fire until weapon-specific reload completes');
 
 assert.ok(botAimErrorMeters(20, 1.15) < 0.8, '20m bot scatter is still too inaccurate');
@@ -176,6 +187,8 @@ const makeFakeBot = (x) => ({
   isDead: false,
   _targetScanT: 0,
   health: 100,
+  hasLineOfSight() { return true; },
+  canNotice() { return true; },
   takeDamage(amount) {
     this.health -= amount;
     if (this.health <= 0) this.alive = false;
@@ -240,9 +253,19 @@ Object.assign(human.state, { px: 0, py: 0, pz: -12 });
 Object.assign(bot.state, { px: 0, py: 0, pz: 0 });
 Object.assign(rival.state, { px: 8, py: 0, pz: -10 });
 human.invulnerableUntil = bot.invulnerableUntil = rival.invulnerableUntil = 0;
-for (let i = 0; i < TICK_HZ * 2; i++) aiRoom.update();
+bot._botAimYaw = 0;
+bot._botNextScanTick = 0;
+aiRoom._driveBot(bot);
 assert.equal(bot._botTargetId, human.id, 'visible human was not acquired on sight');
-assert.equal(bot._botState, BOT_STATES.ENGAGE);
+assert.equal(bot._botState, BOT_STATES.REACT);
+assert.ok(!bot.fireReq, 'on-sight acquisition bypassed the reaction delay');
+// Subsequent lateral travel may make the other visible opponent nearer.
+let engagedOnSight = false;
+for (let i = 0; i < TICK_HZ * 2; i++) {
+  aiRoom.update();
+  engagedOnSight ||= bot._botState === BOT_STATES.ENGAGE;
+}
+assert.ok(engagedOnSight, 'visible opponent never progressed from reaction to engagement');
 // Test visible retaliation independently of how far the patrol moved.
 aiRoom._resetBotAI(bot);
 Object.assign(bot.state, { px: 0, py: 0, pz: 0 });
@@ -252,8 +275,10 @@ assert.equal(bot._botTargetId, human.id, 'damage did not immediately select the 
 assert.equal(bot._botState, BOT_STATES.REACT);
 assert.ok(bot._botReactionUntil > aiRoom.tick, 'difficulty reaction delay was skipped');
 const retaliationCommand = aiRoom._driveBot(bot);
-assert.equal(retaliationCommand.inp.mx, 0, 'provoked bot strafed instead of holding ground');
+assert.equal(Math.abs(retaliationCommand.inp.mx), 1,
+  'reacting bot lost controlled lateral footwork');
 assert.equal(retaliationCommand.inp.mz, 0, 'provoked bot chased instead of holding ground');
+assert.ok(!bot.fireReq, 'lateral footwork bypassed the reaction delay');
 assert.ok(!retaliationCommand.inp.sprint, 'provoked bot sprinted while holding ground');
 assert.ok(!retaliationCommand.inp.jumpJust, 'provoked bot jumped while holding ground');
 assert.equal(retaliationCommand.botDash, false, 'provoked bot dashed while holding ground');

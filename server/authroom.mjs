@@ -1,3 +1,4 @@
+import { chooseBotFiringStep } from '../src/entities/BotFiringLane.js';
 import { observeBotTarget, predictBotTarget } from '../src/entities/BotSkill.js';
 import { BOT_MOVEMENT_SCALE } from '../src/sim/MovementConfig.js';
 import { createDeathReaction } from '../src/sim/DeathReaction.js';
@@ -108,6 +109,7 @@ const START_HEALTH = 100, START_SHIELD = 0;
 const WEAPONS = Object.fromEntries(CLIENT_WEAPONS.map((weapon) => [weapon.id, {
   id: weapon.id,
   kind: weapon.kind,
+  automatic: !!weapon.automatic,
   dmg: weapon.damage,
   rate: weapon.fireRate,
   spread: weapon.spread,
@@ -612,8 +614,9 @@ export class AuthRoom {
     p._botLastZ = p.state.pz;
     p._botAimYaw = p._lastYaw ?? 0;
     p._botAimPitch = p._lastPitch ?? 0;
-    p._botNextShotTick = this.tick;
-    p._botBurstRemaining = 2 + Math.floor(this._rand(p.id * 193 + this.tick) * 3);
+    p._botFiringLane = null;
+    p._botNextLaneTick = 0;
+    p._botCoverReturn = null;
     p._botDashTicks = 0;
     p._botDashX = 0;
     p._botDashZ = 0;
@@ -647,6 +650,13 @@ export class AuthRoom {
     const attackerDistance = Math.hypot(attacker.state.px - bot.state.px, attacker.state.pz - bot.state.pz);
     if (!current || (forceSwitch && current.id !== attacker.id) || attackerDistance < currentDistance * cfg.targetSwitchRatio) {
       bot._botTargetId = attacker.id;
+      bot._botObservation = null;
+      bot._botCoverPoint = null;
+      bot._botCoverReturn = null;
+      bot._botCoverUntil = 0;
+      bot._botNextCoverTick = 0;
+      bot._botFiringLane = null;
+      bot._botNextLaneTick = 0;
       bot._botTargetSince = this.tick;
       bot._botReactionUntil = this.tick + this._botReactionTicks(bot);
       bot._botState = BOT_STATES.REACT;
@@ -668,12 +678,8 @@ export class AuthRoom {
     const dx = target.state.px - p.state.px;
     const dz = target.state.pz - p.state.pz;
     const distance = Math.hypot(dx, dz);
-    const awarenessDistance = cfg.awarenessDistance ?? cfg.detectionDistance;
-    const detectionDistance = p._botTargetId === target.id
-      ? (cfg.trackingDistance ?? awarenessDistance) : awarenessDistance;
-    if (distance > detectionDistance) return false;
     // Nearby peripheral awareness still requires a clear sightline below.
-    // Retaining a known target uses a wider range, not hidden live tracking.
+    // A clear distant sightline is visible; weapon range governs firing.
     if (!ignoreFov && distance > (cfg.peripheralDistance ?? 0)
       && !isInsideBotFov(p._botAimYaw ?? p._lastYaw ?? 0, dx, dz, cfg.fovDegrees)) return false;
     const dy = (target.state.py + HEAD_Y) - (p.state.py + HEAD_Y);
@@ -964,8 +970,11 @@ export class AuthRoom {
 
       // Arena bots may retain other bots as opponents.
       const current = this.players.get(p._botTargetId);
-      const currentDistance = current?.alive
-        ? Math.hypot(current.state.px - p.state.px, current.state.pz - p.state.pz) : Infinity;
+      const currentVisible = current?.alive && this._botCanSee(p, current, true);
+      const currentDistance = currentVisible
+        ? Math.hypot(current.state.px - p.state.px, current.state.pz - p.state.pz)
+        : p._botLastSeen ? Math.hypot(p._botLastSeen.x - p.state.px, p._botLastSeen.z - p.state.pz) : Infinity;
+      const lostFocus = !currentVisible && this.tick - p._botLastSeenTick > secondsToTicks(.35);
       let best = null;
       let bestDistance = Infinity;
       for (const candidate of this.players.values()) {
@@ -976,8 +985,7 @@ export class AuthRoom {
         const dx = candidate.state.px - p.state.px;
         const dz = candidate.state.pz - p.state.pz;
         const distance = Math.hypot(dx, dz);
-        const detectionDistance = cfg.awarenessDistance ?? cfg.detectionDistance;
-        if (distance >= bestDistance || distance > detectionDistance) continue;
+        if (distance >= bestDistance) continue;
         // Only acquire visible opponents. Remember their last seen position
         // for a bounded search instead of tracking movement through walls.
         if (!this._botCanSee(p, candidate,
@@ -985,7 +993,7 @@ export class AuthRoom {
         best = candidate;
         bestDistance = distance;
       }
-      const shouldSwitch = best && (!current || best.id === current.id
+      const shouldSwitch = best && (!current || lostFocus || best.id === current.id
         || bestDistance < currentDistance * cfg.targetSwitchRatio);
       if (shouldSwitch && best.id !== p._botTargetId) {
         p._botHostility.set(best.id,
@@ -993,6 +1001,11 @@ export class AuthRoom {
         p._botTargetId = best.id;
         p._botCoverPoint = null;
         p._botObservation = null;
+        p._botFiringLane = null;
+        p._botCoverReturn = null;
+        p._botCoverUntil = 0;
+        p._botNextCoverTick = 0;
+        p._botNextLaneTick = 0;
         p._botHoldGroundTargetId = null;
         p._botTargetSince = this.tick;
         p._botReactionUntil = this.tick + this._botReactionTicks(p);
@@ -1144,7 +1157,11 @@ export class AuthRoom {
     const distance = Math.hypot(realDx, realDz);
     if (shouldBotTacticalReload(p.mag, WEAPONS[p.wid]?.mag,
       hasVisual ? 0 : (this.tick - p._botLastSeenTick) / TICK_HZ)) this._startReload(p, p.wid);
-    const desiredYaw = Math.atan2(-realDx, -realDz);
+    // Shots resolve after movement in this tick. Aim from our own next step
+    // rather than leaving every strafing shot behind the visible opponent.
+    const ownStepX = hasVisual ? Math.max(-.45, Math.min(.45, (p.state.vx || 0) / TICK_HZ)) : 0;
+    const ownStepZ = hasVisual ? Math.max(-.45, Math.min(.45, (p.state.vz || 0) / TICK_HZ)) : 0;
+    const desiredYaw = Math.atan2(-(realDx - ownStepX), -(realDz - ownStepZ));
     // Center mass is a larger, more reliable target than the top of the head.
     // Stance is sampled with vision, never read from an unseen opponent.
     const desiredPitch = Math.atan2((targetY + p._botAimHeight) - (p.state.py + HEAD_Y), Math.max(0.001, distance));
@@ -1154,10 +1171,11 @@ export class AuthRoom {
     if (this.tick < p._botReactionUntil) p._botState = BOT_STATES.REACT;
     else p._botState = hasVisual ? BOT_STATES.ENGAGE : BOT_STATES.SEARCH;
 
+    const fireRange = WEAPONS[p.wid]?.range || 0;
     let maneuver = choosePlayerLikeBotMove({
-      id: p.id, elapsed: (this.tick - p._botReactionUntil) / TICK_HZ,
+      id: p.id, strafeSide: p._botStrafe,
       reacting: this.tick < p._botReactionUntil, hasLineOfSight: hasVisual,
-      distance, range: cfg.detectionDistance, reloading: p.mag <= 0 || p.reloadUntil > this.tick,
+      distance, range: fireRange, reloading: p.mag <= 0 || p.reloadUntil > this.tick,
     });
     const needsCover = p.reloadUntil > this.tick || p.health + p.shield < 65;
     if (!needsCover || this.tick >= p._botCoverUntil) p._botCoverPoint = null;
@@ -1170,8 +1188,25 @@ export class AuthRoom {
         groundHeightAt: this.arena.groundHeightAt?.bind(this.arena) || (!this.arena.noBaseFloor ? () => 0 : undefined),
         raycast: (...args) => rayVsBoxes(this.simWorld, ...args),
       });
+      if (p._botCoverPoint && hasVisual && !p._botCoverReturn) {
+        p._botCoverReturn = { x: p.state.px, y: p.state.py, z: p.state.pz };
+      }
       p._botCoverUntil = this.tick + secondsToTicks(2.2);
     }
+    if (hasVisual && !needsCover) {
+      if (!p._botFiringLane || this.tick >= (p._botNextLaneTick || 0)) {
+        p._botNextLaneTick = this.tick + secondsToTicks(.15);
+        p._botFiringLane = chooseBotFiringStep({
+          x: p.state.px, y: p.state.py, z: p.state.pz,
+          targetX, targetY: targetY + p._botAimHeight, targetZ,
+          forward: maneuver.forward, strafe: maneuver.strafe, killY: this.arena.killY ?? -25,
+          groundHeightAt: this.arena.groundHeightAt?.bind(this.arena) || (!this.arena.noBaseFloor ? () => 0 : undefined),
+          raycast: (...args) => rayVsBoxes(this.simWorld, ...args),
+        });
+        if (p._botFiringLane.strafe) p._botStrafe = Math.sign(p._botFiringLane.strafe);
+      }
+      maneuver = { ...maneuver, ...p._botFiringLane };
+    } else { p._botFiringLane = null; p._botNextLaneTick = 0; }
     if (p._botCoverPoint) {
       const cx = p._botCoverPoint.x - p.state.px, cz = p._botCoverPoint.z - p.state.pz;
       const length = Math.hypot(cx, cz);
@@ -1179,6 +1214,17 @@ export class AuthRoom {
         forward: (-Math.sin(p._botAimYaw) * cx - Math.cos(p._botAimYaw) * cz) / length,
         strafe: (Math.cos(p._botAimYaw) * cx - Math.sin(p._botAimYaw) * cz) / length,
         mode: 'cover',
+      };
+    }
+    if (hasVisual && !needsCover) p._botCoverReturn = null;
+    if (!needsCover && !hasVisual && p._botCoverReturn) {
+      const px = p._botCoverReturn.x - p.state.px, pz = p._botCoverReturn.z - p.state.pz;
+      const length = Math.hypot(px, pz);
+      if (length <= .3) p._botCoverReturn = null;
+      else maneuver = {
+        forward: (-Math.sin(p._botAimYaw) * px - Math.cos(p._botAimYaw) * pz) / length,
+        strafe: (Math.cos(p._botAimYaw) * px - Math.sin(p._botAimYaw) * pz) / length,
+        mode: 'peek', sprint: false,
       };
     }
     if (maneuver.mode === 'chase') {
@@ -1199,8 +1245,8 @@ export class AuthRoom {
     if (p.mag <= 0) this._startReload(p, p.wid);
     const aimDelta = Math.abs(Math.atan2(Math.sin(desiredYaw - p._botAimYaw), Math.cos(desiredYaw - p._botAimYaw)));
     const canFire = hasVisual && this.tick >= p._botReactionUntil && aimDelta < 0.12
-      && distance < cfg.detectionDistance && p.fireCooldown <= 0
-      && p.reloadUntil <= this.tick && p.mag > 0 && this.tick >= p._botNextShotTick
+      && distance < fireRange && p.fireCooldown <= 0
+      && p.reloadUntil <= this.tick && p.mag > 0
       && this._botCanSee(p, target, true);
     if (canFire) {
       this.onFire(p.id, { seq: p.lastFireSeq + 1, wid: p.wid, yaw: p._botAimYaw, pitch: p._botAimPitch });
@@ -1208,19 +1254,13 @@ export class AuthRoom {
         p.fireReq.botTargetId = target.id;
         p.fireReq.botRetaliating = !target.isBot;
       }
-      p._botBurstRemaining--;
-      const weaponTicks = Math.max(1, Math.ceil((WEAPONS[p.wid]?.rate || 0.2) * TICK_HZ));
-      if (p._botBurstRemaining <= 0) {
-        p._botBurstRemaining = 2 + Math.floor(this._rand(p.id * 509 + this.tick) * 3);
-        p._botNextShotTick = this.tick + Math.ceil(weaponTicks * (1.5 + this._rand(p.id * 557 + this.tick) * .7));
-      } else p._botNextShotTick = this.tick + weaponTicks;
     }
     return {
       seq,
       inp: this._botMoveInput(p, { mx: moveX, mz: moveZ, yaw: p._botAimYaw, pitch: p._botAimPitch,
         sprint: !!maneuver.sprint && moveZ >= 0, jumpJust: false }),
       wid: p.wid,
-      aiming: hasVisual && distance < cfg.detectionDistance * 0.8,
+      aiming: hasVisual && distance < fireRange,
       botDash: false,
     };
   }

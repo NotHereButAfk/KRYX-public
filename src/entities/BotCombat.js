@@ -1,3 +1,5 @@
+import { getWeapon } from '../weapons/weaponDefs.js';
+import { nextBotFire } from './BotEngagement.js';
 import { chooseSkilledBotMove } from './BotSkill.js';
 
 // Pure combat steering shared by Bot.js and its headless behavior checks.
@@ -5,7 +7,7 @@ import { chooseSkilledBotMove } from './BotSkill.js';
 // ev.io footage; they are not claimed as ev.io's internal AI constants.
 
 export const BOT_TACTICS = Object.freeze({
-  detectRadius: 42,
+  detectRadius: 72,
   memoryDuration: 5.5,
   rangedRetreatDistance: 5.0,
   rangedOrbitDistance: 13.0,
@@ -330,16 +332,11 @@ export function chooseReachableRoamPoint({
   return best;
 }
 
-// A public match should read as an arena full of players, not seven copies of
-// the same infinite-ammo rifleman. These are deliberately gentler bot versions
-// of the player weapons: the model, cadence, magazine and reload identity stay
-// recognizable without importing the player's full damage values into the AI.
-export const BOT_RANGED_LOADOUTS = Object.freeze([
-  Object.freeze({ id: 'm4',      damage: 10, fireRate: 0.24, range: 26, magSize: 12, reloadTime: 1.8, sound: 'rifle' }),
-  Object.freeze({ id: 'battlerifle',     damage: 12, fireRate: 0.22, range: 29, magSize: 9,  reloadTime: 2.0, sound: 'rifle' }),
-  Object.freeze({ id: 'plasmarifle',   damage: 13, fireRate: 0.26, range: 30, magSize: 10, reloadTime: 1.9, sound: 'rifle' }),
-  Object.freeze({ id: 'uzi',     damage: 8,  fireRate: 0.16, range: 24, magSize: 18, reloadTime: 2.7, sound: 'lmg' }),
-]);
+// Use the same weapon catalog as human players. Independent bot copies had
+// drifted into short ranges, tiny magazines and unrecognizable firing rates.
+export const BOT_RANGED_LOADOUTS = Object.freeze(
+  ['m4', 'battlerifle', 'plasmarifle', 'uzi'].map(id => Object.freeze({ ...getWeapon(id) }))
+);
 
 /** Stable five-slot squad pattern: four distinct ranged roles, then a blade. */
 export function botLoadoutForId(id) {
@@ -355,7 +352,7 @@ export function advanceBotMagazine(ammo, reloadRemaining, dt, loadout, fired = f
   let nextAmmo = ammo;
   if (wasReloading && nextReload === 0) nextAmmo = loadout.magSize;
   if (fired && nextReload === 0 && nextAmmo > 0) {
-    nextAmmo -= 1;
+    nextAmmo = Math.max(0, nextAmmo - (loadout.ammoPerShot || 1));
     if (nextAmmo === 0) nextReload = loadout.reloadTime;
   }
   return { ammo: nextAmmo, reloadRemaining: nextReload };
@@ -409,23 +406,9 @@ export function chooseCombatSteering({
   return { forward: 0.14, strafe: 0.70 * side, mode: 'orbit' };
 }
 
-/**
- * Ranged bots fire recognizable short bursts instead of metronomic single
- * shots. Returns the timer until the next shot and the updated burst count.
- */
-export function advanceBurst(shotsRemaining, random = Math.random) {
-  if (shotsRemaining > 1) {
-    return {
-      shotsRemaining: shotsRemaining - 1,
-      delayScale: 0.82 + random() * 0.30,
-      burstPause: false,
-    };
-  }
-  return {
-    shotsRemaining: 2 + Math.floor(random() * 3),
-    delayScale: 1.5 + random() * 0.7,
-    burstPause: true,
-  };
+// Retain the shared entry point; native weapon timing governs every shot.
+export function advanceBurst(shotsRemaining, random = Math.random, context = {}) {
+  return nextBotFire(shotsRemaining, { ...context, random });
 }
 
 // Smooth tracking error stays related across a burst rather than rerolling

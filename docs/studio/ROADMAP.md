@@ -24,3 +24,12 @@
 ## Sound effects followup
 
 Completed sound pass: nine weapon reports, distance filtering, visible-contact audio, lowest-priority voice eviction, silent-tail trimming, focused regressions, real browser audio/input/settings/mobile QA and matched before/after WAV capture. Both repository builds are checked before publication.
+
+## Human behavior followup
+
+- [x] Capture the approach-before-shooting, forced-pause and awareness problems in actual Evasion gameplay.
+- [x] Replace bot weapon copies, firing delays, time-based strafing and acquisition distance caps.
+- [x] Preserve a clear firing lane, return from reload cover and clear plans when switching opponents.
+- [x] Verify native local/server cadence, actual hit geometry, authority, real-map gameplay and both builds.
+- [x] Synchronize the final source, tests and notes into both existing feature PRs.
+- [ ] Resolve the documented pre-existing release gates before main deployment.

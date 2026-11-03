@@ -18,3 +18,9 @@ Copilot produced a schema-valid spawn test proposal, but review caught incorrect
 ## Sound effects followup
 
 Audio QA uses desktop Chromium and a390x844 emulated touch viewport. Physical speakers/headphones, actual mobile hardware and Safari were not tested; subjective listening is unverified because this model cannot receive audio input. Existing unrelated deployment gate failures remain unchanged. Before/after WAVs support user comparison.
+
+## Human behavior scope and remaining limits
+
+The final behavior is verified AI, not a claim of human indistinguishability. Software-rendered browser play is slow and cannot establish competitive feel or real-device frame rates. The extended duel uses controlled health for observation; normal-health seven-bot gameplay is checked separately. General navigation can still benefit from future human playtesting; the concrete reload-cover wall stall reproduced here is fixed.
+
+Copilot behavior and lane proposals contained duplicate entries or incorrect ray APIs and were manually reviewed/corrected. The documentation proposal contained obsolete tuning and was rewritten for the final policy. One target-switch task exceeded the Windows argument limit; its reduced retry failed authentication. Final implementation and regression integration proceeded locally after those concrete failures. Antigravity version and expired Groq free-plan guards remained in place; no paid/local fallback was enabled. Existing release blockers listed above remain.

@@ -9,26 +9,35 @@ import { installEvCharacter } from '../src/player/EvCharacter.js';
 import { Bot } from '../src/entities/Bot.js';
 import { disposeModel } from '../src/core/ModelResources.js';
 
-// Cadence must be elapsed-time driven, not a new random roll every frame.
+// Open-lane movement follows the selected side, without clock-driven reversals.
 for (const hz of [20, 30, 60, 144]) {
-  let moves = 0, transitions = 0, last = false;
+  let moves = 0, transitions = 0, lastSide = 0;
   for (let frame = 0; frame < hz * 12; frame++) {
-    const m = choosePlayerLikeBotMove({ id: 4, elapsed: frame / hz });
+    const m = choosePlayerLikeBotMove({ id: 4, elapsed: frame / hz, strafeSide: 1 });
     const moving = !!(m.forward || m.strafe);
-    moves += Number(moving); transitions += Number(moving !== last); last = moving;
+    moves += Number(moving);
+    const side = Math.sign(m.strafe);
+    if (lastSide && side !== lastSide) transitions++;
+    lastSide = side;
   }
-  assert(moves / (hz * 12) > .65 && moves / (hz * 12) < .85,
-    'bots need committed sidesteps with short, readable aiming pauses');
-  assert(transitions >= 10 && transitions <= 18, 'rapid direction oscillation');
+  assert.equal(moves, hz * 12, 'clear combat lanes must not insert stationary aiming beats');
+  assert.equal(transitions, 0, 'a clock-driven beat reversed the chosen sidestep');
 }
 const close = choosePlayerLikeBotMove({ id: 1, elapsed: .8, distance: 3 });
 assert(close.forward < 0, 'crowded bot must make room');
-assert(choosePlayerLikeBotMove({ elapsed: .8, distance: 30 }).forward > 0);
+const inRange = choosePlayerLikeBotMove({ elapsed: .8, distance: 30 });
+assert.equal(inRange.forward, 0, 'visible in-range opponents must not cause a forward rush');
+assert(inRange.strafe !== 0 && !inRange.sprint);
+const outsideRange = choosePlayerLikeBotMove({ elapsed: .8, distance: 90, range: 80 });
+assert(outsideRange.forward > 0 && outsideRange.strafe !== 0 && !outsideRange.sprint);
 assert(choosePlayerLikeBotMove({ elapsed: .8, reloading: true }).forward < 0);
-assert.equal(choosePlayerLikeBotMove({ elapsed: .8, reacting: true }).strafe, 0);
+assert(Math.abs(choosePlayerLikeBotMove({ elapsed: .8, reacting: true }).strafe) <= 1);
 assert.equal(choosePlayerLikeBotMove({ elapsed: .8, hasLineOfSight: false }).strafe, 0);
-assert.notDeepEqual(choosePlayerLikeBotMove({ id: 1, elapsed: .8 }),
-  choosePlayerLikeBotMove({ id: 2, elapsed: .8 }), 'bots share identical decisions');
+assert.deepEqual(choosePlayerLikeBotMove({ id: 1, elapsed: .8, strafeSide: 1 }),
+  choosePlayerLikeBotMove({ id: 2, elapsed: 12, strafeSide: 1 }),
+  'identity or elapsed time overrode the chosen steering side');
+assert.notDeepEqual(choosePlayerLikeBotMove({ strafeSide: 1 }),
+  choosePlayerLikeBotMove({ strafeSide: -1 }), 'steering cannot change the retained side');
 
 const arena = { id: 'player-style', half: 80, killY: -20,
   noBaseFloor: false, spawns: [[0, 0, 0]], platforms: [], boxes: [],
@@ -54,8 +63,10 @@ for (let tick = 0; tick < 12 * TICK_HZ; tick++) {
   assert.equal(bot._lastSprint, false, 'combat movement sprints while firing');
   assert.equal(bot._botDashTicks, 0, 'combat uses a free speed boost');
 }
-assert(travel > 8 && travel < 85, `uncontrolled or stationary combat: ${travel}`);
-assert(moving > 100 && stopped > 20, 'missing move/aim beats');
+assert(travel > WALK_SPEED * 12 * .8 && travel <= WALK_SPEED * 12 + .1,
+  `uncontrolled or stationary combat: ${travel}`);
+assert(moving > 12 * TICK_HZ * .85 && stopped < 12 * TICK_HZ * .15,
+  'clear-lane combat reintroduced periodic stationary aiming beats');
 assert(peak <= WALK_SPEED + .05, `combat exceeds walking speed: ${peak}`);
 assert(shots > 0, 'moving bot stopped shooting');
 
@@ -69,6 +80,7 @@ arena.groundHeightAt = (x) => x > .2 ? -Infinity : 0;
 Object.assign(bot.state, { px: 0, py: 0, pz: 0 });
 const safe = room._botMoveInput(bot, { mx: 1, mz: 0, yaw: 0 });
 assert(safe.mx <= 0, 'combat sidestep crosses a void');
+arena.groundHeightAt = () => 0;
 
 // Once sight is lost, do not chase the live hidden position or fire through cover.
 room._botCanSee = () => false;
@@ -81,7 +93,7 @@ assert.equal(bot.fireReq, null, 'hidden opponents must not be fired at');
 assert.deepEqual(bot._botLastSeen, remembered, 'search must use the remembered position');
 room._resetBotAI(bot);
 assert.equal(bot._botTargetId, null);
-console.log(`Player-like bot checks passed: 12s duel, ${travel.toFixed(1)}m repositioning, ${moving} moving/${stopped} aiming ticks, peak ${peak.toFixed(2)}m/s; reaction, reload, cover, ledge and frame-rate checks.`);
+console.log(`Player-like bot checks passed: 12s duel, ${travel.toFixed(1)}m repositioning, ${moving} moving/${stopped} low-motion ticks, peak ${peak.toFixed(2)}m/s; reaction, cover, ledge and frame-rate checks.`);
 
 globalThis.ProgressEvent ??= class { constructor(type, data) { Object.assign(this, data); } };
 const bytes = fs.readFileSync(new URL('../public/ev-default.glb', import.meta.url));
@@ -104,7 +116,7 @@ for (const hz of [30, 60, 144]) {
     if (local._provoked) assert(delta * hz <= local.speed + .05, `offline combat exceeds sprint speed: ${delta * hz} at ${hz}Hz frame ${frame}`);
     assert.equal(local._dashT, 0);
   }
-  assert(moved > hz * 3 && still > hz * .4, 'offline bot lost aiming/movement beats');
+  assert(moved > hz * 5 && still < hz * .6, 'offline combat reintroduced forced aiming stops');
   // Count shots, not hits or the final magazine. An inaccurate bot may miss
   // every shot and finish reloading just before the final sample.
   assert(fired > 0, 'offline bot stopped firing');
@@ -112,7 +124,7 @@ for (const hz of [30, 60, 144]) {
   assert.equal(local._encounterTime, 0);
   disposeModel(local.mesh);
 }
-console.log('Offline real-rig bots passed at 30/60/144Hz: walking combat, aiming stops, live firing and respawn reset.');
+console.log('Offline real-rig bots passed at 30/60/144Hz: continuous combat footwork, live firing and respawn reset.');
 
 // Mid-turn wall checks must not throw away a valid corridor destination.
 const cornerArena = { ...arena, groundHeightAt: () => 0,
@@ -132,25 +144,30 @@ assert.equal(cornerBot._botRoamTarget, destination);
 assert(Math.abs(cornerBot._botAimYaw) < .65, 'turn did not converge');
 console.log('Corner commitment passed: finish turning toward a clear route before replanning.');
 
-// Keep a fleeing opponent ahead: the bot must fire during real sprint movement.
+// A visible opponent at 25m is already in rifle range: fire while strafing.
 const chaseRoom = new AuthRoom(arena);
 const chaser = chaseRoom.players.get(chaseRoom.addBot('Chaser'));
 const runner = chaseRoom.players.get(chaseRoom.add(() => {}, 'Runner'));
 chaser.invulnerableUntil = runner.invulnerableUntil = 0;
 chaser._botAimYaw = 0;
-let runningShots = 0, closingSteps = 0;
+chaser._botNextScanTick = 0;
+let strafingShots = 0, lateralSteps = 0, closingSteps = 0;
 for (let tick = 0; tick < 80; tick++) {
   Object.assign(runner.state, {px: chaser.state.px, py: 0, pz: chaser.state.pz - 25});
   runner.health = 100; runner.shield = 100;
   const z = chaser.state.pz;
+  const x = chaser.state.px;
   chaseRoom.update();
   if (chaser.state.pz < z - .1) closingSteps++;
-  if (chaser._lastSprint) runningShots += chaseRoom.events.filter(e => e.e === 'shot' && e.by === chaser.id).length;
+  const strafing = Math.abs(chaser.state.px - x) > .05;
+  if (strafing) lateralSteps++;
+  if (strafing) strafingShots += chaseRoom.events.filter(e => e.e === 'shot' && e.by === chaser.id).length;
+  assert.equal(chaser._lastSprint, false, 'an in-range target caused a sprint rush');
 }
-assert(closingSteps > 40, 'bot must pursue the fleeing target');
-assert(runningShots > 0, 'bot must shoot while actually sprinting');
-assert(chaser.state.stamina < 100, 'pursuit must consume stamina');
-console.log('Chase passed: running shots=' + runningShots + ', advancing ticks=' + closingSteps);
+assert.equal(closingSteps, 0, 'bot ran closer instead of holding useful rifle range');
+assert(lateralSteps > 60, 'in-range bot failed to maintain lateral movement');
+assert(strafingShots >= 8, 'bot must keep firing during actual lateral movement');
+console.log('Ranged engagement passed: strafing shots=' + strafingShots + ', lateral ticks=' + lateralSteps);
 
 // Exercise replicated facing against actual bullet segments during target turns.
 const facingRoom = new AuthRoom(arena);

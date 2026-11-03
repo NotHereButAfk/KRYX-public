@@ -1,3 +1,4 @@
+import { chooseHumanBotMove } from './BotEngagement.js';
 const finite = (value, fallback = 0) => Number.isFinite(value) ? value : fallback;
 
 const coords = (value) => ({
@@ -48,32 +49,6 @@ export function predictBotTarget(sample, seconds, visible = true) {
   return { x: point.x + dx, y: point.y + dy, z: point.z + dz };
 }
 
-const idSeed = (id) => [...String(id)].reduce((sum, char) => (sum * 31 + char.charCodeAt(0)) >>> 0, 7);
-
-export function chooseSkilledBotMove({
-  id = 0,
-  elapsed = 0,
-  distance = 12,
-  reacting = false,
-  hasLineOfSight = true,
-  reloading = false,
-  range = 30
-} = {}) {
-  const d = Math.max(0, finite(distance));
-  if (reacting) return { forward: 0, strafe: 0, mode: 'react' };
-  if (!hasLineOfSight) {
-    return d <= 1.2
-      ? { forward: 0, strafe: 0, mode: 'hold' }
-      : { forward: 1, strafe: 0, mode: 'chase', sprint: true };
-  }
-  const threshold = Math.min(22, Math.max(10, finite(range, 30) * 0.7));
-  if (d > threshold) return { forward: 1, strafe: 0, mode: 'chase', sprint: true };
-  const seed = idSeed(id);
-  const cycle = 1.6 + (seed % 51) / 100;
-  const phase = Math.max(0, finite(elapsed)) / cycle;
-  const moving = phase - Math.floor(phase) < 0.75;
-  if (!moving) return { forward: 0, strafe: 0, mode: 'aim' };
-  const side = ((Math.floor(phase) + seed) % 2) ? 1 : -1;
-  if (reloading || d < 6) return { forward: -1, strafe: side, mode: 'sidestep' };
-  return { forward: 0, strafe: side, mode: 'sidestep' };
-}
+// Preserve the shared entry point while keeping combat decisions separate
+// from visual target sampling and prediction.
+export const chooseSkilledBotMove = chooseHumanBotMove;

@@ -28,10 +28,17 @@ assert.deepEqual({ vx: gap.vx, vy: gap.vy, vz: gap.vz }, { vx: 0, vy: 0, vz: 0 }
 let teleport = observeBotTarget(sample, pos(10), 0.2, "a");
 assert.deepEqual({ vx: teleport.vx, vy: teleport.vy, vz: teleport.vz }, { vx: 0, vy: 0, vz: 0 });
 
-const move = (elapsed, options = {}) => chooseSkilledBotMove({ id: 7, elapsed, distance: 12, ...options });
-assert.deepEqual(move(0, { reacting: true }), { forward: 0, strafe: 0, mode: "react" });
+const move = (elapsed, options = {}) => chooseSkilledBotMove({ id: 7, elapsed, distance: 12, strafeSide: 1, ...options });
+const reacting = move(0, { reacting: true });
+assert.equal(reacting.forward, 0, 'reaction must not rush an in-range target');
+assert.ok(Math.abs(reacting.strafe) > 0 && Math.abs(reacting.strafe) <= 1,
+  'reaction should retain controlled lateral footwork');
+assert.equal(reacting.sprint, false);
 assert.equal(move(0, { hasLineOfSight: false }).mode, "chase");
-assert.equal(move(0, { distance: 15, range: 10 }).mode, "chase");
+const approaching = move(0, { distance: 15, range: 10 });
+assert.ok(approaching.forward > 0 && approaching.strafe !== 0,
+  'visible out-of-range opponents require an advancing sidestep');
+assert.equal(approaching.sprint, false);
 assert.equal(move(0, { distance: 15, range: 30 }).mode, "sidestep");
 
 for (const hz of [20, 30, 60, 144]) {
@@ -41,7 +48,7 @@ for (const hz of [20, 30, 60, 144]) {
     if (m.forward !== 0 || m.strafe !== 0) moving++;
   }
   const ratio = moving / (hz * 20);
-  assert.ok(ratio >= 0.65 && ratio <= 0.85, `${hz}Hz ratio ${ratio}`);
+  assert.equal(ratio, 1, `${hz}Hz combat inserted a forced aiming stop`);
 }
 
 let pauses = 0;
@@ -50,11 +57,13 @@ let previous = null;
 for (let i = 0; i < 600; i++) {
   const m = move(i / 60);
   if (m.forward === 0 && m.strafe === 0) pauses++;
-  if (previous && (m.strafe !== previous.strafe || m.mode !== previous.mode)) switches++;
+  if (previous && Math.sign(m.strafe) !== Math.sign(previous.strafe)) switches++;
   previous = m;
 }
-assert.ok(pauses > 0);
-assert.ok(switches >= 4 && switches < 40);
+assert.equal(pauses, 0, 'in-range footwork must remain continuous');
+assert.equal(switches, 0, 'elapsed time silently reversed the chosen strafe side');
+assert.ok(move(10, { strafeSide: -1 }).strafe < 0, 'a new steering choice was ignored');
+assert.ok(move(10, { strafeSide: 1 }).strafe > 0, 'the retained steering side was ignored');
 
 let retreat = false;
 for (let i = 0; i < 180; i++) {
