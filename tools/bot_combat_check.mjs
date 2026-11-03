@@ -161,7 +161,7 @@ assert.ok(botAimErrorMeters(20, 1.15) < 0.8, '20m bot scatter is still too inacc
 assert.ok(botAimErrorMeters(40, 1.15) < 1.25, '40m bot scatter is still too inaccurate');
 assert.ok(botAimErrorMeters(20, 0.8) > 0.4, 'bots became perfect aim-locks');
 const returnFireScatter = botAimErrorMeters(20, BOT_DIFFICULTIES.normal.aimErrorScale * BOT_RETALIATION_AIM_SCALE);
-assert.ok(returnFireScatter > 0.8 && returnFireScatter < 1.1,
+assert.ok(returnFireScatter > 0.45 && returnFireScatter < 0.7,
   'return fire should pressure exposed players without becoming an aim lock');
 console.log('ok   bot aim is lethal but retains real world-space scatter');
 

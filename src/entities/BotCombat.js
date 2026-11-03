@@ -1,3 +1,5 @@
+import { chooseSkilledBotMove } from './BotSkill.js';
+
 // Pure combat steering shared by Bot.js and its headless behavior checks.
 // Values are our adaptation of the mobile arena-fighter behavior visible in
 // ev.io footage; they are not claimed as ev.io's internal AI constants.
@@ -146,19 +148,19 @@ export const BOT_DIFFICULTIES = Object.freeze({
     movementSpeed: 0.86, roamSprintChance: 0.12, combatSprintDistance: 28,
   }),
   normal: Object.freeze({
-    reactionMin: 0.28, reactionMax: 0.48,
-    aimErrorScale: 1.1, detectionDistance: 42, awarenessDistance: 72, trackingDistance: 90, peripheralDistance: 10, fovDegrees: 140,
-    scanInterval: 0.25, decisionInterval: 0.45, losInterval: 0.15,
+    reactionMin: 0.18, reactionMax: 0.30,
+    aimErrorScale: 0.65, detectionDistance: 42, awarenessDistance: 72, trackingDistance: 90, peripheralDistance: 10, fovDegrees: 140,
+    scanInterval: 0.15, decisionInterval: 0.30, losInterval: 0.10,
     searchDuration: 7.5, focusDuration: 10.0, targetSwitchRatio: 0.78,
-    aimTurnSpeed: 9.5, strafeChance: 0.62, jumpChance: 0.045,
+    aimTurnSpeed: 14.0, strafeChance: 0.62, jumpChance: 0.045,
     movementSpeed: 1.0, roamSprintChance: 0.24, combatSprintDistance: 22,
   }),
   hard: Object.freeze({
-    reactionMin: 0.18, reactionMax: 0.42,
-    aimErrorScale: 0.88, detectionDistance: 52, awarenessDistance: 82, trackingDistance: 100, peripheralDistance: 12, fovDegrees: 150,
-    scanInterval: 0.2, decisionInterval: 0.32, losInterval: 0.10,
+    reactionMin: 0.12, reactionMax: 0.22,
+    aimErrorScale: 0.45, detectionDistance: 52, awarenessDistance: 82, trackingDistance: 100, peripheralDistance: 12, fovDegrees: 150,
+    scanInterval: 0.10, decisionInterval: 0.22, losInterval: 0.05,
     searchDuration: 9.0, focusDuration: 13.0, targetSwitchRatio: 0.9,
-    aimTurnSpeed: 7.0, strafeChance: 0.78, jumpChance: 0.065,
+    aimTurnSpeed: 18.0, strafeChance: 0.78, jumpChance: 0.065,
     movementSpeed: 1.08, roamSprintChance: 0.38, combatSprintDistance: 17,
   }),
 });
@@ -186,26 +188,9 @@ export function smoothBotAim(current, desired, turnSpeed, dt) {
 // Short, committed adjustments separated by aiming beats. This is our casual
 // player adaptation, not measured ev.io AI timing. A per-bot rhythm avoids
 // synchronized strafing, and time is relative to acquiring the attacker.
-export function choosePlayerLikeBotMove({
-  id = 0, elapsed = 0, distance = 12, reacting = false,
-  hasLineOfSight = true, reloading = false,
-}) {
-  if (reacting) return { forward: 0, strafe: 0, mode: 'aim' };
-  if (distance > 16 || (!hasLineOfSight && distance > 1.2)) {
-    return { forward: 1, strafe: 0, mode: 'chase', sprint: true };
-  }
-  if (!hasLineOfSight) return { forward: 0, strafe: 0, mode: 'aim' };
-  const personality = (Math.abs(id * 37) % 101) / 101;
-  const period = 2.6 + personality * 0.9;
-  const cycle = Math.floor(Math.max(0, elapsed) / period);
-  const phase = Math.max(0, elapsed) % period;
-  const side = (Math.abs(id) + cycle) % 2 ? 1 : -1;
-  // Even an empty magazine does not cause endless backwards running.
-  const reposition = phase > 0.4 && phase < 1.3 + personality * 0.18;
-  if (!reposition) return { forward: 0, strafe: 0, mode: 'aim' };
-  if (reloading || distance < 6) return { forward: -1, strafe: side, mode: 'make-room' };
-  if (distance > 22) return { forward: 1, strafe: 0, mode: 'close' };
-  return { forward: 0, strafe: side, mode: 'sidestep' };
+// Preserve the shared entry point for offline and authoritative bots.
+export function choosePlayerLikeBotMove(options) {
+  return chooseSkilledBotMove(options);
 }
 
 // A short retreat to nearby, actually occluding cover. Called on a decision
@@ -438,7 +423,7 @@ export function advanceBurst(shotsRemaining, random = Math.random) {
   }
   return {
     shotsRemaining: 2 + Math.floor(random() * 3),
-    delayScale: 2.8 + random() * 2.3,
+    delayScale: 1.5 + random() * 0.7,
     burstPause: true,
   };
 }

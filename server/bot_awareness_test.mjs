@@ -63,7 +63,7 @@ for (const targetIsBot of [false, true]) {
     const { room, bot, target } = duel({ targetIsBot });
     room._driveBot(bot);
     target.state.pz = -80;
-    const command = driveAt(room, bot, bot._botReactionUntil + 1);
+    const command = driveAt(room, bot, Math.max(bot._botReactionUntil + 1, bot._botNextLosTick));
     assert.equal(bot._botTargetId, target.id, 'pursuit dropped a visible fleeing opponent');
     assert.equal(bot._botLosCache, true, 'tracking did not extend beyond acquisition range');
     assert.equal(bot._botLastSeen.z, -80);
@@ -77,14 +77,14 @@ for (const targetIsBot of [false, true]) {
   });
 }
 
-test('acquisition has a 72m boundary and checks for new opponents every quarter second', () => {
+test('acquisition has a 72m boundary and respects the configured scan cadence', () => {
   const { room, bot, target } = duel({ distance: 72.1 });
   assert.equal(room._botCanSee(bot, target), false);
   room._driveBot(bot);
   assert.equal(bot._botTargetId, null);
   target.state.pz = -72;
   assert.equal(room._botCanSee(bot, target), true);
-  const scanAt = Math.ceil(.25 * TICK_HZ);
+  const scanAt = Math.ceil(room.botDifficulty.scanInterval * TICK_HZ);
   driveAt(room, bot, scanAt - 1);
   assert.equal(bot._botTargetId, null, 'new targets bypassed the perception cadence');
   driveAt(room, bot, scanAt);
@@ -180,8 +180,8 @@ test('reappearing opponents receive a fresh casual reaction window', () => {
   room.smokes.length = 0;
   driveAt(room, bot, TICK_HZ * 2);
   const reactionTicks = bot._botReactionUntil - room.tick;
-  assert(reactionTicks >= Math.ceil(.28 * TICK_HZ));
-  assert(reactionTicks <= Math.ceil(.48 * TICK_HZ));
+  assert(reactionTicks >= Math.ceil(.18 * TICK_HZ));
+  assert(reactionTicks <= Math.ceil(.30 * TICK_HZ));
   assert.equal(bot._botState, 'react');
   assert.equal(bot.fireReq, null, 'reacquisition fired immediately');
 });
@@ -193,12 +193,12 @@ test('wider awareness preserves forgiving aim, gradual turning, and reaction bef
   room._driveBot(bot);
   assert(Math.abs(bot._botAimYaw) > 0, 'bot did not begin facing its opponent');
   assert(Math.abs(bot._botAimYaw) < Math.abs(desired), 'acquisition snapped to perfect aim');
-  assert.equal(room.botDifficulty.aimErrorScale, 1.1, 'awareness increased shooting accuracy');
-  assert(botAimErrorMeters(30, room.botDifficulty.aimErrorScale) > .9,
+  assert.equal(room.botDifficulty.aimErrorScale, .65, 'normal skill tuning drifted');
+  assert(botAimErrorMeters(30, room.botDifficulty.aimErrorScale) > .5,
     'casual world-space scatter became a perfect aim lock');
   const reactionUntil = bot._botReactionUntil;
-  assert(reactionUntil >= Math.ceil(.28 * TICK_HZ));
-  assert(reactionUntil <= Math.ceil(.48 * TICK_HZ));
+  assert(reactionUntil >= Math.ceil(.18 * TICK_HZ));
+  assert(reactionUntil <= Math.ceil(.30 * TICK_HZ));
   for (let tick = 1; tick < reactionUntil; tick++) {
     driveAt(room, bot, tick);
     assert.equal(bot.fireReq, null, 'new target was fired on before the reaction window ended');

@@ -7,12 +7,11 @@ import { AuthRoom, TICK_HZ } from '../server/authroom.mjs';
 const arena = { id: 'balance', half: 100, killY: -20, noBaseFloor: false,
   spawns: [[0, 0, 0]], platforms: [], boxes: [], gravLifts: [], teleporters: [], pickups: [],
   groundHeightAt: () => 0, raycast: (_x, _y, _z, _dx, _dy, _dz, far) => far };
-function duels(previous = false, moving = false) {
+function duels(moving = false) {
   let damage = 0, shots = 0, hits = 0, firstShotTotal = 0;
   const trials = 48;
   for (let trial = 0; trial < trials; trial++) {
-    const room = new AuthRoom(arena, { botDifficultyOverrides: previous
-      ? { aimErrorScale: 1.2, reactionMax: .52, aimTurnSpeed: 9 } : null });
+    const room = new AuthRoom(arena);
     const bot = room.players.get(room.addBot('Opponent'));
     const player = room.players.get(room.add(() => {}, 'Player'));
     bot.id = trial * 2 + 1; player.id = trial * 2 + 2;
@@ -37,21 +36,21 @@ function duels(previous = false, moving = false) {
       const dealt = Math.max(0, 100 - player.health);
       damage += dealt; hits += Number(dealt > 0);
     }
-    assert(firstShot >= .25, 'bot fired before a readable reaction interval');
+    assert(firstShot !== null && firstShot >= .15, 'bot fired before a readable reaction interval');
     firstShotTotal += firstShot;
   }
   return { damage, shots, hits, hitRate: hits / shots,
     damagePerSecond: damage / (trials * 8), averageFirstShot: firstShotTotal / trials };
 }
-const previous = duels(true), current = duels(), previousMoving = duels(true, true), moving = duels(false, true);
-console.log('Authoritative bot balance (48 matched eight-second duels per scenario):', { previous, current, previousMoving, moving });
-assert(current.damage > previous.damage, 'the small accuracy improvement did not improve exposed-target pressure');
-assert(moving.damage > previousMoving.damage, 'moving-target pressure failed to improve');
-assert(current.damage < previous.damage * 1.25 && moving.damage < previousMoving.damage * 1.25,
-  'a small normal-difficulty adjustment became a large damage increase');
-assert(current.averageFirstShot <= previous.averageFirstShot, 'normal reaction became slower');
-assert(current.hitRate > .04 && current.hitRate < .45, 'normal bots must hit sometimes and miss most shots');
-assert(current.damagePerSecond < 20 && moving.damagePerSecond < 20, 'casual bots became too punishing');
+// Baseline measured on f4aa5eb (48 deterministic eight-second duels).
+const baseline = { stationaryDps: 9.973958333333334, movingDps: 7.135416666666667 };
+const current = duels(), moving = duels(true);
+console.log('Bot skill benchmark (48 eight-second duels per scenario):', { baseline, current, moving });
+assert(current.damagePerSecond > baseline.stationaryDps * 1.35, 'stationary pressure did not improve substantially');
+assert(moving.damagePerSecond > baseline.movingDps * 1.35, 'moving-target pressure did not improve substantially');
+assert(current.averageFirstShot < .40625, 'reaction did not improve');
+assert(current.hitRate > .3 && current.hitRate < .95, 'skilled bots must remain imperfect');
+assert(current.damagePerSecond < 60 && moving.damagePerSecond < 60, 'unexpected damage escalation');
 
 // A real untouched player must be killable, not just receive cosmetic damage.
 const room = new AuthRoom(arena);
@@ -68,7 +67,7 @@ for (let i = 0; i < TICK_HZ * 60; i++) {
   room.update();
   if (!player.alive) { deathAt = room.tick / TICK_HZ; break; }
 }
-assert(deathAt !== null && deathAt > 3, 'on-sight bot must earn a kill without instant deletion');
+assert(deathAt !== null && deathAt > 1, 'on-sight bot must earn a kill without instant deletion');
 console.log(`Unprovoked exposed player killed after ${deathAt.toFixed(1)}s; spawn protection respected.`);
 
 const coverRoom = new AuthRoom({ ...arena, raycast: undefined,

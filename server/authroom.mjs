@@ -1,3 +1,4 @@
+import { observeBotTarget, predictBotTarget } from '../src/entities/BotSkill.js';
 import { BOT_MOVEMENT_SCALE } from '../src/sim/MovementConfig.js';
 import { createDeathReaction } from '../src/sim/DeathReaction.js';
 import { PLAYER_RESPAWN_DELAY } from '../src/sim/DeathTiming.js';
@@ -580,6 +581,8 @@ export class AuthRoom {
     p._botTargetSince = 0;
     p._botLastSeenTick = -Infinity;
     p._botLastSeen = null;
+    p._botObservation = null;
+    p._botAimHeight = 1.05;
     p._botCoverPoint = null;
     p._botCoverUntil = 0;
     p._botNextCoverTick = 0;
@@ -989,6 +992,7 @@ export class AuthRoom {
           this.tick + secondsToTicks(cfg.focusDuration + cfg.searchDuration));
         p._botTargetId = best.id;
         p._botCoverPoint = null;
+        p._botObservation = null;
         p._botHoldGroundTargetId = null;
         p._botTargetSince = this.tick;
         p._botReactionUntil = this.tick + this._botReactionTicks(p);
@@ -1028,6 +1032,9 @@ export class AuthRoom {
           p._botReactionUntil = Math.max(p._botReactionUntil, this.tick + this._botReactionTicks(p));
         }
         p._botLastSeen = { x: target.state.px, y: target.state.py, z: target.state.pz };
+        p._botObservation = observeBotTarget(previouslyVisible ? p._botObservation : null,
+          p._botLastSeen, this.tick / TICK_HZ, target.id);
+        p._botAimHeight = target.state.crouch || target.state.slide ? .65 : 1.05;
         p._botLastSeenTick = this.tick;
         p._botHostility.set(target.id, this.tick + secondsToTicks(cfg.focusDuration + cfg.searchDuration));
       }
@@ -1125,7 +1132,9 @@ export class AuthRoom {
 
     // Aim uses the last sight sample. Do not read a hidden opponent's live
     // coordinates between visibility checks or while searching behind cover.
-    const aimPoint = p._botLastSeen;
+    const aimPoint = p._botObservation?.targetId === target.id
+      ? predictBotTarget(p._botObservation, this.tick / TICK_HZ, hasVisual)
+      : p._botLastSeen;
     if (!aimPoint) return { seq, inp: makeInput({ yaw: p._botAimYaw }), wid: p.wid, aiming: false, botDash: false };
     const targetX = aimPoint.px ?? aimPoint.x;
     const targetY = aimPoint.py ?? aimPoint.y;
@@ -1136,7 +1145,9 @@ export class AuthRoom {
     if (shouldBotTacticalReload(p.mag, WEAPONS[p.wid]?.mag,
       hasVisual ? 0 : (this.tick - p._botLastSeenTick) / TICK_HZ)) this._startReload(p, p.wid);
     const desiredYaw = Math.atan2(-realDx, -realDz);
-    const desiredPitch = Math.atan2((targetY + HEAD_Y) - (p.state.py + HEAD_Y), Math.max(0.001, distance));
+    // Center mass is a larger, more reliable target than the top of the head.
+    // Stance is sampled with vision, never read from an unseen opponent.
+    const desiredPitch = Math.atan2((targetY + p._botAimHeight) - (p.state.py + HEAD_Y), Math.max(0.001, distance));
     p._botAimYaw = smoothBotAim(p._botAimYaw, desiredYaw, cfg.aimTurnSpeed, 1 / TICK_HZ);
     p._botAimPitch += (desiredPitch - p._botAimPitch) * (1 - Math.exp(-cfg.aimTurnSpeed / TICK_HZ));
 
@@ -1146,9 +1157,9 @@ export class AuthRoom {
     let maneuver = choosePlayerLikeBotMove({
       id: p.id, elapsed: (this.tick - p._botReactionUntil) / TICK_HZ,
       reacting: this.tick < p._botReactionUntil, hasLineOfSight: hasVisual,
-      distance, reloading: p.mag <= 0 || p.reloadUntil > this.tick,
+      distance, range: cfg.detectionDistance, reloading: p.mag <= 0 || p.reloadUntil > this.tick,
     });
-    const needsCover = p.reloadUntil > this.tick || p.health + p.shield < 36;
+    const needsCover = p.reloadUntil > this.tick || p.health + p.shield < 65;
     if (!needsCover || this.tick >= p._botCoverUntil) p._botCoverPoint = null;
     if (needsCover && this.tick >= p._botReactionUntil && this.tick >= p._botNextCoverTick && !p._botCoverPoint) {
       p._botNextCoverTick = this.tick + secondsToTicks(1.0);
@@ -1201,7 +1212,7 @@ export class AuthRoom {
       const weaponTicks = Math.max(1, Math.ceil((WEAPONS[p.wid]?.rate || 0.2) * TICK_HZ));
       if (p._botBurstRemaining <= 0) {
         p._botBurstRemaining = 2 + Math.floor(this._rand(p.id * 509 + this.tick) * 3);
-        p._botNextShotTick = this.tick + weaponTicks * (3 + Math.floor(this._rand(p.id * 557 + this.tick) * 3));
+        p._botNextShotTick = this.tick + Math.ceil(weaponTicks * (1.5 + this._rand(p.id * 557 + this.tick) * .7));
       } else p._botNextShotTick = this.tick + weaponTicks;
     }
     return {

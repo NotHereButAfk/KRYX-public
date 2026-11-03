@@ -17,9 +17,9 @@ for (const hz of [20, 30, 60, 144]) {
     const moving = !!(m.forward || m.strafe);
     moves += Number(moving); transitions += Number(moving !== last); last = moving;
   }
-  assert(moves / (hz * 12) > .25 && moves / (hz * 12) < .42,
-    'bots need committed sidesteps with longer, readable aiming pauses');
-  assert(transitions >= 6 && transitions <= 10, 'rapid direction oscillation');
+  assert(moves / (hz * 12) > .65 && moves / (hz * 12) < .85,
+    'bots need committed sidesteps with short, readable aiming pauses');
+  assert(transitions >= 10 && transitions <= 18, 'rapid direction oscillation');
 }
 const close = choosePlayerLikeBotMove({ id: 1, elapsed: .8, distance: 3 });
 assert(close.forward < 0, 'crowded bot must make room');
@@ -54,8 +54,8 @@ for (let tick = 0; tick < 12 * TICK_HZ; tick++) {
   assert.equal(bot._lastSprint, false, 'combat movement sprints while firing');
   assert.equal(bot._botDashTicks, 0, 'combat uses a free speed boost');
 }
-assert(travel > 8 && travel < 45, `uncontrolled or stationary combat: ${travel}`);
-assert(moving > 20 && stopped > 100, 'missing move/aim beats');
+assert(travel > 8 && travel < 85, `uncontrolled or stationary combat: ${travel}`);
+assert(moving > 100 && stopped > 20, 'missing move/aim beats');
 assert(peak <= WALK_SPEED + .05, `combat exceeds walking speed: ${peak}`);
 assert(shots > 0, 'moving bot stopped shooting');
 
@@ -104,7 +104,7 @@ for (const hz of [30, 60, 144]) {
     if (local._provoked) assert(delta * hz <= local.speed + .05, `offline combat exceeds sprint speed: ${delta * hz} at ${hz}Hz frame ${frame}`);
     assert.equal(local._dashT, 0);
   }
-  assert(moved > hz / 2 && still > hz * 3, 'offline bot lost aiming/movement beats');
+  assert(moved > hz * 3 && still > hz * .4, 'offline bot lost aiming/movement beats');
   // Count shots, not hits or the final magazine. An inaccurate bot may miss
   // every shot and finish reloading just before the final sample.
   assert(fired > 0, 'offline bot stopped firing');

@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { observeBotTarget, predictBotTarget } from './BotSkill.js';
 import { groundDeathBody } from '../player/DeathBody.js';
 import { buildPreviewCharacter, rigCharacterLimbs } from '../player/PreviewCharacter.js';
 import { isEvCharacterReady } from '../player/EvCharacter.js';
@@ -41,8 +42,8 @@ const PROVOKE_DURATION = BOT_TACTICS.memoryDuration;
 // can't turn into a perfect marksman at point-blank, which a fixed angular cone
 // does (a 3° cone at 5m physically cannot miss a torso).
 // Cover and player strafing still matter because these remain real ray shots.
-const AIM_SKILL_MIN = 0.74;    // per-bot multiplier — lower is a better shot
-const AIM_SKILL_MAX = 1.06;
+const AIM_SKILL_MIN = 0.50;    // per-bot multiplier — lower is a better shot
+const AIM_SKILL_MAX = 0.72;
 const REACTION_MIN  = BOT_DIFFICULTIES.normal.reactionMin;
 const REACTION_MAX  = BOT_DIFFICULTIES.normal.reactionMax;
 // Player hitboxes, relative to their feet: a torso sphere and a head.
@@ -106,6 +107,9 @@ export class Bot {
     this._staminaDelay = 0;
     this._staminaRecovering = false;
     this._encounterTime = 0;
+    this._perceptionTime = 0;
+    this._observation = null;
+    this._observedTarget = null;
     this._gunTimer    = Math.random() * 0.8;
     this._magAmmo     = this._botGun?.magSize || 0;
     this._reloadTimer = 0;
@@ -428,6 +432,9 @@ export class Bot {
     this._provoked = false;
     this._provokedByPlayer = false;
     this._encounterTime = 0;
+    this._perceptionTime = 0;
+    this._observation = null;
+    this._observedTarget = null;
     this._provokeTimer = 0;
     this._losCache = false;
     this._losT = 0;
@@ -521,7 +528,8 @@ export class Bot {
       this._weaponMuzzle.updateWorldMatrix(true, false);
       this._weaponMuzzle.getWorldPosition(this._shootFrom);
     }
-    this._shootTarget.set(player.position.x, player.position.y + PLAYER_BODY_Y, player.position.z);
+    const aim = predictBotTarget(this._observation, this._perceptionTime, true) ?? this._lastSeenPos;
+    this._shootTarget.set(aim.x, aim.y + PLAYER_BODY_Y, aim.z);
     const dist = this._shootFrom.distanceTo(this._shootTarget);
     if (dist < 0.5) return;
     this._shootDir.subVectors(this._shootTarget, this._shootFrom).normalize();
@@ -689,11 +697,32 @@ export class Bot {
       ? botArenaDetectionDistance(DETECT_RADIUS)
       : DETECT_RADIUS;
     const inRange = !player.isDead && distToPlayer < targetDetectRadius;
+    this._perceptionTime += dt;
+    if (this._observedTarget !== player) {
+      this._observedTarget = player;
+      this._observation = null;
+      this._losCache = false;
+      // BotManager may have just assigned a damage-confirmed attacker behind
+      // our FOV. Preserve that cue while discarding the previous visual sample.
+      if (!(this._targetEntity === player && this._provoked)) {
+        this._lastSeenValid = false;
+        this._provoked = false;
+      }
+      this._losT = 0;
+    }
     this._losT -= dt;
     if (inRange) {
       if (this._losT <= 0) {
-        this._losT = 0.12 + Math.random() * 0.1;
+        this._losT = 0.08 + Math.random() * 0.02;
+        const wasVisible = this._losCache;
         this._losCache = this._provoked ? this.hasLineOfSight(player, world) : this.canNotice(player, world);
+        if (this._losCache) {
+          if (!wasVisible && this._unseenTime > .4) this._reactT = REACTION_MIN + Math.random() * (REACTION_MAX - REACTION_MIN);
+          this._observation = observeBotTarget(wasVisible ? this._observation : null,
+            player.position, this._perceptionTime, player.id ?? player);
+          this._lastSeenPos.copy(player.position);
+          this._lastSeenValid = true;
+        }
       }
     } else {
       this._losCache = false;
@@ -710,8 +739,6 @@ export class Bot {
       if (!this._provoked) this._reactT = REACTION_MIN + Math.random() * (REACTION_MAX - REACTION_MIN);
       this._provoked = true;
       this._provokeTimer = PROVOKE_DURATION;
-      this._lastSeenPos.copy(player.position);
-      this._lastSeenValid = true;
     } else if (this._provokeTimer > 0) {
       this._provokeTimer -= dt;
       if (this._provokeTimer <= 0) {
@@ -734,7 +761,7 @@ export class Bot {
     let gaitDirF = 0;
     let gaitDirR = 0;
     if (engaged) {
-      const target = hasVisual ? player.position : this._lastSeenPos;
+      const target = predictBotTarget(this._observation, this._perceptionTime, hasVisual) ?? this._lastSeenPos;
       this._toTarget.set(target.x - this.position.x, 0, target.z - this.position.z);
       const targetDistance = this._toTarget.length();
       const targetDir = this._combatDir.copy(this._toTarget);
@@ -745,7 +772,7 @@ export class Bot {
       if (this._decisionT <= 0) {
         this._decisionT = 0.95 + Math.random() * 0.80;
         if (Math.random() < 0.35) this._strafeSign *= -1;
-        const targetIsHigher = player.position.y > this.position.y + 1.15;
+        const targetIsHigher = target.y > this.position.y + 1.15;
         this._wantsJump = this._onGround && this._jumpCooldown <= 0 &&
           (targetIsHigher || (hasVisual && targetDistance > 6 && targetDistance < 18
             && Math.random() < 0.10));
@@ -755,9 +782,9 @@ export class Bot {
       let maneuver = choosePlayerLikeBotMove({
         id: this.id, elapsed: this._encounterTime, distance: targetDistance,
         reacting: this._reactT > 0, hasLineOfSight: hasVisual,
-        reloading: this._reloadTimer > 0,
+        reloading: this._reloadTimer > 0, range: this._botGun?.range ?? 30,
       });
-      const needsCover = !this._isSwordBot && (this._reloadTimer > 0 || this.health < 36);
+      const needsCover = !this._isSwordBot && (this._reloadTimer > 0 || this.health < 65);
       if (!needsCover || this._coverTimer <= 0) this._coverPoint = null;
       if (needsCover && this._reactT <= 0 && this._coverDecisionT <= 0 && !this._coverPoint) {
         this._coverDecisionT = 1;
@@ -1001,7 +1028,7 @@ export class Bot {
     // Smooth turn toward the desired facing — no more instant snap-arounds.
     if (this._yawInit) {
       this.mesh.rotation.y = turnBodyYaw(
-        this.mesh.rotation.y, this._targetYaw, dt, 3.2
+        this.mesh.rotation.y, this._targetYaw, dt, BOT_DIFFICULTIES.normal.aimTurnSpeed
       );
     } else { this.mesh.rotation.y = this._targetYaw; this._yawInit = true; }
 
@@ -1061,7 +1088,7 @@ export class Bot {
       // gently return to zero via the smoother inside armorTick.
       if (ud.setAim && player) {
         if (this._provoked || engaged) {
-          const aimAt = hasVisual ? player.position : this._lastSeenPos;
+          const aimAt = predictBotTarget(this._observation, this._perceptionTime, hasVisual) ?? this._lastSeenPos;
           const dx = aimAt.x - this.position.x;
           const dz = aimAt.z - this.position.z;
           const dy = (aimAt.y + 1.0) - (this.position.y + 1.5);
