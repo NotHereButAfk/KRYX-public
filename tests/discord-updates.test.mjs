@@ -61,3 +61,17 @@ test('rate limits and uncertain sends fail without automatic duplicate retries',
     assert.equal(calls, 2);
   }
 });
+
+test('existing bot secret posts only to the owner-selected channel', async () => {
+  let calls = 0;
+  const result = await announce(note, { ...env, DISCORD_CONFIG_JSON: JSON.stringify({ DISCORD_BOT_TOKEN: 'mock-bot-secret' }) }, async (url, options) => {
+    if (++calls === 1) { assert(!options.headers.Authorization.includes('mock-bot')); return response({ artifacts: [] }); }
+    assert.equal(String(url), 'https://discord.com/api/v10/channels/1519628887246639187/messages');
+    assert.equal(options.headers.Authorization, 'Bot mock-bot-secret');
+    const body = JSON.parse(options.body);
+    assert.equal(body.enforce_nonce, true); assert.equal(body.nonce.length, 24);
+    assert.equal(body.username, undefined);
+    return response({ id: '123456789012345678' });
+  });
+  assert.equal(result.status, 'sent'); assert(!JSON.stringify(result).includes('mock-bot-secret'));
+});

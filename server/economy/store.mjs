@@ -1,3 +1,4 @@
+import { STORE_ITEMS } from '../storecatalog.mjs';
 import { randomUUID } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { DEFAULT_ECONOMY, validateConfig } from "./config.mjs";
@@ -41,9 +42,11 @@ export class EconomyStore {
     }
   }
   async config() {
-    return (
-      await this.pool.query("SELECT revision,config FROM e_config WHERE id=1")
-    ).rows[0];
+    const row = (await this.pool.query("SELECT revision,config FROM e_config WHERE id=1")).rows[0];
+    return { ...row, config: { ...row.config, items: { ...row.config.items,
+      catalog: STORE_ITEMS.map(item => ({ earningEnabled: false, earningMultiplier: '1', ...row.config.items.catalog.find(old => old.id === item.id), ...item })),
+    } } };
+
   }
   async updateConfig(userId, revision, config) {
     validateConfig(config);
@@ -278,9 +281,7 @@ export class EconomyStore {
     if (!r.rowCount) throw new Error("Item not owned");
   }
   async purchase(userId, itemId, key, config, { beforePurchase } = {}) {
-    const item = config.items.catalog.find(
-      (i) => i.id === itemId && i.priceE != null,
-    );
+    const item = STORE_ITEMS.find(i => i.id === itemId);
     if (!item) throw new Error("Item unavailable");
     return this.transaction(async (c) => {
       const user = (
@@ -307,7 +308,7 @@ export class EconomyStore {
       if (owned.rowCount) throw new Error("Already owned");
       const balance = u(user.e_balance),
         price = u(item.priceE);
-      if (balance < price) throw new Error("Not enough E");
+      if (balance < price) throw new Error("Not enough K");
       await c.query(
         "INSERT INTO user_skins(user_id,skin_id,skin_kind) VALUES($1,$2,$3)",
         [userId, itemId, item.kind],
@@ -318,7 +319,7 @@ export class EconomyStore {
           randomUUID(),
           userId,
           d(-price),
-          `E item: ${itemId}`,
+          `K skin: ${itemId}`,
           d(balance),
           d(balance - price),
           { itemId },

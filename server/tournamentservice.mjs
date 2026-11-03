@@ -1,3 +1,4 @@
+import { REAL_MONEY_PURCHASES_ENABLED } from '../src/core/SkinPrices.js';
 import {tournamentPrizes} from './tournament-prizes.mjs';
 import {prizeRules,usdcAmount} from './tournament-prize-rules.mjs';
 import {tournamentType} from './tournament-types.mjs';
@@ -25,7 +26,7 @@ export function createTournamentService(accounts,{env=process.env,fetchImpl=fetc
   for(const [file,target] of [['.solana.json',secrets],['.discord.json',discordSecrets]]){
     try{Object.assign(target,JSON.parse(readFileSync(new URL(file,import.meta.url),'utf8')));}catch(e){if(e.code!=='ENOENT')console.error('[tournaments] Invalid private configuration');}
   }
-  const config={DISCORD_APPLICATION_ID:'000000000000000000',DISCORD_GUILD_ID:'000000000000000001',DISCORD_TOURNAMENT_CHANNEL_ID:'000000000000000002',DISCORD_MOD_CHANNEL_ID:'000000000000000003',...secrets,...discordSecrets,...env},pool=accounts.pool;
+  const config={DISCORD_APPLICATION_ID:'1559383309748928603',DISCORD_GUILD_ID:'1519626567041417296',DISCORD_TOURNAMENT_CHANNEL_ID:'1519628887246639187',DISCORD_MOD_CHANNEL_ID:'1519628857911803914',...secrets,...discordSecrets,...env},pool=accounts.pool;
   const site=config.PUBLIC_SITE_URL||'https://kryx.live';
   const admins=new Set(String(config.TOURNAMENT_ADMIN_USER_IDS||config.E_ADMIN_USER_IDS||'').split(',').map(v=>v.trim()).filter(Boolean));
   let merchant='';try{merchant=address(config.SOLANA_MERCHANT_ADDRESS);}catch{}
@@ -42,7 +43,7 @@ export function createTournamentService(accounts,{env=process.env,fetchImpl=fetc
   async function chain(){if(await rpc('getGenesisHash')!==MAINNET_GENESIS)fail('Payment network must be Solana mainnet',503);}
   const publicEvent=e=>({id:e.id,title:e.title,description:e.description,type:e.tournament_type||null,objective:tournamentType(e.tournament_type)?.objective||null,startsAt:e.starts_at,endsAt:e.ends_at,prizes:(e.prizes||[]).map(usdcAmount),closesAt:e.closes_at,capacity:e.capacity,asset:e.asset,fee:decimalAmount(e.fee_units,e.asset==='SOL'?9:e.asset==='K'?4:6),status:e.status,results:e.results||[],registered:Number(e.registered||0),announcementId:e.announcement_id||null});
   const publicOrder=o=>({id:o.id,tournamentId:o.tournament_id,asset:o.asset,amount:decimalAmount(o.amount_units,o.asset==='SOL'?9:o.asset==='K'?4:6),status:o.status,expiresAt:o.expires_at,signature:o.signature||null,
-    paymentUrl:o.status==='pending'&&new Date(o.expires_at).getTime()>now()?paymentUrl(o).replace(/message=[^&]*/,`message=${encodeURIComponent('Tournament entry '+o.id)}`):null});
+    paymentUrl:REAL_MONEY_PURCHASES_ENABLED&&o.status==='pending'&&new Date(o.expires_at).getTime()>now()?paymentUrl(o).replace(/message=[^&]*/,`message=${encodeURIComponent('Tournament entry '+o.id)}`):null});
   async function profile(id){return (await pool.query('SELECT solana_address,discord_id,discord_name FROM tournament_profiles WHERE user_id=$1',[id])).rows[0]||{};}
   async function createEvent(data,creator,interactionId=null,db=pool,discordCreator=null){
     const template=tournamentType(data.type);
@@ -285,6 +286,7 @@ export function createTournamentService(accounts,{env=process.env,fetchImpl=fetc
         if(data.confirm!==true)fail('Confirm the entry fee before continuing');
         const p=await profile(user.id);if(!p.solana_address)fail('Set your Solana wallet address in Profile first');
         const target=(await pool.query('SELECT asset FROM tournaments WHERE id=$1',[entry[1]])).rows[0];
+        if(target && target.asset!=='K' && !REAL_MONEY_PURCHASES_ENABLED)fail('Real-money entry payments are paused',410);
         if(target?.asset==='K')return send(res,201,{ok:true,order:publicOrder(await enterWithTokens(entry[1],user,p.solana_address))});
         if(!cryptoConfigured)fail('Legacy payment service unavailable',503);
         await chain();

@@ -45,3 +45,16 @@ Final focused tests, authority (55/55), awareness (16/16), casual/style and bala
 ## Discord update bot
 
 Discord automation mirrored to both repositories, with only private Ev.io eligible to send. Copilot release-note ownership recorded in AGENTS.md. No game code, tournament credentials or deployment steps changed. See DISCORD-UPDATES.md for setup and remaining activation work.
+
+
+## K-only skin purchases
+
+Restored earned-K skin purchases through the existing transactional economy service. Centralized five rarity prices across client/server catalogs, removed the paid-checkout modal, paused new cash orders and legacy cash tournament entries, and preserved settlement/withdrawal behavior. Updated Earnings copy and persistent Discord release notes. Discord destination uses the existing DISCORD_CONFIG_JSON secret without retrieving or changing its value.
+
+
+Final shop browser validation: actual MenuUI with mocked API, 1360px desktop and 390px touch layouts pass. Confirm/cancel, weapon+character purchase, inventory, reload restoration and insufficient funds verified; balance 2500 -> 1500 -> 500, rejected 2000 K purchase leaves500. Five visible offers and four present rarity prices checked; no cash-checkout requests or modal, no horizontal overflow, zero page errors. Existing read-only withdrawal states remain tested without submitting withdrawals. Browser fixtures are separate from real PostgreSQL transaction tests.
+
+
+Final integration verification (2026-11-03): both production builds passed; all 11 skin database/API cases and all 7 Discord publisher cases passed in both repositories. Historical payment/tournament suites passed in both. Economy ledger suite passed in both; backend authorization/boundary suite and deployment-policy check passed in private. Added valid defaults for new admin catalog entries; configured earning multipliers and bonuses survive. Updated the obsolete API fixture to expect unknown-item rejection now that K purchases are enabled.
+
+Playwright exercised the actual shop with API fixtures on desktop and mobile, including purchases, cancel, insufficient funds, inventory and account reload. Built-in browser confirmed guest shop login gating; its earnings page had no local API backend, so signed-in visual coverage comes from Playwright fixtures. No production purchases were made. Mythic pricing is configured and unit-checked; the current catalog has no mythic skin. Prior unrelated presentation/animation/map release blockers remain; keep both PRs draft. Discord live bot permissions and delivery are unverified until the private main deployment succeeds.

@@ -32,3 +32,8 @@ Strafe direction persists until geometry or a threat changes the decision. A bou
 ## Discord update bot
 
 Use a lightweight webhook bot after successful main push deployment. Private repo is the sole sender. Reviewed immutable release ids and receipt artifacts reduce duplicate posts; no background paid AI calls.
+
+
+## K-only skin purchases
+
+Server catalog owns prices; client/body/config price overrides cannot change charges. Existing row locks, ledger and idempotency keys handle payment+ownership atomically. Night Market availability is checked after idempotent replay, so rotation cannot invalidate a successful retry. Skin pricing remains cosmetic and grants no new earnings bonus. Historical paid orders reconcile but never expose a new payment request URL.

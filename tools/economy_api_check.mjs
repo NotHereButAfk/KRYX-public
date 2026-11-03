@@ -149,7 +149,7 @@ try {
         data: { itemId: "forged", amount: "0", key: "purchase-123" },
       })
     ).status,
-    410,
+    400,
   );
   assert.equal((await request("admin/review")).status, 403);
   console.log(

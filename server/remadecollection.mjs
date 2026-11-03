@@ -15,7 +15,7 @@ export const REMADE_CHARACTERS = [
     "emissive": 12579072,
     "emissiveIntensity": 0.65,
     "shield": 0,
-    "price": 20
+    "price": 1000
   },
   {
     "id": "remake_110",
@@ -32,7 +32,7 @@ export const REMADE_CHARACTERS = [
     "emissive": 16752128,
     "emissiveIntensity": 0.65,
     "shield": 0,
-    "price": 20
+    "price": 1000
   },
   {
     "id": "remake_153",
@@ -49,7 +49,7 @@ export const REMADE_CHARACTERS = [
     "emissive": 16752128,
     "emissiveIntensity": 0.65,
     "shield": 0,
-    "price": 20
+    "price": 1000
   },
   {
     "id": "remake_154",
@@ -66,7 +66,7 @@ export const REMADE_CHARACTERS = [
     "emissive": 12579072,
     "emissiveIntensity": 0.65,
     "shield": 0,
-    "price": 20
+    "price": 1000
   },
   {
     "id": "remake_163",
@@ -83,7 +83,7 @@ export const REMADE_CHARACTERS = [
     "emissive": 6216191,
     "emissiveIntensity": 0.65,
     "shield": 0,
-    "price": 20
+    "price": 1000
   },
   {
     "id": "remake_164",
@@ -100,7 +100,7 @@ export const REMADE_CHARACTERS = [
     "emissive": 6216191,
     "emissiveIntensity": 0.65,
     "shield": 0,
-    "price": 20
+    "price": 1000
   },
   {
     "id": "remake_184",
@@ -117,7 +117,7 @@ export const REMADE_CHARACTERS = [
     "emissive": 15527148,
     "emissiveIntensity": 0.65,
     "shield": 0,
-    "price": 20
+    "price": 1000
   },
   {
     "id": "remake_185",
@@ -134,7 +134,7 @@ export const REMADE_CHARACTERS = [
     "emissive": 16752128,
     "emissiveIntensity": 0.65,
     "shield": 0,
-    "price": 20
+    "price": 1000
   },
   {
     "id": "remake_197",
@@ -151,7 +151,7 @@ export const REMADE_CHARACTERS = [
     "emissive": 42751,
     "emissiveIntensity": 0.65,
     "shield": 0,
-    "price": 20
+    "price": 1000
   },
   {
     "id": "remake_198",
@@ -168,7 +168,7 @@ export const REMADE_CHARACTERS = [
     "emissive": 6216191,
     "emissiveIntensity": 0.65,
     "shield": 0,
-    "price": 20
+    "price": 1000
   },
   {
     "id": "remake_199",
@@ -185,7 +185,7 @@ export const REMADE_CHARACTERS = [
     "emissive": 12579072,
     "emissiveIntensity": 0.65,
     "shield": 0,
-    "price": 20
+    "price": 1000
   },
   {
     "id": "remake_207",
@@ -202,7 +202,7 @@ export const REMADE_CHARACTERS = [
     "emissive": 16752128,
     "emissiveIntensity": 0.65,
     "shield": 0,
-    "price": 20
+    "price": 1000
   },
   {
     "id": "remake_229",
@@ -219,7 +219,7 @@ export const REMADE_CHARACTERS = [
     "emissive": 16711680,
     "emissiveIntensity": 0.65,
     "shield": 0,
-    "price": 20
+    "price": 1000
   },
   {
     "id": "remake_274",
@@ -236,7 +236,7 @@ export const REMADE_CHARACTERS = [
     "emissive": 42751,
     "emissiveIntensity": 0.65,
     "shield": 0,
-    "price": 20
+    "price": 1000
   },
   {
     "id": "remake_277",
@@ -253,7 +253,7 @@ export const REMADE_CHARACTERS = [
     "emissive": 15820032,
     "emissiveIntensity": 0.65,
     "shield": 0,
-    "price": 20
+    "price": 1000
   },
   {
     "id": "remake_288",
@@ -270,7 +270,7 @@ export const REMADE_CHARACTERS = [
     "emissive": 16711680,
     "emissiveIntensity": 0.65,
     "shield": 0,
-    "price": 20
+    "price": 1000
   },
   {
     "id": "remake_289",
@@ -287,7 +287,7 @@ export const REMADE_CHARACTERS = [
     "emissive": 42751,
     "emissiveIntensity": 0.65,
     "shield": 0,
-    "price": 20
+    "price": 1000
   },
   {
     "id": "remake_297",
@@ -304,7 +304,7 @@ export const REMADE_CHARACTERS = [
     "emissive": 65442,
     "emissiveIntensity": 0.65,
     "shield": 0,
-    "price": 20
+    "price": 1000
   },
   {
     "id": "remake_298",
@@ -321,7 +321,7 @@ export const REMADE_CHARACTERS = [
     "emissive": 6216191,
     "emissiveIntensity": 0.65,
     "shield": 0,
-    "price": 20
+    "price": 1000
   },
   {
     "id": "remake_302",
@@ -338,7 +338,7 @@ export const REMADE_CHARACTERS = [
     "emissive": 16752128,
     "emissiveIntensity": 0.65,
     "shield": 0,
-    "price": 20
+    "price": 1000
   },
   {
     "id": "remake_303",
@@ -355,7 +355,7 @@ export const REMADE_CHARACTERS = [
     "emissive": 42751,
     "emissiveIntensity": 0.65,
     "shield": 0,
-    "price": 20
+    "price": 1000
   },
   {
     "id": "remake_309",
@@ -372,7 +372,7 @@ export const REMADE_CHARACTERS = [
     "emissive": 42751,
     "emissiveIntensity": 0.65,
     "shield": 0,
-    "price": 20
+    "price": 1000
   },
   {
     "id": "remake_312",
@@ -389,7 +389,7 @@ export const REMADE_CHARACTERS = [
     "emissive": 65442,
     "emissiveIntensity": 0.65,
     "shield": 0,
-    "price": 20
+    "price": 1000
   },
   {
     "id": "remake_320",
@@ -406,7 +406,7 @@ export const REMADE_CHARACTERS = [
     "emissive": 16752128,
     "emissiveIntensity": 0.65,
     "shield": 0,
-    "price": 20
+    "price": 1000
   },
   {
     "id": "remake_339",
@@ -423,7 +423,7 @@ export const REMADE_CHARACTERS = [
     "emissive": 16752128,
     "emissiveIntensity": 0.65,
     "shield": 0,
-    "price": 20
+    "price": 1000
   },
   {
     "id": "remake_341",
@@ -440,7 +440,7 @@ export const REMADE_CHARACTERS = [
     "emissive": 16711680,
     "emissiveIntensity": 0.65,
     "shield": 0,
-    "price": 20
+    "price": 1000
   },
   {
     "id": "remake_353",
@@ -457,7 +457,7 @@ export const REMADE_CHARACTERS = [
     "emissive": 16711680,
     "emissiveIntensity": 0.65,
     "shield": 0,
-    "price": 20
+    "price": 1000
   },
   {
     "id": "remake_358",
@@ -474,7 +474,7 @@ export const REMADE_CHARACTERS = [
     "emissive": 15527148,
     "emissiveIntensity": 0.65,
     "shield": 0,
-    "price": 20
+    "price": 1000
   },
   {
     "id": "remake_429",
@@ -491,7 +491,7 @@ export const REMADE_CHARACTERS = [
     "emissive": 16752128,
     "emissiveIntensity": 0.65,
     "shield": 0,
-    "price": 20
+    "price": 1000
   },
   {
     "id": "remake_452",
@@ -508,7 +508,7 @@ export const REMADE_CHARACTERS = [
     "emissive": 16711797,
     "emissiveIntensity": 0.65,
     "shield": 0,
-    "price": 20
+    "price": 1000
   },
   {
     "id": "remake_641",
@@ -525,7 +525,7 @@ export const REMADE_CHARACTERS = [
     "emissive": 6216191,
     "emissiveIntensity": 0.65,
     "shield": 0,
-    "price": 20
+    "price": 1000
   },
   {
     "id": "remake_660",
@@ -542,7 +542,7 @@ export const REMADE_CHARACTERS = [
     "emissive": 16711680,
     "emissiveIntensity": 0.65,
     "shield": 0,
-    "price": 20
+    "price": 1000
   },
   {
     "id": "remake_714",
@@ -559,7 +559,7 @@ export const REMADE_CHARACTERS = [
     "emissive": 12579072,
     "emissiveIntensity": 0.65,
     "shield": 0,
-    "price": 20
+    "price": 1000
   },
   {
     "id": "remake_715",
@@ -576,7 +576,7 @@ export const REMADE_CHARACTERS = [
     "emissive": 16752128,
     "emissiveIntensity": 0.65,
     "shield": 0,
-    "price": 20
+    "price": 1000
   },
   {
     "id": "remake_716",
@@ -593,7 +593,7 @@ export const REMADE_CHARACTERS = [
     "emissive": 42751,
     "emissiveIntensity": 0.65,
     "shield": 0,
-    "price": 20
+    "price": 1000
   },
   {
     "id": "remake_727",
@@ -610,7 +610,7 @@ export const REMADE_CHARACTERS = [
     "emissive": 16711680,
     "emissiveIntensity": 0.65,
     "shield": 0,
-    "price": 20
+    "price": 1000
   },
   {
     "id": "remake_728",
@@ -627,7 +627,7 @@ export const REMADE_CHARACTERS = [
     "emissive": 12579072,
     "emissiveIntensity": 0.65,
     "shield": 0,
-    "price": 20
+    "price": 1000
   },
   {
     "id": "remake_761",
@@ -644,7 +644,7 @@ export const REMADE_CHARACTERS = [
     "emissive": 12579072,
     "emissiveIntensity": 0.65,
     "shield": 0,
-    "price": 20
+    "price": 1000
   },
   {
     "id": "remake_762",
@@ -661,7 +661,7 @@ export const REMADE_CHARACTERS = [
     "emissive": 12579072,
     "emissiveIntensity": 0.65,
     "shield": 0,
-    "price": 20
+    "price": 1000
   },
   {
     "id": "remake_764",
@@ -678,7 +678,7 @@ export const REMADE_CHARACTERS = [
     "emissive": 42751,
     "emissiveIntensity": 0.65,
     "shield": 0,
-    "price": 20
+    "price": 1000
   },
   {
     "id": "remake_765",
@@ -695,7 +695,7 @@ export const REMADE_CHARACTERS = [
     "emissive": 15527148,
     "emissiveIntensity": 0.65,
     "shield": 0,
-    "price": 20
+    "price": 1000
   },
   {
     "id": "remake_766",
@@ -712,7 +712,7 @@ export const REMADE_CHARACTERS = [
     "emissive": 42751,
     "emissiveIntensity": 0.65,
     "shield": 0,
-    "price": 20
+    "price": 1000
   },
   {
     "id": "remake_767",
@@ -729,7 +729,7 @@ export const REMADE_CHARACTERS = [
     "emissive": 42751,
     "emissiveIntensity": 0.65,
     "shield": 0,
-    "price": 20
+    "price": 1000
   },
   {
     "id": "remake_768",
@@ -746,7 +746,7 @@ export const REMADE_CHARACTERS = [
     "emissive": 65442,
     "emissiveIntensity": 0.65,
     "shield": 0,
-    "price": 20
+    "price": 1000
   },
   {
     "id": "remake_769",
@@ -763,7 +763,7 @@ export const REMADE_CHARACTERS = [
     "emissive": 16752128,
     "emissiveIntensity": 0.65,
     "shield": 0,
-    "price": 20
+    "price": 1000
   },
   {
     "id": "remake_770",
@@ -780,7 +780,7 @@ export const REMADE_CHARACTERS = [
     "emissive": 1305599,
     "emissiveIntensity": 0.65,
     "shield": 0,
-    "price": 20
+    "price": 1000
   },
   {
     "id": "remake_771",
@@ -797,7 +797,7 @@ export const REMADE_CHARACTERS = [
     "emissive": 16752128,
     "emissiveIntensity": 0.65,
     "shield": 0,
-    "price": 20
+    "price": 1000
   },
   {
     "id": "remake_772",
@@ -814,7 +814,7 @@ export const REMADE_CHARACTERS = [
     "emissive": 16752128,
     "emissiveIntensity": 0.65,
     "shield": 0,
-    "price": 20
+    "price": 1000
   },
   {
     "id": "remake_773",
@@ -831,7 +831,7 @@ export const REMADE_CHARACTERS = [
     "emissive": 12579072,
     "emissiveIntensity": 0.65,
     "shield": 0,
-    "price": 20
+    "price": 1000
   },
   {
     "id": "remake_774",
@@ -848,7 +848,7 @@ export const REMADE_CHARACTERS = [
     "emissive": 16752128,
     "emissiveIntensity": 0.65,
     "shield": 0,
-    "price": 20
+    "price": 1000
   },
   {
     "id": "remake_775",
@@ -865,7 +865,7 @@ export const REMADE_CHARACTERS = [
     "emissive": 16515327,
     "emissiveIntensity": 0.65,
     "shield": 0,
-    "price": 20
+    "price": 1000
   },
   {
     "id": "remake_776",
@@ -882,7 +882,7 @@ export const REMADE_CHARACTERS = [
     "emissive": 12579072,
     "emissiveIntensity": 0.65,
     "shield": 0,
-    "price": 20
+    "price": 1000
   },
   {
     "id": "remake_777",
@@ -899,7 +899,7 @@ export const REMADE_CHARACTERS = [
     "emissive": 16515327,
     "emissiveIntensity": 0.65,
     "shield": 0,
-    "price": 20
+    "price": 1000
   },
   {
     "id": "remake_778",
@@ -916,7 +916,7 @@ export const REMADE_CHARACTERS = [
     "emissive": 12579072,
     "emissiveIntensity": 0.65,
     "shield": 0,
-    "price": 20
+    "price": 1000
   },
   {
     "id": "remake_779",
@@ -933,7 +933,7 @@ export const REMADE_CHARACTERS = [
     "emissive": 15527148,
     "emissiveIntensity": 0.65,
     "shield": 0,
-    "price": 20
+    "price": 1000
   },
   {
     "id": "remake_780",
@@ -950,7 +950,7 @@ export const REMADE_CHARACTERS = [
     "emissive": 15527148,
     "emissiveIntensity": 0.65,
     "shield": 0,
-    "price": 20
+    "price": 1000
   },
   {
     "id": "remake_781",
@@ -967,7 +967,7 @@ export const REMADE_CHARACTERS = [
     "emissive": 65442,
     "emissiveIntensity": 0.65,
     "shield": 0,
-    "price": 20
+    "price": 1000
   },
   {
     "id": "remake_782",
@@ -984,7 +984,7 @@ export const REMADE_CHARACTERS = [
     "emissive": 42751,
     "emissiveIntensity": 0.65,
     "shield": 0,
-    "price": 20
+    "price": 1000
   },
   {
     "id": "remake_783",
@@ -1001,7 +1001,7 @@ export const REMADE_CHARACTERS = [
     "emissive": 42751,
     "emissiveIntensity": 0.65,
     "shield": 0,
-    "price": 20
+    "price": 1000
   },
   {
     "id": "remake_784",
@@ -1018,7 +1018,7 @@ export const REMADE_CHARACTERS = [
     "emissive": 1305599,
     "emissiveIntensity": 0.65,
     "shield": 0,
-    "price": 20
+    "price": 1000
   },
   {
     "id": "remake_785",
@@ -1035,7 +1035,7 @@ export const REMADE_CHARACTERS = [
     "emissive": 16752128,
     "emissiveIntensity": 0.65,
     "shield": 0,
-    "price": 20
+    "price": 1000
   },
   {
     "id": "remake_786",
@@ -1052,7 +1052,7 @@ export const REMADE_CHARACTERS = [
     "emissive": 42751,
     "emissiveIntensity": 0.65,
     "shield": 0,
-    "price": 20
+    "price": 1000
   },
   {
     "id": "remake_787",
@@ -1069,7 +1069,7 @@ export const REMADE_CHARACTERS = [
     "emissive": 15527148,
     "emissiveIntensity": 0.65,
     "shield": 0,
-    "price": 20
+    "price": 1000
   },
   {
     "id": "remake_788",
@@ -1086,7 +1086,7 @@ export const REMADE_CHARACTERS = [
     "emissive": 12579072,
     "emissiveIntensity": 0.65,
     "shield": 0,
-    "price": 20
+    "price": 1000
   },
   {
     "id": "remake_789",
@@ -1103,7 +1103,7 @@ export const REMADE_CHARACTERS = [
     "emissive": 12579072,
     "emissiveIntensity": 0.65,
     "shield": 0,
-    "price": 20
+    "price": 1000
   },
   {
     "id": "remake_791",
@@ -1120,7 +1120,7 @@ export const REMADE_CHARACTERS = [
     "emissive": 42751,
     "emissiveIntensity": 0.65,
     "shield": 0,
-    "price": 20
+    "price": 1000
   },
   {
     "id": "remake_792",
@@ -1137,7 +1137,7 @@ export const REMADE_CHARACTERS = [
     "emissive": 42751,
     "emissiveIntensity": 0.65,
     "shield": 0,
-    "price": 20
+    "price": 1000
   },
   {
     "id": "remake_793",
@@ -1154,7 +1154,7 @@ export const REMADE_CHARACTERS = [
     "emissive": 42751,
     "emissiveIntensity": 0.65,
     "shield": 0,
-    "price": 20
+    "price": 1000
   },
   {
     "id": "remake_794",
@@ -1171,7 +1171,7 @@ export const REMADE_CHARACTERS = [
     "emissive": 42751,
     "emissiveIntensity": 0.65,
     "shield": 0,
-    "price": 20
+    "price": 1000
   },
   {
     "id": "remake_795",
@@ -1188,7 +1188,7 @@ export const REMADE_CHARACTERS = [
     "emissive": 16752128,
     "emissiveIntensity": 0.65,
     "shield": 0,
-    "price": 20
+    "price": 1000
   },
   {
     "id": "remake_796",
@@ -1205,7 +1205,7 @@ export const REMADE_CHARACTERS = [
     "emissive": 1305599,
     "emissiveIntensity": 0.65,
     "shield": 0,
-    "price": 20
+    "price": 1000
   },
   {
     "id": "remake_797",
@@ -1222,7 +1222,7 @@ export const REMADE_CHARACTERS = [
     "emissive": 12579072,
     "emissiveIntensity": 0.65,
     "shield": 0,
-    "price": 20
+    "price": 1000
   },
   {
     "id": "remake_108",
@@ -1239,7 +1239,7 @@ export const REMADE_CHARACTERS = [
     "emissive": 42751,
     "emissiveIntensity": 0.65,
     "shield": 0,
-    "price": 30
+    "price": 1500
   },
   {
     "id": "remake_155",
@@ -1256,7 +1256,7 @@ export const REMADE_CHARACTERS = [
     "emissive": 42751,
     "emissiveIntensity": 0.65,
     "shield": 0,
-    "price": 30
+    "price": 1500
   },
   {
     "id": "remake_165",
@@ -1273,7 +1273,7 @@ export const REMADE_CHARACTERS = [
     "emissive": 16752128,
     "emissiveIntensity": 0.65,
     "shield": 0,
-    "price": 30
+    "price": 1500
   },
   {
     "id": "remake_183",
@@ -1290,7 +1290,7 @@ export const REMADE_CHARACTERS = [
     "emissive": 16752128,
     "emissiveIntensity": 0.65,
     "shield": 0,
-    "price": 30
+    "price": 1500
   },
   {
     "id": "remake_242",
@@ -1307,7 +1307,7 @@ export const REMADE_CHARACTERS = [
     "emissive": 16752128,
     "emissiveIntensity": 0.65,
     "shield": 0,
-    "price": 30
+    "price": 1500
   },
   {
     "id": "remake_273",
@@ -1324,7 +1324,7 @@ export const REMADE_CHARACTERS = [
     "emissive": 16752128,
     "emissiveIntensity": 0.65,
     "shield": 0,
-    "price": 30
+    "price": 1500
   },
   {
     "id": "remake_287",
@@ -1341,7 +1341,7 @@ export const REMADE_CHARACTERS = [
     "emissive": 42751,
     "emissiveIntensity": 0.65,
     "shield": 0,
-    "price": 30
+    "price": 1500
   },
   {
     "id": "remake_304",
@@ -1358,7 +1358,7 @@ export const REMADE_CHARACTERS = [
     "emissive": 16752128,
     "emissiveIntensity": 0.65,
     "shield": 0,
-    "price": 30
+    "price": 1500
   },
   {
     "id": "remake_310",
@@ -1375,7 +1375,7 @@ export const REMADE_CHARACTERS = [
     "emissive": 12579072,
     "emissiveIntensity": 0.65,
     "shield": 0,
-    "price": 30
+    "price": 1500
   },
   {
     "id": "remake_311",
@@ -1392,7 +1392,7 @@ export const REMADE_CHARACTERS = [
     "emissive": 16752128,
     "emissiveIntensity": 0.65,
     "shield": 0,
-    "price": 30
+    "price": 1500
   },
   {
     "id": "remake_318",
@@ -1409,7 +1409,7 @@ export const REMADE_CHARACTERS = [
     "emissive": 65442,
     "emissiveIntensity": 0.65,
     "shield": 0,
-    "price": 30
+    "price": 1500
   },
   {
     "id": "remake_325",
@@ -1426,7 +1426,7 @@ export const REMADE_CHARACTERS = [
     "emissive": 65442,
     "emissiveIntensity": 0.65,
     "shield": 0,
-    "price": 30
+    "price": 1500
   },
   {
     "id": "remake_344",
@@ -1443,7 +1443,7 @@ export const REMADE_CHARACTERS = [
     "emissive": 16515327,
     "emissiveIntensity": 0.65,
     "shield": 0,
-    "price": 30
+    "price": 1500
   },
   {
     "id": "remake_348",
@@ -1460,7 +1460,7 @@ export const REMADE_CHARACTERS = [
     "emissive": 16752128,
     "emissiveIntensity": 0.65,
     "shield": 0,
-    "price": 30
+    "price": 1500
   },
   {
     "id": "remake_356",
@@ -1477,7 +1477,7 @@ export const REMADE_CHARACTERS = [
     "emissive": 16515327,
     "emissiveIntensity": 0.65,
     "shield": 0,
-    "price": 30
+    "price": 1500
   },
   {
     "id": "remake_366",
@@ -1494,7 +1494,7 @@ export const REMADE_CHARACTERS = [
     "emissive": 42751,
     "emissiveIntensity": 0.65,
     "shield": 0,
-    "price": 30
+    "price": 1500
   },
   {
     "id": "remake_372",
@@ -1511,7 +1511,7 @@ export const REMADE_CHARACTERS = [
     "emissive": 16752128,
     "emissiveIntensity": 0.65,
     "shield": 0,
-    "price": 30
+    "price": 1500
   },
   {
     "id": "remake_459",
@@ -1528,7 +1528,7 @@ export const REMADE_CHARACTERS = [
     "emissive": 42751,
     "emissiveIntensity": 0.65,
     "shield": 0,
-    "price": 30
+    "price": 1500
   },
   {
     "id": "remake_461",
@@ -1545,7 +1545,7 @@ export const REMADE_CHARACTERS = [
     "emissive": 16752128,
     "emissiveIntensity": 0.65,
     "shield": 0,
-    "price": 30
+    "price": 1500
   },
   {
     "id": "remake_589",
@@ -1562,7 +1562,7 @@ export const REMADE_CHARACTERS = [
     "emissive": 1305599,
     "emissiveIntensity": 0.65,
     "shield": 0,
-    "price": 30
+    "price": 1500
   },
   {
     "id": "remake_703",
@@ -1579,7 +1579,7 @@ export const REMADE_CHARACTERS = [
     "emissive": 16711797,
     "emissiveIntensity": 0.65,
     "shield": 0,
-    "price": 30
+    "price": 1500
   },
   {
     "id": "remake_729",
@@ -1596,7 +1596,7 @@ export const REMADE_CHARACTERS = [
     "emissive": 12579072,
     "emissiveIntensity": 0.65,
     "shield": 0,
-    "price": 30
+    "price": 1500
   },
   {
     "id": "remake_735",
@@ -1613,7 +1613,7 @@ export const REMADE_CHARACTERS = [
     "emissive": 42751,
     "emissiveIntensity": 0.65,
     "shield": 0,
-    "price": 30
+    "price": 1500
   },
   {
     "id": "remake_742",
@@ -1630,7 +1630,7 @@ export const REMADE_CHARACTERS = [
     "emissive": 42751,
     "emissiveIntensity": 0.65,
     "shield": 0,
-    "price": 30
+    "price": 1500
   },
   {
     "id": "remake_790",
@@ -1647,7 +1647,7 @@ export const REMADE_CHARACTERS = [
     "emissive": 12579072,
     "emissiveIntensity": 0.65,
     "shield": 0,
-    "price": 30
+    "price": 1500
   },
   {
     "id": "remake_107",
@@ -1664,7 +1664,7 @@ export const REMADE_CHARACTERS = [
     "emissive": 16748143,
     "emissiveIntensity": 0.65,
     "shield": 0,
-    "price": 40
+    "price": 2000
   },
   {
     "id": "remake_166",
@@ -1681,7 +1681,7 @@ export const REMADE_CHARACTERS = [
     "emissive": 16752128,
     "emissiveIntensity": 0.65,
     "shield": 0,
-    "price": 40
+    "price": 2000
   },
   {
     "id": "remake_182",
@@ -1698,7 +1698,7 @@ export const REMADE_CHARACTERS = [
     "emissive": 12579072,
     "emissiveIntensity": 0.65,
     "shield": 0,
-    "price": 40
+    "price": 2000
   },
   {
     "id": "remake_195",
@@ -1715,7 +1715,7 @@ export const REMADE_CHARACTERS = [
     "emissive": 16752128,
     "emissiveIntensity": 0.65,
     "shield": 0,
-    "price": 40
+    "price": 2000
   },
   {
     "id": "remake_204",
@@ -1732,7 +1732,7 @@ export const REMADE_CHARACTERS = [
     "emissive": 16752128,
     "emissiveIntensity": 0.65,
     "shield": 0,
-    "price": 40
+    "price": 2000
   },
   {
     "id": "remake_205",
@@ -1749,7 +1749,7 @@ export const REMADE_CHARACTERS = [
     "emissive": 16752128,
     "emissiveIntensity": 0.65,
     "shield": 0,
-    "price": 40
+    "price": 2000
   },
   {
     "id": "remake_206",
@@ -1766,7 +1766,7 @@ export const REMADE_CHARACTERS = [
     "emissive": 16752128,
     "emissiveIntensity": 0.65,
     "shield": 0,
-    "price": 40
+    "price": 2000
   },
   {
     "id": "remake_272",
@@ -1783,7 +1783,7 @@ export const REMADE_CHARACTERS = [
     "emissive": 16711797,
     "emissiveIntensity": 0.65,
     "shield": 0,
-    "price": 40
+    "price": 2000
   },
   {
     "id": "remake_286",
@@ -1800,7 +1800,7 @@ export const REMADE_CHARACTERS = [
     "emissive": 16752128,
     "emissiveIntensity": 0.65,
     "shield": 0,
-    "price": 40
+    "price": 2000
   },
   {
     "id": "remake_293",
@@ -1817,7 +1817,7 @@ export const REMADE_CHARACTERS = [
     "emissive": 16711797,
     "emissiveIntensity": 0.65,
     "shield": 0,
-    "price": 40
+    "price": 2000
   },
   {
     "id": "remake_295",
@@ -1834,7 +1834,7 @@ export const REMADE_CHARACTERS = [
     "emissive": 16711797,
     "emissiveIntensity": 0.65,
     "shield": 0,
-    "price": 40
+    "price": 2000
   },
   {
     "id": "remake_317",
@@ -1851,7 +1851,7 @@ export const REMADE_CHARACTERS = [
     "emissive": 16752128,
     "emissiveIntensity": 0.65,
     "shield": 0,
-    "price": 40
+    "price": 2000
   },
   {
     "id": "remake_319",
@@ -1868,7 +1868,7 @@ export const REMADE_CHARACTERS = [
     "emissive": 6216191,
     "emissiveIntensity": 0.65,
     "shield": 0,
-    "price": 40
+    "price": 2000
   },
   {
     "id": "remake_340",
@@ -1885,7 +1885,7 @@ export const REMADE_CHARACTERS = [
     "emissive": 42751,
     "emissiveIntensity": 0.65,
     "shield": 0,
-    "price": 40
+    "price": 2000
   },
   {
     "id": "remake_460",
@@ -1902,7 +1902,7 @@ export const REMADE_CHARACTERS = [
     "emissive": 16711680,
     "emissiveIntensity": 0.65,
     "shield": 0,
-    "price": 40
+    "price": 2000
   },
   {
     "id": "remake_486",
@@ -1919,7 +1919,7 @@ export const REMADE_CHARACTERS = [
     "emissive": 16711680,
     "emissiveIntensity": 0.65,
     "shield": 0,
-    "price": 40
+    "price": 2000
   },
   {
     "id": "remake_629",
@@ -1936,7 +1936,7 @@ export const REMADE_CHARACTERS = [
     "emissive": 16752128,
     "emissiveIntensity": 0.65,
     "shield": 0,
-    "price": 40
+    "price": 2000
   },
   {
     "id": "remake_675",
@@ -1953,7 +1953,7 @@ export const REMADE_CHARACTERS = [
     "emissive": 16752128,
     "emissiveIntensity": 0.65,
     "shield": 0,
-    "price": 40
+    "price": 2000
   },
   {
     "id": "remake_676",
@@ -1970,7 +1970,7 @@ export const REMADE_CHARACTERS = [
     "emissive": 16752128,
     "emissiveIntensity": 0.65,
     "shield": 0,
-    "price": 40
+    "price": 2000
   },
   {
     "id": "remake_737",
@@ -1987,7 +1987,7 @@ export const REMADE_CHARACTERS = [
     "emissive": 42751,
     "emissiveIntensity": 0.65,
     "shield": 0,
-    "price": 40
+    "price": 2000
   },
   {
     "id": "remake_104",
@@ -2004,7 +2004,7 @@ export const REMADE_CHARACTERS = [
     "emissive": 16752128,
     "emissiveIntensity": 0.65,
     "shield": 0,
-    "price": 60,
+    "price": 2500,
     "animated": true,
     "legendaryStyle": 4,
     "energyColor": 16752128
@@ -2024,7 +2024,7 @@ export const REMADE_CHARACTERS = [
     "emissive": 42751,
     "emissiveIntensity": 0.65,
     "shield": 0,
-    "price": 60,
+    "price": 2500,
     "animated": true,
     "legendaryStyle": 0,
     "energyColor": 42751
@@ -2044,7 +2044,7 @@ export const REMADE_CHARACTERS = [
     "emissive": 16752128,
     "emissiveIntensity": 0.65,
     "shield": 0,
-    "price": 60,
+    "price": 2500,
     "animated": true,
     "legendaryStyle": 1,
     "energyColor": 16752128
@@ -2064,7 +2064,7 @@ export const REMADE_CHARACTERS = [
     "emissive": 16752128,
     "emissiveIntensity": 0.65,
     "shield": 0,
-    "price": 60,
+    "price": 2500,
     "animated": true,
     "legendaryStyle": 2,
     "energyColor": 16752128
@@ -2084,7 +2084,7 @@ export const REMADE_CHARACTERS = [
     "emissive": 42751,
     "emissiveIntensity": 0.65,
     "shield": 0,
-    "price": 60,
+    "price": 2500,
     "animated": true,
     "legendaryStyle": 2,
     "energyColor": 42751
@@ -2104,7 +2104,7 @@ export const REMADE_CHARACTERS = [
     "emissive": 42751,
     "emissiveIntensity": 0.65,
     "shield": 0,
-    "price": 60,
+    "price": 2500,
     "animated": true,
     "legendaryStyle": 1,
     "energyColor": 42751
@@ -2124,7 +2124,7 @@ export const REMADE_CHARACTERS = [
     "emissive": 42751,
     "emissiveIntensity": 0.65,
     "shield": 0,
-    "price": 60,
+    "price": 2500,
     "animated": true,
     "legendaryStyle": 1,
     "energyColor": 42751
@@ -2144,7 +2144,7 @@ export const REMADE_CHARACTERS = [
     "emissive": 16711680,
     "emissiveIntensity": 0.65,
     "shield": 0,
-    "price": 60,
+    "price": 2500,
     "animated": true,
     "legendaryStyle": 3,
     "energyColor": 16711680
@@ -2164,7 +2164,7 @@ export const REMADE_CHARACTERS = [
     "emissive": 16752128,
     "emissiveIntensity": 0.65,
     "shield": 0,
-    "price": 60,
+    "price": 2500,
     "animated": true,
     "legendaryStyle": 2,
     "energyColor": 16752128
@@ -2184,7 +2184,7 @@ export const REMADE_CHARACTERS = [
     "emissive": 16752128,
     "emissiveIntensity": 0.65,
     "shield": 0,
-    "price": 60,
+    "price": 2500,
     "animated": true,
     "legendaryStyle": 3,
     "energyColor": 16752128
@@ -2204,7 +2204,7 @@ export const REMADE_CHARACTERS = [
     "emissive": 16711680,
     "emissiveIntensity": 0.65,
     "shield": 0,
-    "price": 60,
+    "price": 2500,
     "animated": true,
     "legendaryStyle": 0,
     "energyColor": 16711680
@@ -2224,7 +2224,7 @@ export const REMADE_CHARACTERS = [
     "emissive": 12579072,
     "emissiveIntensity": 0.65,
     "shield": 0,
-    "price": 60,
+    "price": 2500,
     "animated": true,
     "legendaryStyle": 1,
     "energyColor": 12579072
@@ -2244,7 +2244,7 @@ export const REMADE_CHARACTERS = [
     "emissive": 42751,
     "emissiveIntensity": 0.65,
     "shield": 0,
-    "price": 60,
+    "price": 2500,
     "animated": true,
     "legendaryStyle": 0,
     "energyColor": 42751
@@ -2264,7 +2264,7 @@ export const REMADE_CHARACTERS = [
     "emissive": 42751,
     "emissiveIntensity": 0.65,
     "shield": 0,
-    "price": 60,
+    "price": 2500,
     "animated": true,
     "legendaryStyle": 4,
     "energyColor": 42751
@@ -2284,7 +2284,7 @@ export const REMADE_CHARACTERS = [
     "emissive": 42751,
     "emissiveIntensity": 0.65,
     "shield": 0,
-    "price": 60,
+    "price": 2500,
     "animated": true,
     "legendaryStyle": 1,
     "energyColor": 42751
@@ -2304,7 +2304,7 @@ export const REMADE_CHARACTERS = [
     "emissive": 42751,
     "emissiveIntensity": 0.65,
     "shield": 0,
-    "price": 60,
+    "price": 2500,
     "animated": true,
     "legendaryStyle": 3,
     "energyColor": 42751
@@ -2324,7 +2324,7 @@ export const REMADE_CHARACTERS = [
     "emissive": 16711680,
     "emissiveIntensity": 0.65,
     "shield": 0,
-    "price": 60,
+    "price": 2500,
     "animated": true,
     "legendaryStyle": 1,
     "energyColor": 16711680
@@ -2344,7 +2344,7 @@ export const REMADE_CHARACTERS = [
     "emissive": 65442,
     "emissiveIntensity": 0.65,
     "shield": 0,
-    "price": 60,
+    "price": 2500,
     "animated": true,
     "legendaryStyle": 4,
     "energyColor": 65442
@@ -2364,7 +2364,7 @@ export const REMADE_CHARACTERS = [
     "emissive": 65442,
     "emissiveIntensity": 0.65,
     "shield": 0,
-    "price": 60,
+    "price": 2500,
     "animated": true,
     "legendaryStyle": 1,
     "energyColor": 65442
@@ -2384,7 +2384,7 @@ export const REMADE_CHARACTERS = [
     "emissive": 65442,
     "emissiveIntensity": 0.65,
     "shield": 0,
-    "price": 60,
+    "price": 2500,
     "animated": true,
     "legendaryStyle": 2,
     "energyColor": 65442
@@ -2404,7 +2404,7 @@ export const REMADE_CHARACTERS = [
     "emissive": 65442,
     "emissiveIntensity": 0.65,
     "shield": 0,
-    "price": 60,
+    "price": 2500,
     "animated": true,
     "legendaryStyle": 3,
     "energyColor": 65442
@@ -2424,7 +2424,7 @@ export const REMADE_CHARACTERS = [
     "emissive": 12579072,
     "emissiveIntensity": 0.65,
     "shield": 0,
-    "price": 60,
+    "price": 2500,
     "animated": true,
     "legendaryStyle": 2,
     "energyColor": 12579072
@@ -2444,7 +2444,7 @@ export const REMADE_CHARACTERS = [
     "emissive": 42751,
     "emissiveIntensity": 0.65,
     "shield": 0,
-    "price": 60,
+    "price": 2500,
     "animated": true,
     "legendaryStyle": 3,
     "energyColor": 42751
@@ -2464,7 +2464,7 @@ export const REMADE_CHARACTERS = [
     "emissive": 12579072,
     "emissiveIntensity": 0.65,
     "shield": 0,
-    "price": 60,
+    "price": 2500,
     "animated": true,
     "legendaryStyle": 0,
     "energyColor": 12579072
@@ -2484,7 +2484,7 @@ export const REMADE_CHARACTERS = [
     "emissive": 42751,
     "emissiveIntensity": 0.65,
     "shield": 0,
-    "price": 60,
+    "price": 2500,
     "animated": true,
     "legendaryStyle": 4,
     "energyColor": 42751
@@ -2504,7 +2504,7 @@ export const REMADE_CHARACTERS = [
     "emissive": 16752128,
     "emissiveIntensity": 0.65,
     "shield": 0,
-    "price": 60,
+    "price": 2500,
     "animated": true,
     "legendaryStyle": 4,
     "energyColor": 16752128
@@ -2524,7 +2524,7 @@ export const REMADE_CHARACTERS = [
     "emissive": 12579072,
     "emissiveIntensity": 0.65,
     "shield": 0,
-    "price": 60,
+    "price": 2500,
     "animated": true,
     "legendaryStyle": 1,
     "energyColor": 12579072
@@ -2544,7 +2544,7 @@ export const REMADE_CHARACTERS = [
     "emissive": 65442,
     "emissiveIntensity": 0.65,
     "shield": 0,
-    "price": 60,
+    "price": 2500,
     "animated": true,
     "legendaryStyle": 2,
     "energyColor": 65442
@@ -2564,7 +2564,7 @@ export const REMADE_CHARACTERS = [
     "emissive": 42751,
     "emissiveIntensity": 0.65,
     "shield": 0,
-    "price": 60,
+    "price": 2500,
     "animated": true,
     "legendaryStyle": 0,
     "energyColor": 42751
@@ -2584,7 +2584,7 @@ export const REMADE_CHARACTERS = [
     "emissive": 16711680,
     "emissiveIntensity": 0.65,
     "shield": 0,
-    "price": 60,
+    "price": 2500,
     "animated": true,
     "legendaryStyle": 0,
     "energyColor": 16711680
@@ -2604,7 +2604,7 @@ export const REMADE_CHARACTERS = [
     "emissive": 6216191,
     "emissiveIntensity": 0.65,
     "shield": 0,
-    "price": 60,
+    "price": 2500,
     "animated": true,
     "legendaryStyle": 2,
     "energyColor": 6216191
@@ -2624,7 +2624,7 @@ export const REMADE_CHARACTERS = [
     "emissive": 16752128,
     "emissiveIntensity": 0.65,
     "shield": 0,
-    "price": 60,
+    "price": 2500,
     "animated": true,
     "legendaryStyle": 3,
     "energyColor": 16752128
@@ -2644,7 +2644,7 @@ export const REMADE_CHARACTERS = [
     "emissive": 1305599,
     "emissiveIntensity": 0.65,
     "shield": 0,
-    "price": 60,
+    "price": 2500,
     "animated": true,
     "legendaryStyle": 4,
     "energyColor": 1305599
@@ -2664,7 +2664,7 @@ export const REMADE_CHARACTERS = [
     "emissive": 12579072,
     "emissiveIntensity": 0.65,
     "shield": 0,
-    "price": 60,
+    "price": 2500,
     "animated": true,
     "legendaryStyle": 2,
     "energyColor": 12579072
@@ -2684,7 +2684,7 @@ export const REMADE_CHARACTERS = [
     "emissive": 42751,
     "emissiveIntensity": 0.65,
     "shield": 0,
-    "price": 60,
+    "price": 2500,
     "animated": true,
     "legendaryStyle": 1,
     "energyColor": 42751
@@ -2704,7 +2704,7 @@ export const REMADE_CHARACTERS = [
     "emissive": 16752128,
     "emissiveIntensity": 0.65,
     "shield": 0,
-    "price": 60,
+    "price": 2500,
     "animated": true,
     "legendaryStyle": 1,
     "energyColor": 16752128
@@ -2724,7 +2724,7 @@ export const REMADE_CHARACTERS = [
     "emissive": 12579072,
     "emissiveIntensity": 0.65,
     "shield": 0,
-    "price": 60,
+    "price": 2500,
     "animated": true,
     "legendaryStyle": 3,
     "energyColor": 12579072

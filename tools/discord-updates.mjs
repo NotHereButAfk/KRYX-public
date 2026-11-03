@@ -27,11 +27,18 @@ export async function announce(note, env, request = fetch) {
   const name = 'discord-notice-' + createHash('sha256').update(note.id).digest('hex').slice(0, 32);
   if (env.DRY_RUN === '1') return { status: 'preview', payload, name };
   if (env.GITHUB_REPOSITORY !== 'NotHereButAfk/Ev.io' || !env.GITHUB_TOKEN) throw Error('Primary repository credentials required');
-  let webhook;
-  try { webhook = new URL(env.DISCORD_UPDATES_WEBHOOK_URL); } catch { throw Error('Configure DISCORD_UPDATES_WEBHOOK_URL'); }
-  if (webhook.origin !== 'https://discord.com' || webhook.username || webhook.password
-      || !/^\/api(?:\/v10)?\/webhooks\/\d{17,24}\/[A-Za-z0-9_-]+$/.test(webhook.pathname)
-      || webhook.search || webhook.hash) throw Error('Use a Discord text-channel webhook URL');
+  let webhook, botToken;
+  if (env.DISCORD_CONFIG_JSON) {
+    const config = JSON.parse(env.DISCORD_CONFIG_JSON);
+    botToken = config.DISCORD_BOT_TOKEN;
+    if (typeof botToken !== 'string' || !botToken.trim()) throw Error('Existing Discord bot token is missing');
+    webhook = new URL('https://discord.com/api/v10/channels/1519628887246639187/messages');
+  } else {
+    try { webhook = new URL(env.DISCORD_UPDATES_WEBHOOK_URL); } catch { throw Error('Configure Discord credentials'); }
+    if (webhook.origin !== 'https://discord.com' || webhook.username || webhook.password
+        || !/^\/api(?:\/v10)?\/webhooks\/\d{17,24}\/[A-Za-z0-9_-]+$/.test(webhook.pathname)
+        || webhook.search || webhook.hash) throw Error('Use a Discord text-channel webhook URL');
+  }
   const prior = await request(`https://api.github.com/repos/NotHereButAfk/Ev.io/actions/artifacts?name=${name}&per_page=100`, {
     headers: { Authorization: `Bearer ${env.GITHUB_TOKEN}`, Accept: 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28' },
     redirect: 'error', signal: AbortSignal.timeout(15000),
@@ -42,9 +49,11 @@ export async function announce(note, env, request = fetch) {
   if (records.artifacts.some(x => x.name === name && !x.expired && x.workflow_run?.head_branch === 'main')) {
     return { status: 'already-sent', name };
   }
-  webhook.searchParams.set('wait', 'true');
-  const response = await request(webhook, { method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload), redirect: 'error', signal: AbortSignal.timeout(15000) });
+  if (!botToken) webhook.searchParams.set('wait', 'true');
+  const body = botToken ? { content: payload.content, allowed_mentions: payload.allowed_mentions,
+    nonce: name.slice(-24), enforce_nonce: true } : payload;
+  const response = await request(webhook, { method: 'POST', headers: { 'Content-Type': 'application/json', ...(botToken ? { Authorization: `Bot ${botToken}` } : {}) },
+    body: JSON.stringify(body), redirect: 'error', signal: AbortSignal.timeout(15000) });
   if (!response.ok) throw Error(`Discord rejected update (${response.status}); inspect before retrying`);
   const posted = await response.json();
   if (!/^\d{17,24}$/.test(posted.id || '')) throw Error('Discord acknowledgement missing; inspect channel before retrying');

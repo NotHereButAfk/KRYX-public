@@ -1,3 +1,4 @@
+import { STORE_ITEMS } from '../server/storecatalog.mjs';
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import { PGlite } from "@electric-sql/pglite";
@@ -175,23 +176,16 @@ const limited = await store.finalize(another, 1);
 assert.equal(limited.finalE, "1.0000");
 assert.equal(limited.balance, "6.0000");
 const purchaseConfig = structuredClone(config);
-purchaseConfig.items.catalog = [
-  {
-    id: "earned",
-    kind: "character",
-    earningEnabled: true,
-    earningMultiplier: "1",
-    rarity: "rare",
-    priceE: "2",
-  },
-];
-await store.purchase(1, "earned", "request-123", purchaseConfig);
-await store.purchase(1, "earned", "request-123", purchaseConfig);
-assert.equal((await store.profile(1, "test-session")).balance, "4.0000");
+const purchaseItem = STORE_ITEMS.find(item => item.kind === 'character' && item.rarity === 'common');
+purchaseConfig.items.catalog = [{ ...purchaseItem, earningEnabled: true, earningMultiplier: '1' }];
+await store.adjust(1, 1, '1000', 'Purchase fixture funds', 'fund-skin-123');
+await store.purchase(1, purchaseItem.id, "request-123", purchaseConfig);
+await store.purchase(1, purchaseItem.id, "request-123", purchaseConfig);
+assert.equal((await store.profile(1, "test-session")).balance, "6.0000");
 await assert.rejects(() =>
-  store.equip(2, "character", "earned", purchaseConfig),
+  store.equip(2, "character", purchaseItem.id, purchaseConfig),
 );
-await store.equip(1, "character", "earned", purchaseConfig);
+await store.equip(1, "character", purchaseItem.id, purchaseConfig);
 assert.equal((await store.earningItems(1, purchaseConfig)).length, 1);
 const purchase = (
   await query("SELECT * FROM e_transactions WHERE type='SHOP_PURCHASE'")
@@ -199,7 +193,7 @@ const purchase = (
 await store.adjust(
   1,
   1,
-  "2",
+  "1000",
   "Refund test",
   "refund-123",
   "REFUND",
@@ -208,14 +202,15 @@ await store.adjust(
 await store.adjust(
   1,
   1,
-  "2",
+  "1000",
   "Refund test",
   "refund-123",
   "REFUND",
   purchase.id,
 );
-assert.equal((await store.profile(1, "test-session")).balance, "6.0000");
+assert.equal((await store.profile(1, "test-session")).balance, "1006.0000");
 assert.equal((await store.earningItems(1, purchaseConfig)).length, 0);
+await store.adjust(1, 1, '-1000', 'Remove purchase fixture funds', 'unfund-skin-123');
 await assert.rejects(() =>
   store.adjust(1, 1, "-10", "No negative balance", "adjust-123"),
 );

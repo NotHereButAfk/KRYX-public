@@ -38,3 +38,16 @@ Completed sound pass: nine weapon reports, distance filtering, visible-contact a
 ## Discord update bot
 
 Implemented publisher, deployment trigger, release notes, persistent worker role and HTTP tests. Pending channel/webhook secret, main merge and real Discord delivery verification.
+
+
+## K-only skin purchases
+
+Integrated shared prices, authoritative ledger purchases, shop UI and blocked new cash orders. Actual SQL/API and historical settlement tests pass. Browser QA and final paired builds are being recorded below. Discord publisher now uses the existing configuration secret for the selected channel; live delivery awaits main deployment.
+
+
+Final shop browser validation: actual MenuUI with mocked API, 1360px desktop and 390px touch layouts pass. Confirm/cancel, weapon+character purchase, inventory, reload restoration and insufficient funds verified; balance 2500 -> 1500 -> 500, rejected 2000 K purchase leaves500. Five visible offers and four present rarity prices checked; no cash-checkout requests or modal, no horizontal overflow, zero page errors. Existing read-only withdrawal states remain tested without submitting withdrawals. Browser fixtures are separate from real PostgreSQL transaction tests.
+
+
+Final integration verification (2026-11-03): both production builds passed; all 11 skin database/API cases and all 7 Discord publisher cases passed in both repositories. Historical payment/tournament suites passed in both. Economy ledger suite passed in both; backend authorization/boundary suite and deployment-policy check passed in private. Added valid defaults for new admin catalog entries; configured earning multipliers and bonuses survive. Updated the obsolete API fixture to expect unknown-item rejection now that K purchases are enabled.
+
+Playwright exercised the actual shop with API fixtures on desktop and mobile, including purchases, cancel, insufficient funds, inventory and account reload. Built-in browser confirmed guest shop login gating; its earnings page had no local API backend, so signed-in visual coverage comes from Playwright fixtures. No production purchases were made. Mythic pricing is configured and unit-checked; the current catalog has no mythic skin. Prior unrelated presentation/animation/map release blockers remain; keep both PRs draft. Discord live bot permissions and delivery are unverified until the private main deployment succeeds.

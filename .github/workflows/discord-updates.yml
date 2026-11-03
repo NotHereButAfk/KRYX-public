@@ -34,6 +34,7 @@ jobs:
         id: post
         env:
           GITHUB_TOKEN: ${{ github.token }}
+          DISCORD_CONFIG_JSON: ${{ secrets.DISCORD_CONFIG_JSON }}
           DISCORD_UPDATES_WEBHOOK_URL: ${{ secrets.DISCORD_UPDATES_WEBHOOK_URL }}
         run: node tools/discord-updates.mjs
       - name: Remember successful announcement

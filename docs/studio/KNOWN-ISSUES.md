@@ -32,3 +32,8 @@ Final public authority rerun: one initial run returned 54/55 because the wall-bl
 ## Discord update bot
 
 Discord is not active until the owner supplies a channel/webhook through Actions secrets and the workflow lands on main. Receipt retention is 90 days; ambiguous sends/receipt-write failures can duplicate on retry. Copilot assignment was unavailable/cooling down; local implementation used without bypassing guards.
+
+
+## K-only skin purchases
+
+Skin task Copilot proposal2026-11-03T14-02-26-432Z-ec78bc51 was unavailable/cooling down; implementation completed locally without paid fallback. Catalog currently contains no mythic skin; the3000K mythic rule is verified directly. Old payment data is retained for settlement, not new paid checkout. Live production database migration/purchase and Discord permissions are not verified by local fixtures.

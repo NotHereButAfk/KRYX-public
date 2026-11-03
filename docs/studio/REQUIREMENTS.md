@@ -27,3 +27,8 @@ The owner's final request removes bot-only handicaps and canned behavior. Bots m
 ## Discord update bot
 
 Automatically announce each released game update to the chosen Discord channel; assign Copilot the Release Notes Editor role; preserve both repos and existing tournament integration.
+
+
+## K-only skin purchases
+
+Set all saleable skins to earned K only: common1000, rare1500, epic2000, legendary2500, mythic3000. Disable new real-money skin/tournament entry checkouts. Preserve existing ownership, balances, receipts and historical settlement. User selected Discord channel1519628887246639187 in server1519626567041417296.
