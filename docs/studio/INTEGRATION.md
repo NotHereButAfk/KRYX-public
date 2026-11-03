@@ -18,3 +18,8 @@ Lighting work extends the same two feature branches and PRs, preserving the comp
 Final lighting validation (2026-11-03): both production builds and both five-test lighting suites pass. Viewmodel, client-performance and evmap checks pass. Real browser fixed-camera captures cover Evasion, Fractal, Gypsum and Ancient. Architecture draws on first render:89/41/75/50; subsequent frames and excluded actor draws:0. High2048, medium1024, low releases the shadow target. All six maps across two laps retain exactly matching geometry/texture counts, five fixed scene lights and one current map root. Zero page errors. Portrait390x844 low tier inspected; built-in browser also loaded Gypsum and entered a match. Earlier bot-task keyboard/mouse and mobile Play checks remain documented above. No real-device FPS or new multiplayer lighting test claimed.
 
 Lighting changes match across both repos while retaining the public repository's existing post-match countdown implementation and each package's metadata. Existing main-release blockers remain; updates stay in the two draft PRs.
+
+
+## Spawn protection followup
+
+Spawn-protection followup: Copilot test proposal run2026-11-03T12-05-41-189Z-8b1831be reviewed and manually corrected. Five focused checks and player-respawn pass; all55 authority checks pass. Matched x64 baseline/current health-regeneration checks pass. Browser proof: visible resume overlay100->80; fresh spawn blocks17 damage with no hurt feedback; after2.1s paused100->80 with Player.update count unchanged5->5. Menu toggles preserve deadline; self/hazard bypass works; zero page errors. Source changes retain both repos existing bot/lighting work and public-specific post-match code. Existing unrelated deployment gates still apply.

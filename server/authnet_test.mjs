@@ -462,10 +462,13 @@ const protector = protectedRoom.players.get(protectorId);
 const freshSpawn = protectedRoom.players.get(protectedId);
 protectedRoom._damage(freshSpawn, protector, 100, false);
 const protectedHealth = freshSpawn.health;
-for (let i = 0; i < 31; i++) protectedRoom.update();
+for (let i = 0; i < 39; i++) protectedRoom.update();
 protectedRoom._damage(freshSpawn, protector, 25, false);
-ok('spawn protection: fresh players cannot be damaged for 1.5 seconds',
-   protectedHealth === 100 && freshSpawn.health === 75,
+const stillProtected = freshSpawn.health === 100;
+protectedRoom.update();
+protectedRoom._damage(freshSpawn, protector, 25, false);
+ok('spawn protection: enemy damage starts exactly two seconds after spawn',
+   protectedHealth === 100 && stillProtected && freshSpawn.health === 75,
    `health ${protectedHealth}→${freshSpawn.health}`);
 
 // reconnect + duplicate session

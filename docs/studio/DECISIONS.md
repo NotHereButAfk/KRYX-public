@@ -11,3 +11,8 @@ Codex performed integration, corrective edits and verification after these provi
 Active maps contain no baked lightmaps. Lambert diffuse shading replaces hard Toon bands; authored colors, textures and emissive inputs remain intact. Tone mapping now applies consistently on medium/direct and high/composer paths. Existing ACES exposure is adjusted to .92; Fractal has extra cool fill for corner visibility. The sky is a lightweight world-oriented gradient with a restrained sun glow and no external assets.
 
 Use one cached sun shadow map (1024 medium, 2048 high), refreshed only for map/quality changes. Render only opaque architecture into the cache: temporarily suppress non-map casters and restore in finally. Three tests the main camera layers during shadow rendering, so shadow-camera layers cannot filter characters. Invisible type3 material groups become visible=false; mixed meshes retain their visible opaque groups. Low quality releases the shadow target. No SSAO, additional point lights or per-frame shadow passes. Viewmodels share existing PMREM resources and updated directional targets.
+
+
+## Spawn protection followup
+
+Share SPAWN_PROTECTION_SECONDS=2 between server tick deadlines and the local Player wall-clock deadline. Only respawn starts the local timer. Game damage routing checks it before hurt feedback, irrespective of menus. Preserve existing self-explosive and kill-plane behavior; loading/spectator exclusions remain separate from active-player immunity.

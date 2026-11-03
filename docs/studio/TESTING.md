@@ -13,3 +13,8 @@ Browser harness: CHROME points to an installed Chrome executable; KYX_URL points
 `npm run test:map-lighting` covers per-map profiles, all eight corners of shifted map bounds inside sun frusta, map/quality invalidation, shadow target disposal, mixed hidden/opaque groups, dynamic-caster exclusion, exception-safe restoration and owned-resource disposal.
 
 `tools/lighting_browser_check.mjs` uses a real local browser and identical camera poses for before/after comparisons. Configure CHROME, KYX_URL, KYX_LIGHTING_OUTPUT and KYX_LIGHTING_POSES; use KYX_LIGHTING_PHASE=before or after. Instrument actual onBeforeShadow calls to verify first-render architecture draws, zero cached redraws and zero non-map casters. Compare Evasion, Fractal and Gypsum; check high/medium/low targets and portrait rendering. The baseline and upgraded static scenes use the same pose data.
+
+
+## Spawn protection followup
+
+npm run test:player-respawn now includes five spawn-protection regressions: local wall-clock boundaries without updates, Arena/Survival server boundaries, repeated-ready nonrenewal, respawn and self-damage. server/authnet_test.mjs checks protection at tick39 and damage at40. tools/spawn_protection_browser_check.mjs uses real Play/Escape/resume UI and deterministic Game enemy-hit fixtures; configure CHROME, KYX_URL and KYX_SPAWN_OUTPUT. It checks paused damage, fresh2s window, no movement ticks during expiry, unchanged menu deadline and self/hazard bypass.

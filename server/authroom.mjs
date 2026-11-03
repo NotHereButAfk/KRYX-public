@@ -1,7 +1,7 @@
 import { observeBotTarget, predictBotTarget } from '../src/entities/BotSkill.js';
 import { BOT_MOVEMENT_SCALE } from '../src/sim/MovementConfig.js';
 import { createDeathReaction } from '../src/sim/DeathReaction.js';
-import { PLAYER_RESPAWN_DELAY } from '../src/sim/DeathTiming.js';
+import { PLAYER_RESPAWN_DELAY, SPAWN_PROTECTION_SECONDS } from '../src/sim/DeathTiming.js';
 import { stepGrenade, launcherShouldExplode } from '../src/sim/GrenadePhysics.js';
 import { shotSpread, spreadDirection } from '../src/weapons/ShotSpread.js';
 // Authoritative room (Phase 4 + 5) — fixed-20Hz server-owned simulation.
@@ -95,7 +95,7 @@ export function botPresentationYaw(aimYaw, vx, vz, combat = false) {
 
 const BOT_RESPAWN_TICKS = TICK_HZ * 3;
 const PLAYER_RESPAWN_TICKS = TICK_HZ * PLAYER_RESPAWN_DELAY;
-const SPAWN_PROTECTION_TICKS = Math.ceil(TICK_HZ * 1.5);
+const SPAWN_PROTECTION_TICKS = Math.ceil(TICK_HZ * SPAWN_PROTECTION_SECONDS);
 const MAX_INPUT_QUEUE = 8;                  // drop floods; catch-up caps here
 const MAX_ROOM_SPECTATORS = 8;              // separate from the eight active seats
 const INPUT_HOLD_GRACE_TICKS = 3;           // at most 150ms between input packets

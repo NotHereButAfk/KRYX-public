@@ -14,3 +14,8 @@
 - [x] Integrate smooth shading, map-aware sky/sun, cached architectural shadows and viewmodel environment.
 - [x] Validate shadow frusta, quality resource lifecycle and excluded actor restoration.
 - [x] Complete visual tuning, desktop/mobile verification, both builds and sync both PRs.
+
+
+## Spawn protection followup
+
+- [x] Align authoritative/local spawn protection at two seconds, verify paused damage and synchronize both PRs.

@@ -838,7 +838,7 @@ export class Game {
       // In an authoritative match the server applies grenade damage. Running
       // the local copy too would double-hit and let a client decide its death.
       if (this._authNet?.ready) return;
-      this._onPlayerDamaged(damage, point);
+      this._onPlayerDamaged(damage, point, null, true);
     };
 
     this.weaponSystem.onHitBot = (enemy, dmg, point, meta) => {
@@ -1992,8 +1992,11 @@ export class Game {
 
   // ── Player damage / death ───────────────────────────────────────────────────
 
-  _onPlayerDamaged(dmg, from = null, attacker = null) {
+  _onPlayerDamaged(dmg, from = null, attacker = null, bypassSpawnProtection = false) {
     if (this.player.isDead || this._playerDowned) return;
+    // Menus never grant protection. Only a fresh spawn blocks enemy damage;
+    // self explosives and falling out of the arena keep their normal behavior.
+    if (!bypassSpawnProtection && this.player.spawnProtected) return;
     const died = this.player.takeDamage(dmg);
     this.audio.playHurt();
     this.hud.flashDamage();
@@ -2349,7 +2352,7 @@ export class Game {
       const crossedKillPlane = this.player.position.y < (this.world.killY ?? -25);
       const recoveredByMoveSim = !!this.moveBridge?.recoveredThisFrame;
       if (crossedKillPlane || recoveredByMoveSim) {
-        this._onPlayerDamaged(this.player.health + this.player.shield + 1);
+        this._onPlayerDamaged(this.player.health + this.player.shield + 1, null, null, true);
       }
     }
     // A server snapshot can change alive/dead during AuthNetBridge.update(),
