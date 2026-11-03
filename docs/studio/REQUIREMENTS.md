@@ -22,3 +22,8 @@ Improve weapon identity, spatial distance/cover cues and contact feedback in bot
 ## Human behavior followup
 
 The owner's final request removes bot-only handicaps and canned behavior. Bots must engage at their actual weapon range, maintain useful sight while moving, fire at native cadence, notice nearby threats and recover from reload cover. Both controllers share player weapon damage, magazines, reloads and spread behavior. Real collision, visibility, reaction, finite ammo and exactly two seconds of player spawn protection remain. These requirements supersede the initial gentler weapon/burst policy. This is our game design, not a claim about official ev.io AI.
+
+
+## Discord update bot
+
+Automatically announce each released game update to the chosen Discord channel; assign Copilot the Release Notes Editor role; preserve both repos and existing tournament integration.

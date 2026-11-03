@@ -33,3 +33,8 @@ Completed sound pass: nine weapon reports, distance filtering, visible-contact a
 - [x] Verify native local/server cadence, actual hit geometry, authority, real-map gameplay and both builds.
 - [x] Synchronize the final source, tests and notes into both existing feature PRs.
 - [ ] Resolve the documented pre-existing release gates before main deployment.
+
+
+## Discord update bot
+
+Implemented publisher, deployment trigger, release notes, persistent worker role and HTTP tests. Pending channel/webhook secret, main merge and real Discord delivery verification.

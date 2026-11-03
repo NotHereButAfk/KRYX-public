@@ -1,0 +1,46 @@
+name: Discord game updates
+on:
+  workflow_run:
+    workflows: [Deploy to VPS]
+    types: [completed]
+    branches: [main]
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: discord-game-updates
+  cancel-in-progress: false
+jobs:
+  announce:
+    if: >-
+      github.repository == 'NotHereButAfk/Ev.io' &&
+      github.event.workflow_run.head_repository.full_name == github.repository &&
+      github.event.workflow_run.head_branch == 'main' &&
+      github.event.workflow_run.event == 'push' &&
+      github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22
+      - name: Validate publisher
+        run: node --test tests/discord-updates.test.mjs
+      - name: Post player-facing changes
+        id: post
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          DISCORD_UPDATES_WEBHOOK_URL: ${{ secrets.DISCORD_UPDATES_WEBHOOK_URL }}
+        run: node tools/discord-updates.mjs
+      - name: Remember successful announcement
+        if: steps.post.outputs.sent == 'true'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: ${{ steps.post.outputs.receipt_name }}
+          path: discord-receipt.json
+          retention-days: 90
+          if-no-files-found: error

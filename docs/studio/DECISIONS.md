@@ -27,3 +27,8 @@ Keep synthesis cached in four seeded variants per event and the existing master 
 Use the player weapon catalog for all four bot firearm roles and sword values. Retain the ordinary shared cooldown as the sole server fire clock; rounding a second bot timer up to whole ticks incorrectly slowed M4/Uzi. Local cooldown preserves fractional frame overshoot and cannot bank idle shots. Battle Rifle consumes and fires up to three remaining rounds with independent ray spread and nearest head/body intersections.
 
 Strafe direction persists until geometry or a threat changes the decision. A bounded cached floor/collision/sight probe chooses a clear side or retreat; it can hold when every safe lane is blocked. No time-based stop beats or forced burst breaks remain. After reload, retrace the last clear firing position before pursuing enemy memory. Target changes clear cover, return and lane state/deadlines; repeated hits from the same opponent preserve intent. Awareness uses 140 degrees plus nearby 10-metre peripheral sight, actual visibility and no arbitrary distance cap. See BOT-ENGAGEMENT.md.
+
+
+## Discord update bot
+
+Use a lightweight webhook bot after successful main push deployment. Private repo is the sole sender. Reviewed immutable release ids and receipt artifacts reduce duplicate posts; no background paid AI calls.

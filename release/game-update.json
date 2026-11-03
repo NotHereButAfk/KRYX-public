@@ -1,0 +1,10 @@
+{
+  "id": "2026-11-bots-lighting-audio",
+  "title": "Sharper opponents and a refreshed arena",
+  "changes": [
+    "Bots engage from range, keep firing at normal weapon speed and return from cover after reloading.",
+    "Improved arena shading, lighting and architectural shadows.",
+    "Distinct weapon sounds, clearer distance cues and bullet-impact audio.",
+    "Spawn protection lasts exactly two seconds. Click to Resume does not grant immunity."
+  ]
+}

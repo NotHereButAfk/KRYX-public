@@ -40,3 +40,8 @@ Replaced the first-pass bot weapon handicaps, close-approach requirement, firing
 Authority fixture review found that the stronger acquisition encounter had already killed the target reused by retaliation. Retaliation now uses a fresh live encounter and actual shot/hit events across reload, with ordinary speed bounds. Duplicate-session verification now uses an ordered input ACK and proves one welcome, one actor and unchanged identity. Its fixed 150-ms roster-length assumption is gone. The visibility fixture rejects nonfinite tick values and uses the actual LOS resampling deadline.
 
 Final focused tests, authority (55/55), awareness (16/16), casual/style and balance pass. Full bot navigation/patrol passes before the pre-existing presentation failure. Public and private shared source/tests/docs are synchronized while preserving their package metadata and public-specific post-match implementation. Both production builds pass using the existing x64 runtime workaround. Lighting, audio and exact two-second spawn protection remain included. Existing PRs stay drafts because unrelated release gates remain; no main/live deployment is claimed.
+
+
+## Discord update bot
+
+Discord automation mirrored to both repositories, with only private Ev.io eligible to send. Copilot release-note ownership recorded in AGENTS.md. No game code, tournament credentials or deployment steps changed. See DISCORD-UPDATES.md for setup and remaining activation work.

@@ -27,3 +27,8 @@ Copilot behavior and lane proposals contained duplicate entries or incorrect ray
 
 
 Final public authority rerun: one initial run returned 54/55 because the wall-blocked sprint snapshot assertion failed. An isolated rerun of the unchanged source and test passed 55/55, including that assertion. The failing run did not capture enough snapshot detail to identify the cause; a retained-input fixture race is only a hypothesis. No production/test behavior was changed to obtain the pass.
+
+
+## Discord update bot
+
+Discord is not active until the owner supplies a channel/webhook through Actions secrets and the workflow lands on main. Receipt retention is 90 days; ambiguous sends/receipt-write failures can duplicate on retry. Copilot assignment was unavailable/cooling down; local implementation used without bypassing guards.

@@ -31,3 +31,8 @@ The four focused engagement/firing-lane/target-switch/weapon-parity files pass 1
 Final authoritative benchmark: 48 eight-second duels per scenario, stationary 43.125 DPS / 67.647% hits and moving 42.7604 DPS / 67.075% hits; average first shot .26042 seconds. Original f4aa5eb comparison was 9.974 and 7.135 DPS. Native player weapon values now apply, so this result combines behavior and restored weapon stats. No universal multiplier is claimed. Exposed unprovoked target dies at 2.5 seconds; spawn protection still respected. Live retaliation proof fires 26 shots, including 23 after reload, with 15 hits and movement bounded to 7.20 m/s.
 
 Actual Evasion Game/BotManager/Bot fixed-60Hz browser proof: 36-metre first shot 1.583 -> .250 seconds without first approaching to 21 metres; 50 shots in eight seconds at mean .120-second intervals. 24-metre, 65-degree side, 8-metre rear and Click to Resume encounters also engage. Extended 12-second reload test emits 81 shots, returns from cover and resumes at 8.283 seconds; zero occluded shots and final sight clear. Controlled probes use extended target health; separate seven-bot live gameplay uses normal 100 health. Browser errors: zero. The built-in browser separately entered and visually inspected the final Evasion scene. Software WebGL timings are not hardware FPS measurements; authoritative multiplayer has headless/network coverage rather than this browser capture.
+
+
+## Discord update bot
+
+Discord publisher tests and dry preview cover successful requests, eligibility, no mentions, duplicate receipts, URL restrictions, rate limits and invalid notes. Live Discord delivery and hosted workflow execution await activation.
