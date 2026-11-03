@@ -403,7 +403,7 @@ export class WeaponSystem {
     this._shotBloom = 0;                      // sustained-fire accuracy cone
 
     this.tracers = [];
-    this._bulletImpacts = new BulletImpactEffects(scene);
+    this._bulletImpacts = new BulletImpactEffects(scene, point => this.audio?.playBulletImpactAt?.(point));
     this._impactWorld = null;
     this.muzzleSmoke = [];
     this.rockets = [];

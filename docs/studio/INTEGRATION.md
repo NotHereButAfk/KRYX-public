@@ -23,3 +23,12 @@ Lighting changes match across both repos while retaining the public repository's
 ## Spawn protection followup
 
 Spawn-protection followup: Copilot test proposal run2026-11-03T12-05-41-189Z-8b1831be reviewed and manually corrected. Five focused checks and player-respawn pass; all55 authority checks pass. Matched x64 baseline/current health-regeneration checks pass. Browser proof: visible resume overlay100->80; fresh spawn blocks17 damage with no hurt feedback; after2.1s paused100->80 with Player.update count unchanged5->5. Menu toggles preserve deadline; self/hazard bypass works; zero page errors. Source changes retain both repos existing bot/lighting work and public-specific post-match code. Existing unrelated deployment gates still apply.
+
+
+## Sound effects followup
+
+Copilot weapon-acoustics and spatial-audio-profile run2026-11-03T12-20-56-538Z-4245baeb returned duplicate path entries and were rejected; manually reviewed snippets were corrected for body texture, reflection layers and silent-tail cleanup. The first regression task did not start in the sandbox; the next lacked an uncommitted context file. Corrected run2026-11-03T12-30-55-823Z-6d0aba67 returned duplicate entries; root corrected imports/listener fixtures and added meaningful priority/culling/impact/tail assertions. Documentation run2026-11-03T12-32-37-358Z-47e58463 succeeded; reviewed prose corrected cover-ceiling and spawn-protection wording.
+
+Final browser result: 27-event26 s48 kHz stereo after capture peak0.747775/RMS0.071278, zero clipped samples and retained voices; five decoded footsteps. HRTF side/distance, cover attenuation, volume/platform mute pass. 101-shot overload stays32 voices, retains local feedback, peak0.92424 and cleans up. Real gesture suspended-to-running unlock passes. Desktop W/mouse/R, settings25% save/reload,390x844 mobile Play/context and no overflow pass. Ten simultaneous wall impacts create one voice; a real map endpoint produces audio only on arrival. Zero page errors. Built-in browser separately entered Evasion and visually inspected arena/HUD. No subjective listening claim. Audio source/tests match across repos; public package metadata and post-match behavior preserved. Existing PRs remain drafts, not deployed.
+
+Both repositories pass test:audio, test:gunfeel and production build (2026-11-03).

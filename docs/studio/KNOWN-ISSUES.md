@@ -13,3 +13,8 @@ Architectural shadow maps span the full arena, so edges are coarser on medium th
 ## Spawn protection followup
 
 Copilot produced a schema-valid spawn test proposal, but review caught incorrect imports, a callable-tick assumption and a confused tick rate. The usable client fixture was retained and server assertions corrected before integration. An initial ARM-runtime health-regeneration fixture failure did not reproduce in matched x64 baseline/current runs; no regeneration code changed.
+
+
+## Sound effects followup
+
+Audio QA uses desktop Chromium and a390x844 emulated touch viewport. Physical speakers/headphones, actual mobile hardware and Safari were not tested; subjective listening is unverified because this model cannot receive audio input. Existing unrelated deployment gate failures remain unchanged. Before/after WAVs support user comparison.

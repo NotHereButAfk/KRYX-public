@@ -13,3 +13,8 @@ Owner followup: substantially improve lighting in both repositories. Preserve au
 ## Spawn protection followup
 
 Owner clarification: Click to Resume never grants immunity. Only the first two seconds after each actual spawn protect against enemy damage; menus cannot freeze or restart that window.
+
+
+## Sound effects followup
+
+Improve weapon identity, spatial distance/cover cues and contact feedback in both repositories without increasing peak ceilings or changing combat authority. Preserve recorded footsteps, skin identities, master controls and exactly two seconds of spawn protection. See [audio design](AUDIO.md).

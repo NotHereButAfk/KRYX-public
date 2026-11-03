@@ -52,7 +52,7 @@
     "test:gunfeel": "node tools/gunfeel_check.mjs && node tools/menu_effects_check.mjs && node tools/shot_spread_check.mjs && node tools/sprint_fire_check.mjs && node tests/bullet-impact-effects.test.mjs",
     "test:weapon-roles": "node tools/weapon_roles_check.mjs && node server/weapon_roles_test.mjs",
     "test:loadout": "node tools/loadout_weapon_check.mjs",
-    "test:audio": "node tools/audio_contract_check.mjs && node tests/arena-ambience.test.mjs && node tools/remote_footsteps_check.mjs",
+    "test:audio": "node tools/audio_contract_check.mjs && node tests/spatial-audio.test.mjs && node tests/arena-ambience.test.mjs && node tools/remote_footsteps_check.mjs",
     "test:mouse": "node tools/mouse_look_check.mjs",
     "test:gui": "node tools/gui_contract_check.mjs",
     "test:health-regen": "node tools/health_regen_check.mjs",

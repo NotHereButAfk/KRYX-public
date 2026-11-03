@@ -19,3 +19,8 @@
 ## Spawn protection followup
 
 - [x] Align authoritative/local spawn protection at two seconds, verify paused damage and synchronize both PRs.
+
+
+## Sound effects followup
+
+Completed sound pass: nine weapon reports, distance filtering, visible-contact audio, lowest-priority voice eviction, silent-tail trimming, focused regressions, real browser audio/input/settings/mobile QA and matched before/after WAV capture. Both repository builds are checked before publication.

@@ -1,15 +1,11 @@
 // Original synthesized Foley and weapon recordings. Render once per variation,
 // then play one buffer per event instead of rebuilding a large live synth graph.
-export const GUN_TIMBRES = Object.freeze({
-  m4: [0.24, 175, 3400, .86], magnum: [.52, 98, 2700, .94],
-  battlerifle: [.20, 220, 4100, .82], energyshotgun: [.25, 140, 2200, .85],
-  plasmarifle: [.65, 72, 1300, .86], uzi: [.15, 295, 4700, .68],
-  levershotgun: [.66, 82, 1900, .94], rpg: [.85, 60, 650, .86],
-  concussion: [.42, 115, 1100, .85],
-});
+import { GUN_TIMBRES, addWeaponLayers } from './WeaponAcoustics.js';
+import { selectVoiceToSteal } from './SpatialAudioProfile.js';
+export { GUN_TIMBRES };
 const ALIASES = {rifle:'m4',sidearm:'magnum',m16:'battlerifle',lmg:'energyshotgun',smg:'uzi',shotgun:'levershotgun',sniper:'magnum',boltsniper:'magnum',dmr:'battlerifle',needler:'plasmarifle',fuelrod:'rpg'};
-export const EFFECT_NAMES = Object.freeze(['slice','blade-armor','blade-metal','rocket-blast','grenade-blast','reload','hit','kill','hurt','empty','step','run-step','jump','land','hard-land','teleport','switch','casing','magazine','rack','growl','zombie-death','zombie-attack','anime','waifu','laser','fire','fireball','prism','pyro','meow','uwu','bark','sparkle','water','garden','toxic','neko','death','body-impact']);
-const EFFECT_DURATIONS = Object.freeze({ hit:.10, kill:.27, hurt:.28, empty:.09,
+export const EFFECT_NAMES = Object.freeze(['slice','blade-armor','blade-metal','rocket-blast','grenade-blast','reload','hit','kill','hurt','empty','step','run-step','jump','land','hard-land','teleport','switch','casing','magazine','rack','growl','zombie-death','zombie-attack','anime','waifu','laser','fire','fireball','prism','pyro','meow','uwu','bark','sparkle','water','garden','toxic','neko','death','body-impact','bullet-impact']);
+const EFFECT_DURATIONS = Object.freeze({ 'bullet-impact':.16, hit:.10, kill:.27, hurt:.28, empty:.09,
   step:.24, 'run-step':.24, land:.27, 'hard-land':.27, jump:.31, switch:.18,
   reload:.23, magazine:.20, rack:.16, casing:.47, death:.43, 'body-impact':.66 });
 export const MAX_EFFECT_VOICES = 32;
@@ -49,20 +45,7 @@ export function renderSound(name, sampleRate = 48000, variant = 0, rounds = 3) {
     noise(time+.019,.028,gain,250,1900,6);
   };
   if (gun) {
-    const [tail,body,crack] = gun;
-    for(let i=0;i<burst;i++) {
-      const t=i*.045;
-      noise(t,.023,1.45,crack*.4,11500,5,.00025);
-      noise(t+.002,tail,2.7,65,crack,7);
-      tone(t,Math.min(tail,.3),.72,body*1.7,body*.55,.09,7);
-      noise(t+.035,tail*.72,.48,130,1800,5,.006);
-      latch(t+.026, id==='energyshotgun'?.26:.12);
-    }
-    if(id==='magnum') {noise(.026,.38,1.1,120,3100,6);tone(.003,.32,.65,130,40,.08);}
-    if(id==='levershotgun') {noise(.006,.34,2,45,2700,5);latch(.30,.36);noise(.36,.1,.65,400,2800,7);}
-    if(id==='rpg') {noise(.014,.78,2.6,45,1400,3,.014);tone(0,.42,.6,100,32);}
-    if(id==='concussion') {tone(0,.27,.9,240,72,.15);noise(.005,.18,.8,100,780,5);latch(.19,.28);}
-    if(id==='plasmarifle') {tone(0,.49,.95,1450,64,.3);tone(.006,.55,.55,390,41,.15);noise(.012,.46,.8,500,4800,6);}
+    addWeaponLayers(id, { noise, tone, latch }, burst);
   } else switch(id) {
     case 'rocket-blast': case 'grenade-blast': {
       const rocket=id==='rocket-blast';
@@ -99,6 +82,13 @@ export function renderSound(name, sampleRate = 48000, variant = 0, rounds = 3) {
       noise(0,.055,1.2,80,1500,5);tone(0,.075,.25,105,50);
       noise(.02,.13,.85,550,4200,3,.009);
       noise(.085,.19,.38,250,2400,5,.018);break;
+    case 'bullet-impact':
+      // A short material chip with a faint shard ring; confirmation stays a
+      // separate local hit sound, so a wall can never masquerade as a kill.
+      noise(0,.023,.8,800,6800,6,.0005);
+      noise(.007,.10,.45,180,2200,5,.003);
+      tone(.004,.075,.055,2300 + variant*170,1700 + variant*120,.08,8);
+      noise(.035,.085,.10,700,3400,6,.005);break;
     case 'hit':
       // A dry armor tick, short enough to remain readable under automatic fire.
       noise(0,.028,.72,900,4400,6,.0008);noise(.006,.058,.38,130,1250,5);
@@ -150,10 +140,17 @@ export function renderSound(name, sampleRate = 48000, variant = 0, rounds = 3) {
       if(/meow|uwu|anime|waifu/.test(id))tone(.02,.23,.2,850,1400,.4);
     }
   }
-  const level = gun?.[3] ?? (/blast/.test(id)?.94 : /step/.test(id)?(id==='step'?.18:.25) : /land/.test(id)?(id==='land'?.30:.52) : id==='casing'?.09 : id==='hit'?.21 : id==='kill'?.27 : id==='death'?.25 : id==='body-impact'?.48 : .45);
+  const level = gun?.[3] ?? (/blast/.test(id)?.94 : /step/.test(id)?(id==='step'?.18:.25) : /land/.test(id)?(id==='land'?.30:.52) : id==='bullet-impact'?.24 : id==='casing'?.09 : id==='hit'?.21 : id==='kill'?.27 : id==='death'?.25 : id==='body-impact'?.48 : .45);
   let peak=0;
   for(let i=0;i<data.length;i++){data[i]=Math.tanh(data[i]*1.2);peak=Math.max(peak,Math.abs(data[i]));}
   if(peak)for(let i=0;i<data.length;i++)data[i]*=level/peak;
+  if (gun) {
+    // Release voices and positional buses after the audible decay. The design
+    // durations are allocation ceilings, not a reason to retain silent nodes.
+    let end = data.length - 1;
+    while (end > 0 && Math.abs(data[end]) < .00001) end--;
+    return data.slice(0, Math.min(data.length, end + Math.ceil(sampleRate * .008) + 1));
+  }
   return data;
 }
 
@@ -163,7 +160,7 @@ export function playBufferVoice(audio, buffer, { gain = 1, rate = 1, priority = 
   if (!audio.ctx || !buffer) return null;
   const voices = audio._effectVoices ||= new Set();
   if (voices.size >= MAX_EFFECT_VOICES) {
-    const oldest = [...voices].find(voice => voice.priority <= priority);
+    const oldest = selectVoiceToSteal(voices, priority);
     if (!oldest) return null;
     oldest.finish(true);
   }

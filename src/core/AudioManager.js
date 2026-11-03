@@ -1,3 +1,4 @@
+import { spatialAudioProfile } from './SpatialAudioProfile.js';
 import { preloadFootsteps, playFootstepRecording } from './FootstepAudio.js';
 // Original cached game audio. Positional playback shares the master limiter.
 import { playDesignedSound, playBufferVoice } from './SoundEffects.js';
@@ -99,7 +100,11 @@ export class AudioManager {
    * which side it came from. The report and tail share distance attenuation.
    */
   playAt(pos, fn) {
-    if (!this.ctx) return;
+    if (!this.ctx || !pos || !Number.isFinite(pos.x + pos.y + pos.z)) return;
+    const distance = this._hasListener ? this._listenerPosition.distanceTo(pos) : 0;
+    const clear = spatialAudioProfile(distance);
+    if (!clear.audible) return;
+    const profile = this._soundBehindCover(pos) ? spatialAudioProfile(distance, true) : clear;
     const p = this.ctx.createPanner();
     p.panningModel    = 'HRTF';
     p.distanceModel   = 'inverse';
@@ -109,13 +114,17 @@ export class AudioManager {
     if (p.positionX) { p.positionX.value = pos.x; p.positionY.value = pos.y; p.positionZ.value = pos.z; }
     else p.setPosition(pos.x, pos.y, pos.z);
     const nodes = [p];
-    if (this._soundBehindCover(pos)) {
+    let tail = p;
+    if (profile.cutoff < 17500) {
       const filter = this.ctx.createBiquadFilter();
-      filter.type = 'lowpass'; filter.frequency.value = 2600; filter.Q.value = .35;
-      const gain = this.ctx.createGain(); gain.gain.value = .72;
-      p.connect(filter).connect(gain).connect(this.master);
-      nodes.push(filter, gain);
-    } else p.connect(this.master);
+      filter.type = 'lowpass'; filter.frequency.value = Math.min(profile.cutoff, this.ctx.sampleRate * .45); filter.Q.value = .35;
+      tail.connect(filter); tail = filter; nodes.push(filter);
+    }
+    if (profile.gain !== 1) {
+      const gain = this.ctx.createGain(); gain.gain.value = profile.gain;
+      tail.connect(gain); tail = gain; nodes.push(gain);
+    }
+    tail.connect(this.master);
 
     let voices = 0, scheduled = false, disconnected = false;
     const release = () => {
@@ -240,6 +249,17 @@ export class AudioManager {
 
   playReload() {
     playDesignedSound(this, 'reload');
+  }
+
+  playBulletImpactAt(point) {
+    if (!this.ctx) return;
+    const now = this.ctx.currentTime;
+    // Shotgun pellets and replicated bursts share a short audible-impact cap.
+    if (now - (this._lastBulletImpactAt ?? -Infinity) < .045) return;
+    this.playAt(point, () => {
+      this._lastBulletImpactAt = now;
+      playDesignedSound(this, 'bullet-impact', 1, { priority: 1 });
+    });
   }
 
   playHit() {

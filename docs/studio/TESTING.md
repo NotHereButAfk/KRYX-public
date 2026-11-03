@@ -18,3 +18,8 @@ Browser harness: CHROME points to an installed Chrome executable; KYX_URL points
 ## Spawn protection followup
 
 npm run test:player-respawn now includes five spawn-protection regressions: local wall-clock boundaries without updates, Arena/Survival server boundaries, repeated-ready nonrenewal, respawn and self-damage. server/authnet_test.mjs checks protection at tick39 and damage at40. tools/spawn_protection_browser_check.mjs uses real Play/Escape/resume UI and deterministic Game enemy-hit fixtures; configure CHROME, KYX_URL and KYX_SPAWN_OUTPUT. It checks paused damage, fresh2s window, no movement ticks during expiry, unchanged menu deadline and self/hazard bypass.
+
+
+## Sound effects followup
+
+npm run test:audio now includes spatial-audio.test.mjs: local-priority eviction regression, monotonic distance/cover profile, zero allocation/query for invalid/distant events, wall-impact rate cap, prompt silent-tail release. Existing bullet-impact tests additionally verify no contact audio for air/player/predicted hits, no early tracer sounds, and no stale/repeated-map events. tools/audio_browser_check.mjs uses CHROME, KYX_URL, KYX_AUDIO_OUTPUT and KYX_AUDIO_PHASE; captures the same27 events in26 seconds through real WebAudio with decoded CC0 footsteps, then checks mute/volume, HRTF, cover, overload, real gesture unlock, keyboard/mouse, settings reload and mobile Play.

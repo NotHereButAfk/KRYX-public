@@ -16,3 +16,8 @@ Use one cached sun shadow map (1024 medium, 2048 high), refreshed only for map/q
 ## Spawn protection followup
 
 Share SPAWN_PROTECTION_SECONDS=2 between server tick deadlines and the local Player wall-clock deadline. Only respawn starts the local timer. Game damage routing checks it before hurt feedback, irrespective of menus. Preserve existing self-explosive and kill-plane behavior; loading/spectator exclusions remain separate from active-player immunity.
+
+
+## Sound effects followup
+
+Keep synthesis cached in four seeded variants per event and the existing master limiter. Use one HRTF bus per event with the existing lifecycle and ray-query budget; distance adds a low-pass filter, not a second inverse gain law. Cull beyond 85 m before allocating. Wall sounds follow already-confirmed tracer endpoints and share a 45 ms cap. Preserve finite voice budget32; evict lowest eligible priority then oldest. Trim gun-buffer silent tails with8 ms padding. Details: [AUDIO.md](AUDIO.md).
